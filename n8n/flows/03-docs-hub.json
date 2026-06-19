@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-19T07:14:58.167Z",
+  "updatedAt": "2026-06-20T00:25:04.000Z",
   "createdAt": "2026-06-18T04:19:01.736Z",
   "id": "TL2qrOygnWKY69xe",
   "name": "03 - Docs Hub",
@@ -1073,7 +1073,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Pick response based on route\nconst route = $('Smart Router').first().json._route || 'search_html';\nlet body = '';\nlet contentType = 'application/json; charset=utf-8';\nif (route === 'registry_insert') {\n  const r = $('Respond Registry').first().json || {};\n  body = JSON.stringify(r);\n} else if (route === 'stats_text') {\n  const r = $('Respond Stats').first().json || $('Respond Not Stats').first().json || { ok: false };\n  body = JSON.stringify(r);\n} else if (route === 'line_event') {\n  body = JSON.stringify({ ok: true, route: 'line_event', events: $('Smart Router').first().json._events.length });\n} else {\n  body = ($('Render HTML').first().json || {}).html || '<h1>Error</h1>';\n  contentType = 'text/html; charset=utf-8';\n}\nreturn [{ json: { body, contentType } }];\n"
+        "jsCode": "// Pick response based on route\nconst route = $('Smart Router').first().json._route || 'search_html';\nconst replyToken = $('Smart Router').first().json._replyToken;\nlet body = '';\nlet contentType = 'application/json; charset=utf-8';\nif (route === 'registry_insert') {\n  const r = $('Respond Registry').first().json || {};\n  body = JSON.stringify(r);\n} else if (route === 'stats_text') {\n  const r = $('Respond Stats').first().json || $('Respond Not Stats').first().json || { ok: false };\n  body = JSON.stringify(r);\n} else if (route === 'line_event') {\n  if (replyToken) {\n    // Real LINE event - just ack\n    body = JSON.stringify({ ok: true, route: 'line_event', events: $('Smart Router').first().json._events.length });\n  } else {\n    // Test mode - no replyToken. Return the AI agent decision so tester can verify routing.\n    const aiResp = $('Parse AI Response').first().json || {};\n    body = JSON.stringify({\n      ok: true,\n      mode: 'test',\n      route: 'line_event',\n      _route: aiResp._route || null,\n      _text: aiResp._text || null,\n      _query: aiResp._query || null,\n      _filter: aiResp._filter || null,\n      _tool_call_id: aiResp._tool_call_id || null\n    });\n  }\n} else {\n  body = ($('Render HTML').first().json || {}).html || '<h1>Error</h1>';\n  contentType = 'text/html; charset=utf-8';\n}\nreturn [{ json: { body, contentType } }];\n"
       },
       "id": "code-format-resp",
       "name": "Format Response",
@@ -1612,6 +1612,81 @@
         2282,
         432
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Set _has_reply_token flag based on Smart Router's _replyToken\nconst sr = $('Smart Router').first().json;\nconst replyToken = sr._replyToken;\nconst hasReplyToken = (typeof replyToken === 'string' && replyToken.length > 0);\n\n// Pass through input + add flag\nconst input = $input.first().json;\nreturn [{\n  json: {\n    ...input,\n    _has_reply_token: hasReplyToken,\n    _reply_token_value: replyToken || null\n  }\n}];"
+      },
+      "id": "code-check-rt",
+      "name": "Check Reply Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2592,
+        992
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json._has_reply_token) }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "real_line"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json._has_reply_token) }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "test_mode"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "if-has-reply-token",
+      "name": "Has Reply Token?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2736,
+        992
+      ]
     }
   ],
   "connections": {
@@ -2041,7 +2116,7 @@
       "main": [
         [
           {
-            "node": "AI Route Switch",
+            "node": "Check Reply Token",
             "type": "main",
             "index": 0
           }
@@ -2341,6 +2416,35 @@
           }
         ]
       ]
+    },
+    "Has Reply Token?": {
+      "main": [
+        [
+          {
+            "node": "AI Route Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Reply Token": {
+      "main": [
+        [
+          {
+            "node": "Has Reply Token?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -2357,9 +2461,9 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "ae757b51-e7d9-4dfb-9910-3f918caad2a0",
-  "activeVersionId": "ae757b51-e7d9-4dfb-9910-3f918caad2a0",
-  "versionCounter": 82,
+  "versionId": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
+  "activeVersionId": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
+  "versionCounter": 94,
   "triggerCount": 2,
   "sourceWorkflowId": null,
   "shared": [
