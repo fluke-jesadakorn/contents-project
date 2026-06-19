@@ -655,9 +655,9 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO contracts (line_user_id, line_group_id, line_message_id, file_name, file_type, size_bytes, chunk_count, status, storage_bucket, storage_path, file_mime, page_count) VALUES ({{ $json.line_user_id ? \"'\" + $json.line_user_id + \"'\" : \"NULL\" }}, {{ $json.line_group_id ? \"'\" + $json.line_group_id + \"'\" : \"NULL\" }}, {{ $json.line_message_id ? \"'\" + $json.line_message_id + \"'\" : \"NULL\" }}, '{{ $json.file_name.replace(/'/g, \"''\") }}', '{{ $json.file_type }}', {{ $json.size_bytes || \"NULL\" }}, {{ $json.chunk_count }}, 'ready', 'epsx-contracts', 'http://localhost:9100/epsx-contracts/' || '{{ $json.line_message_id }}.pdf', {{ $json.file_mime ? \"'\" + $json.file_mime + \"'\" : \"NULL\" }}, {{ $json.page_count || \"NULL\" }}) RETURNING id, doc_no",
+        "query": "INSERT INTO contracts (line_user_id, line_group_id, line_message_id, file_name, file_type, size_bytes, chunk_count, status, storage_bucket, storage_path, file_mime, page_count, file_data) VALUES ({{ $json.line_user_id ? \"'\" + $json.line_user_id + \"'\" : \"NULL\" }}, {{ $json.line_group_id ? \"'\" + $json.line_group_id + \"'\" : \"NULL\" }}, {{ $json.line_message_id ? \"'\" + $json.line_message_id + \"'\" : \"NULL\" }}, '{{ $json.file_name.replace(/'/g, \"''\") }}', '{{ $json.file_type }}', {{ $json.size_bytes || \"NULL\" }}, {{ $json.chunk_count }}, 'ready', 'epsx-contracts', 'http://localhost:9100/epsx-contracts/' || '{{ $json.line_message_id }}.pdf', {{ $json.file_mime ? \"'\" + $json.file_mime + \"'\" : \"NULL\" }}, {{ $json.page_count || \"NULL\" }}, decode($1::text, 'base64')) RETURNING id, doc_no",
         "options": {
-          "queryReplacement": "={{ [\n  $json.line_user_id || '',\n  $json.line_group_id || '',\n  $json.line_message_id || '',\n  $json.file_name || '',\n  $json.file_type || '',\n  $json.size_bytes || null,\n  $json.chunk_count || 0,\n  $json.file_data_b64 || '',\n  $json.file_mime || ''\n] }}"
+          "queryReplacement": "={{ [$json.file_data_b64 || ''] }}"
         }
       },
       "id": "line-insert-contract",
@@ -2362,8 +2362,8 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "43fc0dbe-9a5a-4c1a-ad7c-35c76d8d3723",
-  "activeVersionId": "43fc0dbe-9a5a-4c1a-ad7c-35c76d8d3723",
+  "versionId": "7bb799c3-bf50-4418-baaf-0bd06673abb3",
+  "activeVersionId": "7bb799c3-bf50-4418-baaf-0bd06673abb3",
   "versionCounter": 82,
   "triggerCount": 2,
   "sourceWorkflowId": null,
@@ -2407,10 +2407,30 @@
   ],
   "tags": [],
   "parentFolder": null,
+  "scopes": [
+    "execution:reveal",
+    "workflow:create",
+    "workflow:delete",
+    "workflow:disableRedaction",
+    "workflow:enableRedaction",
+    "workflow:execute",
+    "workflow:execute-chat",
+    "workflow:export",
+    "workflow:import",
+    "workflow:list",
+    "workflow:move",
+    "workflow:publish",
+    "workflow:read",
+    "workflow:share",
+    "workflow:unpublish",
+    "workflow:unshare",
+    "workflow:update"
+  ],
+  "checksum": "72c0aac9079e0c28172eadaf968a18aa5bccdbec119c7ed46a019c27d95c2a04",
   "activeVersion": {
-    "updatedAt": "2026-06-19T07:14:58.167Z",
-    "createdAt": "2026-06-19T07:14:58.167Z",
-    "versionId": "43fc0dbe-9a5a-4c1a-ad7c-35c76d8d3723",
+    "updatedAt": "2026-06-19T11:27:00.000Z",
+    "createdAt": "2026-06-19T11:27:00.000Z",
+    "versionId": "7bb799c3-bf50-4418-baaf-0bd06673abb3",
     "workflowId": "TL2qrOygnWKY69xe",
     "nodes": [
       {
@@ -3061,9 +3081,9 @@
       {
         "parameters": {
           "operation": "executeQuery",
-          "query": "INSERT INTO contracts (line_user_id, line_group_id, line_message_id, file_name, file_type, size_bytes, chunk_count, status, storage_bucket, storage_path, file_mime, page_count) VALUES ({{ $json.line_user_id ? \"'\" + $json.line_user_id + \"'\" : \"NULL\" }}, {{ $json.line_group_id ? \"'\" + $json.line_group_id + \"'\" : \"NULL\" }}, {{ $json.line_message_id ? \"'\" + $json.line_message_id + \"'\" : \"NULL\" }}, '{{ $json.file_name.replace(/'/g, \"''\") }}', '{{ $json.file_type }}', {{ $json.size_bytes || \"NULL\" }}, {{ $json.chunk_count }}, 'ready', 'epsx-contracts', 'http://localhost:9100/epsx-contracts/' || '{{ $json.line_message_id }}.pdf', {{ $json.file_mime ? \"'\" + $json.file_mime + \"'\" : \"NULL\" }}, {{ $json.page_count || \"NULL\" }}) RETURNING id, doc_no",
+          "query": "INSERT INTO contracts (line_user_id, line_group_id, line_message_id, file_name, file_type, size_bytes, chunk_count, status, storage_bucket, storage_path, file_mime, page_count, file_data) VALUES ({{ $json.line_user_id ? \"'\" + $json.line_user_id + \"'\" : \"NULL\" }}, {{ $json.line_group_id ? \"'\" + $json.line_group_id + \"'\" : \"NULL\" }}, {{ $json.line_message_id ? \"'\" + $json.line_message_id + \"'\" : \"NULL\" }}, '{{ $json.file_name.replace(/'/g, \"''\") }}', '{{ $json.file_type }}', {{ $json.size_bytes || \"NULL\" }}, {{ $json.chunk_count }}, 'ready', 'epsx-contracts', 'http://localhost:9100/epsx-contracts/' || '{{ $json.line_message_id }}.pdf', {{ $json.file_mime ? \"'\" + $json.file_mime + \"'\" : \"NULL\" }}, {{ $json.page_count || \"NULL\" }}, decode($1::text, 'base64')) RETURNING id, doc_no",
           "options": {
-            "queryReplacement": "={{ [\n  $json.line_user_id || '',\n  $json.line_group_id || '',\n  $json.line_message_id || '',\n  $json.file_name || '',\n  $json.file_type || '',\n  $json.size_bytes || null,\n  $json.chunk_count || 0,\n  $json.file_data_b64 || '',\n  $json.file_mime || ''\n] }}"
+            "queryReplacement": "={{ [$json.file_data_b64 || ''] }}"
           }
         },
         "id": "line-insert-contract",
@@ -4754,40 +4774,6 @@
         ]
       }
     },
-    "nodeGroups": [],
-    "authors": "system",
-    "name": "03 - Docs Hub",
-    "description": "v28: IF (Has Chunks?) after Chunk text — checks chunks.length>0; IF true → Embed + MinIO Upload (parallel); IF false → Combine (skip both). Chunk text preserves binary.file so MinIO Upload has it.",
-    "autosaved": false,
-    "workflowPublishHistory": [
-      {
-        "createdAt": "2026-06-19T07:14:58.292Z",
-        "id": 78,
-        "workflowId": "TL2qrOygnWKY69xe",
-        "versionId": "43fc0dbe-9a5a-4c1a-ad7c-35c76d8d3723",
-        "event": "activated",
-        "userId": "198f173d-05bd-4b93-9e83-a83a0d88abb3"
-      }
-    ]
-  },
-  "scopes": [
-    "execution:reveal",
-    "workflow:create",
-    "workflow:delete",
-    "workflow:disableRedaction",
-    "workflow:enableRedaction",
-    "workflow:execute",
-    "workflow:execute-chat",
-    "workflow:export",
-    "workflow:import",
-    "workflow:list",
-    "workflow:move",
-    "workflow:publish",
-    "workflow:read",
-    "workflow:share",
-    "workflow:unpublish",
-    "workflow:unshare",
-    "workflow:update"
-  ],
-  "checksum": "72c0aac9079e0c28172eadaf968a18aa5bccdbec119c7ed46a019c27d95c2a04"
+    "name": "03 - Docs Hub"
+  }
 }
