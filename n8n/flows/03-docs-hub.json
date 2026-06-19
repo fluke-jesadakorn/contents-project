@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-19T06:49:08.417Z",
+  "updatedAt": "2026-06-19T07:04:20.637Z",
   "createdAt": "2026-06-18T04:19:01.736Z",
   "id": "TL2qrOygnWKY69xe",
   "name": "03 - Docs Hub",
@@ -1548,7 +1548,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Download + Decode combined.\n// HTTP node responseFormat=file returns filesystem-v2 ref that getBinaryDataBuffer can't read.\n// Code node v2.25 has no getCredentials on this.helpers — use $env or hardcoded token.\n\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\n// Try $env first (Code node v2.x exposes env vars)\nlet token = $env.LINE_CHANNEL_ACCESS_TOKEN;\n// Fallback to hardcoded (POC; will replace once proper credential wiring exists)\nif (!token) {\n  token = 'Ngf4v6eN3sk97GHP2Y5IaGOrlAQg4W25mLWJggI9Iw6HnrpBvIHqNz1lyUL1d1N9DiURJnYul4CdrMb7LbrDq45iRalBhqdFXMDAiuc0q8hqp1G7hzhYMHDUgJlFnAFI1PAxaoy8vKWqKEHtyxxbYAdB04t89/1O/w1cDnyilFU=';\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  // LINE returns 404 when message content has expired\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst fname = msg.fileName || 'upload.pdf';\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nconst ext = fname.toLowerCase().split('.').pop();\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData }\n}];\n",
+        "jsCode": "// Download + Decode combined.\n// HTTP node responseFormat=file returns filesystem-v2 ref that getBinaryDataBuffer can't read.\n// Code node v2.25 has no getCredentials on this.helpers — use $env or hardcoded token.\n\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\n// Try $env first (Code node v2.x exposes env vars)\nlet token = $env.LINE_CHANNEL_ACCESS_TOKEN;\n// Fallback to hardcoded (POC; will replace once proper credential wiring exists)\nif (!token) {\n  token = 'Ngf4v6eN3sk97GHP2Y5IaGOrlAQg4W25mLWJggI9Iw6HnrpBvIHqNz1lyUL1d1N9DiURJnYul4CdrMb7LbrDq45iRalBhqdFXMDAiuc0q8hqp1G7hzhYMHDUgJlFnAFI1PAxaoy8vKWqKEHtyxxbYAdB04t89/1O/w1cDnyilFU=';\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  // LINE returns 404 when message content has expired\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst fname = msg.fileName || 'upload.pdf';\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nconst ext = fname.toLowerCase().split('.').pop();\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData, raw: binaryData }\n}];\n",
         "options": {
           "asyncCode": true,
           "alwaysOutputData": true
@@ -1566,30 +1566,20 @@
     {
       "parameters": {
         "operation": "upload",
-        "bucketName": {
-          "__rl": true,
-          "value": "epsx-contracts",
-          "mode": "name"
-        },
-        "fileName": {
-          "values": {
-            "string": [
-              {
-                "name": "=contracts/{{ $('LINE Decode & Prepare Binary').item.json._event.message.id }}.pdf"
-              }
-            ]
-          }
-        },
-        "binaryPropertyName": "data",
-        "additionalFields": {}
+        "bucketName": "epsx-contracts",
+        "fileName": "=contracts/{{ $('LINE Decode & Prepare Binary').item.json._event.message.id }}.pdf",
+        "binaryPropertyName": "raw",
+        "additionalFields": {
+          "contentType": "=application/pdf"
+        }
       },
       "id": "node-100",
       "name": "MinIO Upload",
       "type": "n8n-nodes-base.s3",
       "typeVersion": 1,
       "position": [
-        1560,
-        632
+        2506,
+        418
       ],
       "credentials": {
         "s3": {
@@ -2289,6 +2279,11 @@
             "node": "LINE Combine metadata + vectors",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "MinIO Upload",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -2303,11 +2298,6 @@
           },
           {
             "node": "LINE Combine metadata + vectors",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "MinIO Upload",
             "type": "main",
             "index": 0
           }
@@ -2329,9 +2319,9 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "0ec5f427-1249-467d-9024-e497484822d3",
-  "activeVersionId": "0ec5f427-1249-467d-9024-e497484822d3",
-  "versionCounter": 77,
+  "versionId": "79b3e647-41ae-42c5-90ba-bbc53a97ebb6",
+  "activeVersionId": "79b3e647-41ae-42c5-90ba-bbc53a97ebb6",
+  "versionCounter": 78,
   "triggerCount": 2,
   "sourceWorkflowId": null,
   "shared": [
@@ -2375,9 +2365,9 @@
   "tags": [],
   "parentFolder": null,
   "activeVersion": {
-    "updatedAt": "2026-06-19T06:49:08.417Z",
-    "createdAt": "2026-06-19T06:49:08.417Z",
-    "versionId": "0ec5f427-1249-467d-9024-e497484822d3",
+    "updatedAt": "2026-06-19T07:04:20.637Z",
+    "createdAt": "2026-06-19T07:04:20.637Z",
+    "versionId": "79b3e647-41ae-42c5-90ba-bbc53a97ebb6",
     "workflowId": "TL2qrOygnWKY69xe",
     "nodes": [
       {
@@ -3921,7 +3911,7 @@
       },
       {
         "parameters": {
-          "jsCode": "// Download + Decode combined.\n// HTTP node responseFormat=file returns filesystem-v2 ref that getBinaryDataBuffer can't read.\n// Code node v2.25 has no getCredentials on this.helpers — use $env or hardcoded token.\n\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\n// Try $env first (Code node v2.x exposes env vars)\nlet token = $env.LINE_CHANNEL_ACCESS_TOKEN;\n// Fallback to hardcoded (POC; will replace once proper credential wiring exists)\nif (!token) {\n  token = 'Ngf4v6eN3sk97GHP2Y5IaGOrlAQg4W25mLWJggI9Iw6HnrpBvIHqNz1lyUL1d1N9DiURJnYul4CdrMb7LbrDq45iRalBhqdFXMDAiuc0q8hqp1G7hzhYMHDUgJlFnAFI1PAxaoy8vKWqKEHtyxxbYAdB04t89/1O/w1cDnyilFU=';\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  // LINE returns 404 when message content has expired\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst fname = msg.fileName || 'upload.pdf';\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nconst ext = fname.toLowerCase().split('.').pop();\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData }\n}];\n",
+          "jsCode": "// Download + Decode combined.\n// HTTP node responseFormat=file returns filesystem-v2 ref that getBinaryDataBuffer can't read.\n// Code node v2.25 has no getCredentials on this.helpers — use $env or hardcoded token.\n\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\n// Try $env first (Code node v2.x exposes env vars)\nlet token = $env.LINE_CHANNEL_ACCESS_TOKEN;\n// Fallback to hardcoded (POC; will replace once proper credential wiring exists)\nif (!token) {\n  token = 'Ngf4v6eN3sk97GHP2Y5IaGOrlAQg4W25mLWJggI9Iw6HnrpBvIHqNz1lyUL1d1N9DiURJnYul4CdrMb7LbrDq45iRalBhqdFXMDAiuc0q8hqp1G7hzhYMHDUgJlFnAFI1PAxaoy8vKWqKEHtyxxbYAdB04t89/1O/w1cDnyilFU=';\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  // LINE returns 404 when message content has expired\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst fname = msg.fileName || 'upload.pdf';\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nconst ext = fname.toLowerCase().split('.').pop();\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData, raw: binaryData }\n}];\n",
           "options": {
             "asyncCode": true,
             "alwaysOutputData": true
@@ -3939,30 +3929,20 @@
       {
         "parameters": {
           "operation": "upload",
-          "bucketName": {
-            "__rl": true,
-            "value": "epsx-contracts",
-            "mode": "name"
-          },
-          "fileName": {
-            "values": {
-              "string": [
-                {
-                  "name": "=contracts/{{ $('LINE Decode & Prepare Binary').item.json._event.message.id }}.pdf"
-                }
-              ]
-            }
-          },
-          "binaryPropertyName": "data",
-          "additionalFields": {}
+          "bucketName": "epsx-contracts",
+          "fileName": "=contracts/{{ $('LINE Decode & Prepare Binary').item.json._event.message.id }}.pdf",
+          "binaryPropertyName": "raw",
+          "additionalFields": {
+            "contentType": "=application/pdf"
+          }
         },
         "id": "node-100",
         "name": "MinIO Upload",
         "type": "n8n-nodes-base.s3",
         "typeVersion": 1,
         "position": [
-          1560,
-          632
+          2506,
+          418
         ],
         "credentials": {
           "s3": {
@@ -4662,6 +4642,11 @@
               "node": "LINE Combine metadata + vectors",
               "type": "main",
               "index": 0
+            },
+            {
+              "node": "MinIO Upload",
+              "type": "main",
+              "index": 0
             }
           ]
         ]
@@ -4678,11 +4663,6 @@
               "node": "LINE Combine metadata + vectors",
               "type": "main",
               "index": 0
-            },
-            {
-              "node": "MinIO Upload",
-              "type": "main",
-              "index": 0
             }
           ]
         ]
@@ -4691,14 +4671,14 @@
     "nodeGroups": [],
     "authors": "system",
     "name": "03 - Docs Hub",
-    "description": "v24: add MinIO Upload node (S3 to localhost:9100) after Decode; Insert contract row saves storage_path instead of file_data bytea",
+    "description": "v25: move MinIO Upload AFTER Embed (wait for embed success); fix bucketName to plain string; Decode also outputs binary.raw for upload",
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-06-19T06:50:21.968Z",
-        "id": 66,
+        "createdAt": "2026-06-19T07:04:20.769Z",
+        "id": 72,
         "workflowId": "TL2qrOygnWKY69xe",
-        "versionId": "0ec5f427-1249-467d-9024-e497484822d3",
+        "versionId": "79b3e647-41ae-42c5-90ba-bbc53a97ebb6",
         "event": "activated",
         "userId": "198f173d-05bd-4b93-9e83-a83a0d88abb3"
       }
@@ -4723,5 +4703,5 @@
     "workflow:unshare",
     "workflow:update"
   ],
-  "checksum": "3997bde2762e1517131f9e3b8858605a964a3583190498925ce5c738ecfe48a7"
+  "checksum": "c85dbcad51255c615a7e0b3f916251e06840562c9b6feb9006d8915f54b9ae96"
 }
