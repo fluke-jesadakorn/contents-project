@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-19T07:10:37.094Z",
+  "updatedAt": "2026-06-19T07:14:58.167Z",
   "createdAt": "2026-06-18T04:19:01.736Z",
   "id": "TL2qrOygnWKY69xe",
   "name": "03 - Docs Hub",
@@ -591,7 +591,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Chunk the extracted text. Use explicit node reference to avoid input ref issues.\nconst MAX = 1500;\nconst OVERLAP = 200;\nconst text = ($('LINE Extract text from file').first().json.text || '').toString();\nif (!text.trim()) return [{ json: { empty: true, chunks: [] } }];\nconst chunks = [];\nlet i = 0, idx = 0;\nwhile (i < text.length) {\n  chunks.push({ chunk_index: idx, content: text.slice(i, i + MAX) });\n  if (i + MAX >= text.length) break;\n  i += MAX - OVERLAP;\n  idx++;\n}\nreturn [{ json: { empty: false, chunk_count: chunks.length, chunks } }];\n"
+        "jsCode": "// Chunk the extracted text. Use explicit node reference to avoid input ref issues.\nconst MAX = 1500;\nconst OVERLAP = 200;\nconst text = ($('LINE Extract text from file').first().json.text || '').toString();\nif (!text.trim()) return [{ json: { empty: true, chunks: [] }, binary: { file: $('LINE Extract text from file').first().binary?.file } }];\nconst chunks = [];\nlet i = 0, idx = 0;\nwhile (i < text.length) {\n  chunks.push({ chunk_index: idx, content: text.slice(i, i + MAX) });\n  if (i + MAX >= text.length) break;\n  i += MAX - OVERLAP;\n  idx++;\n}\nreturn [{ json: { empty: false, chunk_count: chunks.length, chunks }, binary: { file: $('LINE Extract text from file').first().binary?.file } }];\n"
       },
       "id": "line-chunk",
       "name": "LINE Chunk text",
@@ -1572,8 +1572,8 @@
       "type": "n8n-nodes-base.s3",
       "typeVersion": 1,
       "position": [
-        1784,
-        532
+        2382,
+        582
       ],
       "credentials": {
         "s3": {
@@ -1581,6 +1581,37 @@
           "name": "MinIO Local (epsx)"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.chunks.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-300",
+      "name": "Has Chunks?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2282,
+        432
+      ]
     }
   ],
   "connections": {
@@ -1893,7 +1924,7 @@
       "main": [
         [
           {
-            "node": "LINE Embed all chunks (Ollama bge-m3)",
+            "node": "Has Chunks?",
             "type": "main",
             "index": 0
           }
@@ -2286,10 +2317,28 @@
             "index": 0
           },
           {
-            "node": "MinIO Upload",
+            "node": "LINE Combine metadata + vectors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Chunks?": {
+      "main": [
+        [
+          {
+            "node": "LINE Embed all chunks (Ollama bge-m3)",
             "type": "main",
             "index": 0
           },
+          {
+            "node": "MinIO Upload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
           {
             "node": "LINE Combine metadata + vectors",
             "type": "main",
@@ -2313,9 +2362,9 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "14c408c4-6f22-4616-b211-6b1181fa0196",
-  "activeVersionId": "14c408c4-6f22-4616-b211-6b1181fa0196",
-  "versionCounter": 81,
+  "versionId": "43fc0dbe-9a5a-4c1a-ad7c-35c76d8d3723",
+  "activeVersionId": "43fc0dbe-9a5a-4c1a-ad7c-35c76d8d3723",
+  "versionCounter": 82,
   "triggerCount": 2,
   "sourceWorkflowId": null,
   "shared": [
@@ -2359,9 +2408,9 @@
   "tags": [],
   "parentFolder": null,
   "activeVersion": {
-    "updatedAt": "2026-06-19T07:10:37.094Z",
-    "createdAt": "2026-06-19T07:10:37.094Z",
-    "versionId": "14c408c4-6f22-4616-b211-6b1181fa0196",
+    "updatedAt": "2026-06-19T07:14:58.167Z",
+    "createdAt": "2026-06-19T07:14:58.167Z",
+    "versionId": "43fc0dbe-9a5a-4c1a-ad7c-35c76d8d3723",
     "workflowId": "TL2qrOygnWKY69xe",
     "nodes": [
       {
@@ -2948,7 +2997,7 @@
       },
       {
         "parameters": {
-          "jsCode": "// Chunk the extracted text. Use explicit node reference to avoid input ref issues.\nconst MAX = 1500;\nconst OVERLAP = 200;\nconst text = ($('LINE Extract text from file').first().json.text || '').toString();\nif (!text.trim()) return [{ json: { empty: true, chunks: [] } }];\nconst chunks = [];\nlet i = 0, idx = 0;\nwhile (i < text.length) {\n  chunks.push({ chunk_index: idx, content: text.slice(i, i + MAX) });\n  if (i + MAX >= text.length) break;\n  i += MAX - OVERLAP;\n  idx++;\n}\nreturn [{ json: { empty: false, chunk_count: chunks.length, chunks } }];\n"
+          "jsCode": "// Chunk the extracted text. Use explicit node reference to avoid input ref issues.\nconst MAX = 1500;\nconst OVERLAP = 200;\nconst text = ($('LINE Extract text from file').first().json.text || '').toString();\nif (!text.trim()) return [{ json: { empty: true, chunks: [] }, binary: { file: $('LINE Extract text from file').first().binary?.file } }];\nconst chunks = [];\nlet i = 0, idx = 0;\nwhile (i < text.length) {\n  chunks.push({ chunk_index: idx, content: text.slice(i, i + MAX) });\n  if (i + MAX >= text.length) break;\n  i += MAX - OVERLAP;\n  idx++;\n}\nreturn [{ json: { empty: false, chunk_count: chunks.length, chunks }, binary: { file: $('LINE Extract text from file').first().binary?.file } }];\n"
         },
         "id": "line-chunk",
         "name": "LINE Chunk text",
@@ -3929,8 +3978,8 @@
         "type": "n8n-nodes-base.s3",
         "typeVersion": 1,
         "position": [
-          1784,
-          532
+          2382,
+          582
         ],
         "credentials": {
           "s3": {
@@ -3938,6 +3987,37 @@
             "name": "MinIO Local (epsx)"
           }
         }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.chunks.length }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "node-300",
+        "name": "Has Chunks?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          2282,
+          432
+        ]
       }
     ],
     "connections": {
@@ -4250,7 +4330,7 @@
         "main": [
           [
             {
-              "node": "LINE Embed all chunks (Ollama bge-m3)",
+              "node": "Has Chunks?",
               "type": "main",
               "index": 0
             }
@@ -4643,10 +4723,28 @@
               "index": 0
             },
             {
-              "node": "MinIO Upload",
+              "node": "LINE Combine metadata + vectors",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Chunks?": {
+        "main": [
+          [
+            {
+              "node": "LINE Embed all chunks (Ollama bge-m3)",
               "type": "main",
               "index": 0
             },
+            {
+              "node": "MinIO Upload",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
             {
               "node": "LINE Combine metadata + vectors",
               "type": "main",
@@ -4659,14 +4757,14 @@
     "nodeGroups": [],
     "authors": "system",
     "name": "03 - Docs Hub",
-    "description": "v27: move MinIO Upload back to parallel-with-Extract (after Decode) — binary.file is preserved at Decode output but lost by Embed, so MinIO Upload must run before binary is consumed",
+    "description": "v28: IF (Has Chunks?) after Chunk text — checks chunks.length>0; IF true → Embed + MinIO Upload (parallel); IF false → Combine (skip both). Chunk text preserves binary.file so MinIO Upload has it.",
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-06-19T07:10:37.252Z",
-        "id": 76,
+        "createdAt": "2026-06-19T07:14:58.292Z",
+        "id": 78,
         "workflowId": "TL2qrOygnWKY69xe",
-        "versionId": "14c408c4-6f22-4616-b211-6b1181fa0196",
+        "versionId": "43fc0dbe-9a5a-4c1a-ad7c-35c76d8d3723",
         "event": "activated",
         "userId": "198f173d-05bd-4b93-9e83-a83a0d88abb3"
       }
@@ -4691,5 +4789,5 @@
     "workflow:unshare",
     "workflow:update"
   ],
-  "checksum": "9efa54b03c49524b5d5f58c70ef0b195720a8514104415a5b60fa840070eefa7"
+  "checksum": "72c0aac9079e0c28172eadaf968a18aa5bccdbec119c7ed46a019c27d95c2a04"
 }
