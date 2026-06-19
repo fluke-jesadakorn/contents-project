@@ -806,7 +806,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE contracts SET status = 'ready', chunk_count = {{ $('LINE Combine metadata + vectors').first().json.chunk_count || 0 }}, updated_at = now() WHERE doc_no = '{{ $('LINE Insert contract row').first().json.doc_no }}' RETURNING id, doc_no, status",
+        "query": "DELETE FROM contracts WHERE id = '{{ $('LINE Register Start').first().json.id }}' RETURNING id",
         "options": {}
       },
       "id": "line-reg-done-pg",
@@ -2315,11 +2315,6 @@
             "node": "LINE Extract text from file",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "LINE Combine metadata + vectors",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -2362,8 +2357,8 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "7bb799c3-bf50-4418-baaf-0bd06673abb3",
-  "activeVersionId": "7bb799c3-bf50-4418-baaf-0bd06673abb3",
+  "versionId": "ae757b51-e7d9-4dfb-9910-3f918caad2a0",
+  "activeVersionId": "ae757b51-e7d9-4dfb-9910-3f918caad2a0",
   "versionCounter": 82,
   "triggerCount": 2,
   "sourceWorkflowId": null,
