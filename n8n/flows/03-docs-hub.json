@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-20T00:25:04.000Z",
+  "updatedAt": "2026-06-20T03:19:41.000Z",
   "createdAt": "2026-06-18T04:19:01.736Z",
   "id": "TL2qrOygnWKY69xe",
   "name": "03 - Docs Hub",
@@ -591,7 +591,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Chunk the extracted text. Use explicit node reference to avoid input ref issues.\nconst MAX = 1500;\nconst OVERLAP = 200;\nconst text = ($('LINE Extract text from file').first().json.text || '').toString();\nif (!text.trim()) return [{ json: { empty: true, chunks: [] }, binary: { file: $('LINE Extract text from file').first().binary?.file } }];\nconst chunks = [];\nlet i = 0, idx = 0;\nwhile (i < text.length) {\n  chunks.push({ chunk_index: idx, content: text.slice(i, i + MAX) });\n  if (i + MAX >= text.length) break;\n  i += MAX - OVERLAP;\n  idx++;\n}\nreturn [{ json: { empty: false, chunk_count: chunks.length, chunks }, binary: { file: $('LINE Extract text from file').first().binary?.file } }];\n"
+        "jsCode": "// Chunk the extracted text. Use explicit node reference to avoid input ref issues.\nconst MAX = 1500;\nconst OVERLAP = 200;\nconst text = ($('LINE Extract text from file').first().json.text || '').toString();\nconst fileName = ($('LINE Extract text from file').first().json.fileName || 'document.pdf').toString();\nconst fileType = ($('LINE Extract text from file').first().json.fileType || 'unknown').toString();\n\nif (!text.trim()) {\n  // Fallback: no extractable text (corrupted PDF / scanned image). Create a single\n  // chunk from filename + metadata so the contract is at least searchable in RAG.\n  const fallbackContent = `[${fileName}] ไฟล์ประเภท ${fileType} (ไม่สามารถดึงข้อความจาก PDF ได้ — อาจเป็นสแกน/ภาพ หรือไฟล์เสียหาย)`;\n  return [{ json: {\n    empty: true,\n    fallback: true,\n    chunks: [{ chunk_index: 0, content: fallbackContent, fallback: true }]\n  }}];\n}\n\nconst chunks = [];\nlet i = 0, idx = 0;\nwhile (i < text.length) {\n  chunks.push({ chunk_index: idx, content: text.slice(i, i + MAX) });\n  if (i + MAX >= text.length) break;\n  i += MAX - OVERLAP;\n  idx++;\n}\nreturn [{ json: { empty: false, chunk_count: chunks.length, chunks } }];\n"
       },
       "id": "line-chunk",
       "name": "LINE Chunk text",
@@ -2461,9 +2461,9 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
-  "activeVersionId": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
-  "versionCounter": 94,
+  "versionId": "d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a",
+  "activeVersionId": "d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a",
+  "versionCounter": 96,
   "triggerCount": 2,
   "sourceWorkflowId": null,
   "shared": [
