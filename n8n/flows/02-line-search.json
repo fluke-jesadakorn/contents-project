@@ -1,0 +1,277 @@
+{
+  "name": "02 - LINE Search Contract",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "line-search",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-search",
+      "name": "LINE Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        320
+      ],
+      "webhookId": "line-search-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.events[0].message.type }}",
+              "rightValue": "text",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "switch-text",
+      "name": "Is text?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        500,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.OLLAMA_URL || 'http://host.docker.internal:11434' }}/api/embed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.OLLAMA_EMBED_MODEL || 'bge-m3' }}\",\n  \"input\": [\"{{ $json.body.events[0].message.text }}\"]\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "embed-q",
+      "name": "Embed query (Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        740,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// pgvector literal: '[1.2,3.4,...]'\nconst item = $input.first().json;\nconst vecs = item.embeddings || (Array.isArray(item[0]) ? item : [item]);\nconst vec = vecs[0];  // single query\nconst q = $('LINE Webhook').first().json.body.events[0].message.text;\nconst userId = $('LINE Webhook').first().json.body.events[0].source.userId;\nconst replyToken = $('LINE Webhook').first().json.body.events[0].replyToken;\nreturn [{\n  json: {\n    query: q,\n    user_id: userId,\n    reply_token: replyToken,\n    embedding: '[' + vec.map(Number).join(',') + ']'\n  }\n}];\n"
+      },
+      "id": "format-vec",
+      "name": "Format vector",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT c.content, ct.file_name, c.chunk_index, (c.embedding <=> '{{ $json.embedding }}'::vector) AS distance FROM contract_chunks c JOIN contracts ct ON ct.id = c.contract_id WHERE ct.status = 'ready' ORDER BY distance ASC LIMIT 5",
+        "options": {
+          "queryReplacement": "="
+        }
+      },
+      "id": "search",
+      "name": "Vector search (pgvector)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1260,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build context from top-k hits and call OpenRouter free chat model.\nconst hits = $input.all().map(i => i.json);\nconst ctx = hits.map(h =>\n  `[${h.file_name}#${h.chunk_index}]\\n${h.content}`\n).join('\\n\\n---\\n\\n');\nconst q = $('Format vector').first().json.query;\nconst replyToken = $('Format vector').first().json.reply_token;\n\nconst systemPrompt = \"You are a contract assistant. Answer strictly from the provided context. If the answer is not in the context, say 'I don't know'. Cite sources as [filename#chunk_index]. Keep answer under 800 chars.\";\nconst userPrompt = `Context:\\n${ctx}\\n\\nQuestion: ${q}\\n\\nAnswer in Thai:`;\n\n// Call OpenRouter\nconst resp = await this.helpers.httpRequest({\n  method: 'POST',\n  url: $env.OPENROUTER_BASE_URL + '/chat/completions',\n  headers: {\n    'Authorization': 'Bearer ' + $env.OPENROUTER_API_KEY,\n    'HTTP-Referer': $env.OPENROUTER_REFERER,\n    'X-Title': $env.OPENROUTER_TITLE,\n    'Content-Type': 'application/json'\n  },\n  body: {\n    model: $env.OPENROUTER_CHAT_MODEL,\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userPrompt }\n    ],\n    temperature: 0.2\n  },\n  json: true\n});\n\nconst answer = resp.choices?.[0]?.message?.content || '(no answer)';\nreturn [{ json: { reply_token: replyToken, answer } }];\n"
+      },
+      "id": "rag",
+      "name": "RAG answer (OpenRouter)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.LINE_CHANNEL_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $json.reply_token }}\",\n  \"messages\": [ { \"type\": \"text\", \"text\": \"{{ $json.answer }}\" } ]\n}",
+        "options": {}
+      },
+      "id": "reply",
+      "name": "Reply LINE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.LINE_CHANNEL_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('LINE Webhook').item.json.body.events[0].replyToken }}\",\n  \"messages\": [ { \"type\": \"text\", \"text\": \"\u0e01\u0e23\u0e38\u0e13\u0e32\u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e04\u0e33\u0e16\u0e32\u0e21\u0e40\u0e01\u0e35\u0e48\u0e22\u0e27\u0e01\u0e31\u0e1a\u0e2a\u0e31\u0e0d\u0e0d\u0e32 \u0e2b\u0e23\u0e37\u0e2d\u0e2a\u0e48\u0e07\u0e44\u0e1f\u0e25\u0e4c PDF / DOCX \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\" } ]\n}",
+        "options": {}
+      },
+      "id": "reply-help",
+      "name": "Reply Non-Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        740,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "LINE Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is text?": {
+      "main": [
+        [
+          {
+            "node": "Embed query (Ollama)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Non-Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed query (Ollama)": {
+      "main": [
+        [
+          {
+            "node": "Format vector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format vector": {
+      "main": [
+        [
+          {
+            "node": "Vector search (pgvector)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector search (pgvector)": {
+      "main": [
+        [
+          {
+            "node": "RAG answer (OpenRouter)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG answer (OpenRouter)": {
+      "main": [
+        [
+          {
+            "node": "Reply LINE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "line"
+    },
+    {
+      "name": "search"
+    }
+  ],
+  "active": false,
+  "versionId": "1",
+  "id": "02-line-search"
+}

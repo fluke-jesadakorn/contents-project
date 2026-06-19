@@ -1,0 +1,513 @@
+{
+  "name": "01 - LINE Bot RAG (Native Nodes)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "contract-rag-line",
+        "options": {}
+      },
+      "id": "webhook-upload",
+      "name": "LINE Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        320
+      ],
+      "webhookId": "contract-rag-line-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.events[0].message.type }}",
+              "rightValue": "file",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "switch-file",
+      "name": "Is file?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        512,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api-data.line.me/v2/bot/message/{{ $json.body.events[0].message.id }}/content",
+        "sendHeaders": true,
+        "authentication": "predefinedCredentialType",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        },
+        "nodeCredentialType": "httpHeaderAuth"
+      },
+      "id": "download-file",
+      "name": "Download from LINE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        208
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "LNHDR8F94CE3AA25E4B8E823C70",
+          "name": "LINE Bearer Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "extract",
+      "name": "Extract text from file",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "data-loader",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "chunkSize": 1500,
+        "chunkOverlap": 200
+      },
+      "id": "text-splitter",
+      "name": "Recursive Character Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "contract_vectors",
+        "options": {}
+      },
+      "id": "pgvector-insert",
+      "name": "PGVector Insert",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        208
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "fzfZQRLtaZotZNto",
+          "name": "Postgres - contracts (Mac local)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "bge-m3",
+        "options": {
+          "dimensions": 1024,
+          "timeout": 60000
+        }
+      },
+      "id": "embed-upload-v2",
+      "name": "Embed chunks (bge-m3)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1450,
+        420
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "9GVIoNMZncn8ygHh",
+          "name": "Ollama bge-m3 (no auth)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Send LINE reply via API + Bearer token from $env\nconst items = $input.all();\nconst token = $env.LINE_CHANNEL_ACCESS_TOKEN || '';\n\nconst results = [];\nfor (const item of items) {\n  const webhook = $('LINE Webhook').first();\n  const replyToken = item.json.replyToken || webhook?.json?.body?.events?.[0]?.replyToken || '';\n  if (!replyToken) {\n    results.push({ json: { success: false, reason: 'no_reply_token' } });\n    continue;\n  }\n  const text = \"\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e2a\u0e31\u0e0d\u0e0d\u0e32\u0e25\u0e07\u0e10\u0e32\u0e19\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e40\u0e23\u0e35\u0e22\u0e1a\u0e23\u0e49\u0e2d\u0e22\u0e41\u0e25\u0e49\u0e27\";\n  if (!text) {\n    results.push({ json: { success: false, reason: 'no_text' } });\n    continue;\n  }\n\n  try {\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.line.me/v2/bot/message/reply',\n      headers: {\n        'Authorization': 'Bearer ' + token,\n        'Content-Type': 'application/json',\n      },\n      body: {\n        replyToken,\n        messages: [{ type: 'text', text }],\n      },\n      json: true,\n      timeout: 30000,\n    });\n    results.push({ json: { success: true, response, text } });\n  } catch (err) {\n    results.push({ json: { success: false, error: err.message } });\n  }\n}\nreturn results;\n"
+      },
+      "id": "reply-ok",
+      "name": "Reply LINE (Success)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1750,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.events[0].message.text }}",
+              "rightValue": "/help",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-text",
+      "name": "Is text or /help?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Send LINE reply via API + Bearer token from $env\nconst items = $input.all();\nconst token = $env.LINE_CHANNEL_ACCESS_TOKEN || '';\n\nconst results = [];\nfor (const item of items) {\n  const webhook = $('LINE Webhook').first();\n  const replyToken = item.json.replyToken || webhook?.json?.body?.events?.[0]?.replyToken || '';\n  if (!replyToken) {\n    results.push({ json: { success: false, reason: 'no_reply_token' } });\n    continue;\n  }\n  const text = \"\u0e2a\u0e48\u0e07\u0e44\u0e1f\u0e25\u0e4c PDF/DOCX/TXT \u0e21\u0e32\u0e27\u0e34\u0e40\u0e04\u0e23\u0e32\u0e30\u0e2b\u0e4c\u0e2a\u0e31\u0e0d\u0e0d\u0e32\u0e44\u0e14\u0e49\u0e40\u0e25\u0e22 \u0e2b\u0e23\u0e37\u0e2d\u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e04\u0e33\u0e16\u0e32\u0e21\u0e40\u0e01\u0e35\u0e48\u0e22\u0e27\u0e01\u0e31\u0e1a\u0e2a\u0e31\u0e0d\u0e0d\u0e32\u0e44\u0e14\u0e49\u0e40\u0e25\u0e22\";\n  if (!text) {\n    results.push({ json: { success: false, reason: 'no_text' } });\n    continue;\n  }\n\n  try {\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.line.me/v2/bot/message/reply',\n      headers: {\n        'Authorization': 'Bearer ' + token,\n        'Content-Type': 'application/json',\n      },\n      body: {\n        replyToken,\n        messages: [{ type: 'text', text }],\n      },\n      json: true,\n      timeout: 30000,\n    });\n    results.push({ json: { success: true, response, text } });\n  } catch (err) {\n    results.push({ json: { success: false, error: err.message } });\n  }\n}\nreturn results;\n"
+      },
+      "id": "reply-help",
+      "name": "Reply LINE (Help)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('LINE Webhook').item.json.body.events[0].message.text }}",
+        "systemMessage": "You find numbers and facts in the context. Reply only the answer in Thai. Keep under 200 chars."
+      },
+      "id": "qa-chain",
+      "name": "Question Answering Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainRetrievalQa",
+      "typeVersion": 1.4,
+      "position": [
+        1050,
+        850
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gemma3:1b"
+        },
+        "options": {
+          "baseURL": "https://ai.jesadakorn.com/v1",
+          "temperature": 0.1,
+          "maxTokens": 200
+        }
+      },
+      "id": "llm-gemma",
+      "name": "Gemma3 Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1050,
+        1050
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "9GVIoNMZncn8ygHh",
+          "name": "Ollama bge-m3 (no auth)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve",
+        "tableName": "contract_vectors",
+        "options": {}
+      },
+      "id": "pgvector-retriever",
+      "name": "PGVector Retriever",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        1050
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "fzfZQRLtaZotZNto",
+          "name": "Postgres - contracts (Mac local)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "bge-m3",
+        "options": {
+          "dimensions": 1024,
+          "timeout": 60000
+        }
+      },
+      "id": "embed-search-v2",
+      "name": "Embed query (bge-m3)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1300,
+        1250
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "9GVIoNMZncn8ygHh",
+          "name": "Ollama bge-m3 (no auth)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Send LINE reply via API + Bearer token from $env\nconst items = $input.all();\nconst token = $env.LINE_CHANNEL_ACCESS_TOKEN || '';\n\nconst results = [];\nfor (const item of items) {\n  const webhook = $('LINE Webhook').first();\n  const replyToken = item.json.replyToken || webhook?.json?.body?.events?.[0]?.replyToken || '';\n  if (!replyToken) {\n    results.push({ json: { success: false, reason: 'no_reply_token' } });\n    continue;\n  }\n  const text = item.json.response?.text || '';\n  if (!text) {\n    results.push({ json: { success: false, reason: 'no_text' } });\n    continue;\n  }\n\n  try {\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.line.me/v2/bot/message/reply',\n      headers: {\n        'Authorization': 'Bearer ' + token,\n        'Content-Type': 'application/json',\n      },\n      body: {\n        replyToken,\n        messages: [{ type: 'text', text }],\n      },\n      json: true,\n      timeout: 30000,\n    });\n    results.push({ json: { success: true, response, text } });\n  } catch (err) {\n    results.push({ json: { success: false, error: err.message } });\n  }\n}\nreturn results;\n"
+      },
+      "id": "reply-search",
+      "name": "Reply LINE (Search)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        850
+      ]
+    },
+    {
+      "parameters": {
+        "topK": 4
+      },
+      "id": "vectorstore-retriever",
+      "name": "Vector Store Retriever",
+      "type": "@n8n/n8n-nodes-langchain.retrieverVectorStore",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        1050
+      ]
+    }
+  ],
+  "connections": {
+    "LINE Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is file?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is file?": {
+      "main": [
+        [
+          {
+            "node": "Download from LINE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is text or /help?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download from LINE": {
+      "main": [
+        [
+          {
+            "node": "Extract text from file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract text from file": {
+      "main": [
+        [
+          {
+            "node": "PGVector Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PGVector Insert": {
+      "main": [
+        [
+          {
+            "node": "Reply LINE (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "PGVector Insert",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed chunks (bge-m3)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "PGVector Insert",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is text or /help?": {
+      "main": [
+        [
+          {
+            "node": "Reply LINE (Help)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Question Answering Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Question Answering Chain": {
+      "main": [
+        [
+          {
+            "node": "Reply LINE (Search)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemma3 Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Question Answering Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PGVector Retriever": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Vector Store Retriever",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed query (bge-m3)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "PGVector Retriever",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Store Retriever": {
+      "ai_retriever": [
+        [
+          {
+            "node": "Question Answering Chain",
+            "type": "ai_retriever",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "binaryMode": "separate"
+  }
+}
