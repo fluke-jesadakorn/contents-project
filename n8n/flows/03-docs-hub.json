@@ -591,7 +591,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Chunk the extracted text. Use explicit node reference to avoid input ref issues.\nconst MAX = 1500;\nconst OVERLAP = 200;\nconst text = ($('LINE Extract text from file').first().json.text || '').toString();\nconst fileName = ($('LINE Extract text from file').first().json.fileName || 'document.pdf').toString();\nconst fileType = ($('LINE Extract text from file').first().json.fileType || 'unknown').toString();\n\nif (!text.trim()) {\n  // Fallback: no extractable text (corrupted PDF / scanned image). Create a single\n  // chunk from filename + metadata so the contract is at least searchable in RAG.\n  const fallbackContent = `[${fileName}] ไฟล์ประเภท ${fileType} (ไม่สามารถดึงข้อความจาก PDF ได้ — อาจเป็นสแกน/ภาพ หรือไฟล์เสียหาย)`;\n  return [{ json: {\n    empty: true,\n    fallback: true,\n    chunks: [{ chunk_index: 0, content: fallbackContent, fallback: true }]\n  }}];\n}\n\nconst chunks = [];\nlet i = 0, idx = 0;\nwhile (i < text.length) {\n  chunks.push({ chunk_index: idx, content: text.slice(i, i + MAX) });\n  if (i + MAX >= text.length) break;\n  i += MAX - OVERLAP;\n  idx++;\n}\nreturn [{ json: { empty: false, chunk_count: chunks.length, chunks } }];\n"
+        "jsCode": "// Chunk the extracted text. Empty text = empty chunks → caller rolls back the file.\nconst MAX = 1500;\nconst OVERLAP = 200;\nconst text = ($('LINE Extract text from file').first().json.text || '').toString();\n\nif (!text.trim()) {\n  return [{ json: { empty: true, chunk_count: 0, chunks: [] } }];\n}\n\nconst chunks = [];\nlet i = 0, idx = 0;\nwhile (i < text.length) {\n  chunks.push({ chunk_index: idx, content: text.slice(i, i + MAX) });\n  if (i + MAX >= text.length) break;\n  i += MAX - OVERLAP;\n  idx++;\n}\nreturn [{ json: { empty: false, chunk_count: chunks.length, chunks } }];\n"
       },
       "id": "line-chunk",
       "name": "LINE Chunk text",
@@ -655,9 +655,9 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO contracts (line_user_id, line_group_id, line_message_id, file_name, file_type, size_bytes, chunk_count, status, storage_bucket, storage_path, file_mime, page_count, file_data) VALUES ({{ $json.line_user_id ? \"'\" + $json.line_user_id + \"'\" : \"NULL\" }}, {{ $json.line_group_id ? \"'\" + $json.line_group_id + \"'\" : \"NULL\" }}, {{ $json.line_message_id ? \"'\" + $json.line_message_id + \"'\" : \"NULL\" }}, '{{ $json.file_name.replace(/'/g, \"''\") }}', '{{ $json.file_type }}', {{ $json.size_bytes || \"NULL\" }}, {{ $json.chunk_count }}, 'ready', 'epsx-contracts', 'http://localhost:9100/epsx-contracts/' || '{{ $json.line_message_id }}.pdf', {{ $json.file_mime ? \"'\" + $json.file_mime + \"'\" : \"NULL\" }}, {{ $json.page_count || \"NULL\" }}, decode($1::text, 'base64')) RETURNING id, doc_no",
+        "query": "UPDATE contracts SET chunk_count = $2::int, status = 'ready' WHERE id = $1::uuid RETURNING id, doc_no",
         "options": {
-          "queryReplacement": "={{ [$json.file_data_b64 || ''] }}"
+          "queryReplacement": "={{ [$('LINE Register Start').first().json.id, $json.chunk_count || 0] }}"
         }
       },
       "id": "line-insert-contract",
@@ -782,9 +782,9 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO contracts (doc_no, file_name, file_type, status, line_user_id, line_message_id, source) VALUES ('DOC-' || to_char(now() AT TIME ZONE 'Asia/Bangkok', 'YYYYMMDD') || '-' || lpad(next_doc_seq()::text, 3, '0'), $1::text, $2::text, 'extracting', NULLIF($3::text, '')::text, NULLIF($4::text, '')::text, 'line') RETURNING id, doc_no",
+        "query": "INSERT INTO contracts (doc_no, line_user_id, line_group_id, line_message_id, file_name, file_type, size_bytes, status, source, file_mime, file_data) VALUES ('DOC-' || to_char(now() AT TIME ZONE 'Asia/Bangkok', 'YYYYMMDD') || '-' || lpad(next_doc_seq()::text, 3, '0'), NULLIF($1::text, '')::text, NULLIF($2::text, '')::text, NULLIF($3::text, '')::text, $4::text, $5::text, $6::bigint, 'processing', 'line', NULLIF($7::text, '')::text, decode($8::text, 'base64')) RETURNING id, doc_no",
         "options": {
-          "queryReplacement": "={{ [$json.file_name || '', $json.file_type || '', $json.line_user_id || '', $json.line_message_id || ''] }}"
+          "queryReplacement": "={{ [$json.line_user_id || '', $json.line_group_id || '', $json.line_message_id || '', $json.file_name || '', $json.file_type || '', $json.file_size || 0, $json.file_mime || '', $json.file_data_b64 || ''] }}"
         }
       },
       "id": "line-reg-start-pg",
@@ -802,27 +802,6 @@
         }
       },
       "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "DELETE FROM contracts WHERE id = '{{ $('LINE Register Start').first().json.id }}' RETURNING id",
-        "options": {}
-      },
-      "id": "line-reg-done-pg",
-      "name": "LINE Register Done",
-      "type": "n8n-nodes-base.postgres",
-      "position": [
-        3376,
-        336
-      ],
-      "typeVersion": 2.4,
-      "credentials": {
-        "postgres": {
-          "id": "regb87eec1e08a5cce3",
-          "name": "PG Contracts (Mac host 5432)"
-        }
-      }
     },
     {
       "parameters": {
@@ -1561,29 +1540,6 @@
     },
     {
       "parameters": {
-        "operation": "upload",
-        "bucketName": "epsx-contracts",
-        "fileName": "=contracts/{{ $('LINE Decode & Prepare Binary').item.json._event.message.id }}.pdf",
-        "binaryPropertyName": "file",
-        "additionalFields": {}
-      },
-      "id": "node-100",
-      "name": "MinIO Upload",
-      "type": "n8n-nodes-base.s3",
-      "typeVersion": 1,
-      "position": [
-        2382,
-        582
-      ],
-      "credentials": {
-        "s3": {
-          "id": "minio-creds-epsx",
-          "name": "MinIO Local (epsx)"
-        }
-      }
-    },
-    {
-      "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
@@ -1687,9 +1643,226 @@
         2736,
         992
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rollback: collect the contract id we tried to save so we can DELETE it.\nconst start = $('LINE Register Start').first();\nconst id = start && start.json && start.json.id;\nreturn [{ json: { contract_id: id, action: 'rollback' } }];\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "63098214-c190-4b93-8f32-4c94ffccb7fc",
+      "name": "LINE Rollback File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        3088
+      ],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM contracts WHERE id = $1::uuid RETURNING id",
+        "options": {
+          "queryReplacement": "={{ [$json.contract_id || ''] }}"
+        }
+      },
+      "id": "4f9ec6d5-5947-4b71-8169-9d5b96595407",
+      "name": "LINE Delete Contract Row",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        560,
+        3088
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "regb87eec1e08a5cce3",
+          "name": "PG Contracts - localhost:5432"
+        }
+      }
     }
   ],
   "connections": {
+    "LINE: Is file?": {
+      "main": [
+        [
+          {
+            "node": "LINE Decode & Prepare Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Decode & Prepare Binary": {
+      "main": [
+        [
+          {
+            "node": "LINE Extract text from file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Extract text from file": {
+      "main": [
+        [
+          {
+            "node": "LINE Register Start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Register Start": {
+      "main": [
+        [
+          {
+            "node": "LINE Chunk text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Chunk text": {
+      "main": [
+        [
+          {
+            "node": "Has Chunks?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Chunks?": {
+      "main": [
+        [
+          {
+            "node": "LINE Embed all chunks (Ollama bge-m3)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LINE Rollback File",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "LINE Embed all chunks (Ollama bge-m3)": {
+      "main": [
+        [
+          {
+            "node": "LINE Combine metadata + vectors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Combine metadata + vectors": {
+      "main": [
+        [
+          {
+            "node": "LINE Insert contract row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Insert contract row": {
+      "main": [
+        [
+          {
+            "node": "LINE Build chunk INSERT SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Build chunk INSERT SQL": {
+      "main": [
+        [
+          {
+            "node": "LINE Insert chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Insert chunks": {
+      "main": [
+        [
+          {
+            "node": "LINE Reply Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LINE Reply Error",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "LINE Rollback File": {
+      "main": [
+        [
+          {
+            "node": "LINE Delete Contract Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Delete Contract Row": {
+      "main": [
+        [
+          {
+            "node": "LINE Reply Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Reply Success": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Reply Error": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "JS-VS PG": {
       "main": [
         [
@@ -1923,24 +2096,6 @@
         ]
       ]
     },
-    "LINE: Is file?": {
-      "main": [
-        [
-          {
-            "node": "LINE Download from LINE",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "AI Agent (Ollama)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "AI Route Switch": {
       "main": [
         [
@@ -1995,17 +2150,6 @@
         ]
       ]
     },
-    "LINE Chunk text": {
-      "main": [
-        [
-          {
-            "node": "Has Chunks?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Needs generate?": {
       "main": [
         [
@@ -2040,17 +2184,6 @@
         [
           {
             "node": "AI: Send Reply",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Reply Error": {
-      "main": [
-        [
-          {
-            "node": "Format Response",
             "type": "main",
             "index": 0
           }
@@ -2156,46 +2289,6 @@
         ]
       ]
     },
-    "LINE Insert chunks": {
-      "main": [
-        [
-          {
-            "node": "LINE Register Done",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "LINE Reply Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Register Done": {
-      "main": [
-        [
-          {
-            "node": "LINE Reply Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Reply Success": {
-      "main": [
-        [
-          {
-            "node": "Format Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "PG: Daily Activity": {
       "main": [
         [
@@ -2223,17 +2316,6 @@
         [
           {
             "node": "PG: Vector Search",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Register Start": {
-      "main": [
-        [
-          {
-            "node": "LINE Chunk text",
             "type": "main",
             "index": 0
           }
@@ -2295,28 +2377,6 @@
         ]
       ]
     },
-    "LINE Download from LINE": {
-      "main": [
-        [
-          {
-            "node": "LINE Decode & Prepare Binary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Insert contract row": {
-      "main": [
-        [
-          {
-            "node": "LINE Build chunk INSERT SQL",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "PG: Insert/Update Document": {
       "main": [
         [
@@ -2328,89 +2388,11 @@
         ]
       ]
     },
-    "LINE Build chunk INSERT SQL": {
-      "main": [
-        [
-          {
-            "node": "LINE Insert chunks",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Extract text from file": {
-      "main": [
-        [
-          {
-            "node": "LINE Register Start",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Combine metadata + vectors": {
-      "main": [
-        [
-          {
-            "node": "LINE Insert contract row",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Passthrough (use provided doc_no)": {
       "main": [
         [
           {
             "node": "PG: Insert/Update Document",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Embed all chunks (Ollama bge-m3)": {
-      "main": [
-        [
-          {
-            "node": "LINE Combine metadata + vectors",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Decode & Prepare Binary": {
-      "main": [
-        [
-          {
-            "node": "LINE Extract text from file",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Has Chunks?": {
-      "main": [
-        [
-          {
-            "node": "LINE Embed all chunks (Ollama bge-m3)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "MinIO Upload",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "LINE Combine metadata + vectors",
             "type": "main",
             "index": 0
           }
@@ -2461,9 +2443,9 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a",
-  "activeVersionId": "d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a",
-  "versionCounter": 96,
+  "versionId": "60e14bd7-32da-4c6d-a482-165efe6b8a89",
+  "activeVersionId": "60e14bd7-32da-4c6d-a482-165efe6b8a89",
+  "versionCounter": 98,
   "triggerCount": 2,
   "sourceWorkflowId": null,
   "shared": [
