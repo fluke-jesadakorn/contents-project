@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-20T03:19:41.000Z",
+  "updatedAt": "2026-06-21T00:19:00.000Z",
   "createdAt": "2026-06-18T04:19:01.736Z",
   "id": "TL2qrOygnWKY69xe",
   "name": "03 - Docs Hub",
@@ -1547,17 +1547,15 @@
         432
       ],
       "parameters": {
-        "conditions": [
-          {
-            "leftValue": "={{ $json.has_chunks }}",
-            "rightValue": true,
-            "operator": {
-              "type": "boolean",
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.has_chunks }}",
               "operation": "equal",
-              "singleValue": true
+              "value2": true
             }
-          }
-        ]
+          ]
+        }
       },
       "typeVersion": 1
     },
@@ -2460,7 +2458,7 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "1535b0b1-4267-49f5-a9a1-eec35af8f0df",
+  "versionId": "76af55d5-d3bc-4eaa-b3a7-c9ac51d1d79a",
   "activeVersionId": "60e14bd7-32da-4c6d-a482-165efe6b8a89",
   "versionCounter": 98,
   "triggerCount": 2,
