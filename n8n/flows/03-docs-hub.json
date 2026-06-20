@@ -784,7 +784,7 @@
         "operation": "executeQuery",
         "query": "INSERT INTO contracts (doc_no, line_user_id, line_group_id, line_message_id, file_name, file_type, size_bytes, status, source, file_mime, file_data) VALUES ('DOC-' || to_char(now() AT TIME ZONE 'Asia/Bangkok', 'YYYYMMDD') || '-' || lpad(next_doc_seq()::text, 3, '0'), NULLIF($1::text, '')::text, NULLIF($2::text, '')::text, NULLIF($3::text, '')::text, $4::text, $5::text, $6::bigint, 'processing', 'line', NULLIF($7::text, '')::text, decode($8::text, 'base64')) RETURNING id, doc_no",
         "options": {
-          "queryReplacement": "={{ [$json.line_user_id || '', $json.line_group_id || '', $json.line_message_id || '', $json.file_name || '', $json.file_type || '', $json.file_size || 0, $json.file_mime || '', $json.file_data_b64 || ''] }}"
+          "queryReplacement": "={{ [$('LINE Decode & Prepare Binary').first().json.line_user_id || '', $('LINE Decode & Prepare Binary').first().json.line_group_id || '', $('LINE Decode & Prepare Binary').first().json.line_message_id || '', $('LINE Decode & Prepare Binary').first().json.file_name || '', $('LINE Decode & Prepare Binary').first().json.file_type || '', $('LINE Decode & Prepare Binary').first().json.file_size || 0, $('LINE Decode & Prepare Binary').first().json.file_mime || '', $('LINE Decode & Prepare Binary').first().json.file_data_b64 || ''] }}"
         }
       },
       "id": "line-reg-start-pg",
@@ -1548,7 +1548,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.chunks.length }}",
+              "leftValue": "={{ $json.chunk_count }}",
               "rightValue": 0,
               "operator": {
                 "type": "number",
