@@ -54,11 +54,13 @@ CREATE INDEX IF NOT EXISTS idx_chunks_contract ON contract_chunks (contract_id);
 -- ===== Doc registry helpers =====
 -- Sequence generator for `doc_no` (used by 03-docs-hub for INSERT when client
 -- didn't supply a doc_no). Format: DOC-YYYYMMDD-NNNN, monotonically incrementing.
+-- Uses pg_advisory_xact_lock to prevent race under concurrent inserts.
 CREATE OR REPLACE FUNCTION next_doc_seq() RETURNS TEXT AS $$
 DECLARE
     today TEXT := to_char(now() AT TIME ZONE 'Asia/Bangkok', 'YYYYMMDD');
     seq   INT;
 BEGIN
+    PERFORM pg_advisory_xact_lock(hashtext('doc_no_seq'));
     SELECT COALESCE(MAX(
         CAST(substring(doc_no FROM 'DOC-[0-9]{8}-([0-9]+)') AS INT)
     ), 0) + 1
@@ -82,11 +84,3 @@ DROP TRIGGER IF EXISTS trg_contracts_touch ON contracts;
 CREATE TRIGGER trg_contracts_touch
     BEFORE UPDATE ON contracts
     FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
-
--- ===== Concurrent-safe doc_no (optional alternative to next_doc_seq) =====
--- next_doc_seq() uses MAX()+1 which races under concurrent inserts.
--- For production, prefer this pattern instead:
---   BEGIN;
---   SELECT pg_advisory_xact_lock(hashtext('doc_no_seq'));
---   SELECT next_doc_seq();  -- or use a real SEQUENCE
---   COMMIT;

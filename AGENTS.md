@@ -79,6 +79,17 @@ LINE bot PoC: รับสัญญา (PDF/DOCX) จาก LINE → chunk + emb
 - **launchd TCC**: `/Users/fluke/.nvm/versions/node/v22.23.0/bin/node` ต้องมี Full Disk Access ใน System Settings > Privacy & Security (สำหรับเข้าถึง `~/Desktop/Work/Contents/infra/`)
 - See `n8n/flows/CREDENTIAL-AUDIT.md` for credential ID inventory
 
+### Production hardening (PoC → prod checklist)
+
+PoC ใช้ default ที่ไม่ปลอดภัยพอสำหรับ production. Before going live:
+
+- **Postgres SUPERUSER → least privilege**: สร้าง role แยกสำหรับ n8n (GRANT SELECT/INSERT/UPDATE บน `contracts`, `contract_chunks`; REVOKE SUPERUSER). `contract` ควรเป็น owner เท่านั้น ไม่ใช่ app role.
+- **MinIO credentials**: เปลี่ยน `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` จาก default; สร้าง service account แยกสำหรับ n8n ด้วย policy จำกัด bucket `epsx-contracts` (read/write + DeleteObject)
+- **LINE webhook signature verify**: ตอนนี้ n8n flow รับ webhook โดยไม่ verify X-Line-Signature — ใครยิง POST ตรงไป webhook URL ได้ก็ insert contract ได้. เพิ่ม Code node แรก verify HMAC-SHA256 ด้วย `LINE_CHANNEL_SECRET`
+- **Cloudflare tunnel auth**: พิจารณา Cloudflare Access policy หน้า `n8n.jesadakorn.com` (SSO) หรืออย่างน้อย IP allowlist สำหรับ admin endpoints (`/webhook/admin-*`)
+- **n8n encryptionKey rotation**: ใน `infra/n8n-data/.n8n/config` — ถ้าเคย leak ต้อง rotate (re-encrypt credentials ทั้งหมด)
+- **Backups**: `infra/backups/` มี migration snapshot แล้ว แต่ควรตั้ง pg_dump cron + MinIO versioning
+
 ## Architecture (one-liner per service)
 
 ```
