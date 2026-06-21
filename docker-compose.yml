@@ -84,6 +84,10 @@ services:
       N8N_PROTOCOL: http
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
       WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      # editorBaseUrl controls getInstanceBaseUrl() in url.service.js — used for
+      # telemetry proxy + OAuth callback + frontend API base. Must match the
+      # public URL the browser accesses, otherwise CORS/loopback blocks login.
+      N8N_EDITOR_BASE_URL: ${N8N_EDITOR_BASE_URL:-${N8N_PUBLIC_URL:-http://localhost:5678/}}
       GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Asia/Bangkok}
       N8N_SECURE_COOKIE: "false"
       LINE_CHANNEL_ACCESS_TOKEN: ${LINE_CHANNEL_ACCESS_TOKEN:-}
