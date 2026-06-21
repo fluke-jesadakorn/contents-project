@@ -1,6 +1,6 @@
 -- ===== Init schema for contract RAG =====
--- Runs automatically on first postgres start (docker-entrypoint-initdb.d)
--- Embedding dim = 1024 (BAAI/bge-m3 via HuggingFace Inference API, free)
+-- Apply manually: psql -h localhost -U contract -d contracts -f db/init.sql
+-- Embedding dim = 1024 (BAAI/bge-m3 via local Ollama, localhost:11434)
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS contract_chunks (
 CREATE INDEX IF NOT EXISTS idx_chunks_contract ON contract_chunks (contract_id);
 
 -- ivfflat index — uncomment after at least 100 rows are inserted
+-- (or use HNSW instead — pgvector 0.7+ — for better recall/latency tradeoff)
 -- CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON contract_chunks
 --   USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
@@ -68,3 +69,24 @@ BEGIN
     RETURN 'DOC-' || today || '-' || lpad(seq::TEXT, 4, '0');
 END;
 $$ LANGUAGE plpgsql;
+
+-- ===== Auto-update updated_at on row change =====
+CREATE OR REPLACE FUNCTION touch_updated_at() RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at := now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_contracts_touch ON contracts;
+CREATE TRIGGER trg_contracts_touch
+    BEFORE UPDATE ON contracts
+    FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
+
+-- ===== Concurrent-safe doc_no (optional alternative to next_doc_seq) =====
+-- next_doc_seq() uses MAX()+1 which races under concurrent inserts.
+-- For production, prefer this pattern instead:
+--   BEGIN;
+--   SELECT pg_advisory_xact_lock(hashtext('doc_no_seq'));
+--   SELECT next_doc_seq();  -- or use a real SEQUENCE
+--   COMMIT;

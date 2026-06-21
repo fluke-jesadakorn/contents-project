@@ -1,12 +1,12 @@
-# Flow 03 - Docs Hub — credential + flow audit
+# Flow 03 — Docs Hub — credential + flow audit
 
-**Last updated:** 2026-06-18 (53 nodes, smart routing with 4 tools)
+**Last updated:** 2026-06-22 (host-native stack, smart routing with 4 tools)
 
 ## Credentials
 
 ### httpHeaderAuth (LINE Bearer Auth)
 - ID: `LNHDR8F94CE3AA25E4B8E823C70`
-- Data: `{"name":"Authorization","value":"Bearer <token>"}`
+- Data: `{"name":"Authorization","value":"Bearer <LINE_CHANNEL_ACCESS_TOKEN>"}`
 - **Required on:** `LINE Download from LINE`, `LINE Reply Success`, `LINE Reply Error`, `LINE: Reply Non-File`, `AI: Reply Text`, `AI: Send Reply`
 
 ### postgres (PG Contracts - localhost:5432)
@@ -14,12 +14,17 @@
 - Data: `{"host":"localhost","port":5432,"database":"contracts","user":"contract","password":"contractpw","ssl":"disable"}`
 - **Required on:** `LINE Register Start`, `LINE Insert contract row`, `LINE Insert chunks`, `LINE Register Done`, `AI: List Contracts`, `AI: Get Stats`
 
+### s3 (MinIO Contracts - localhost:9000)
+- ID: `minio-creds-epsx`
+- Data: `{"endpoint":"localhost:9000","region":"us-east-1","accessKeyId":"minioadmin","secretAccessKey":"minioadmin","forcePathStyle":true}`
+- **Required on:** `MinIO Upload` (หลัง chunk+embed สำเร็จ)
+
 ## Smart routing flow
 
 ```
 LINE: Is file? (Switch)
-├── is_file → [file upload pipeline: Download → Extract → Chunk → Embed → Combine → Insert contract → Insert chunks → Reply Success]
-└── not_file → AI Agent (Ollama qwen3.6) → Parse AI Response
+├── is_file → [Download → Extract → Chunk → Embed → Combine → Insert contract → Insert chunks → MinIO Upload → Reply Success]
+└── not_file → AI Agent (Ollama qwen3.6:35b-a3b-q4_K_M) → Parse AI Response
                                                 ↓
                                           AI Route Switch (4 outputs)
                                           ├── search → AI: Call Vector Search → Build Flex Card → AI: Send Reply
@@ -30,7 +35,7 @@ LINE: Is file? (Switch)
                                                                   Format Response
 ```
 
-## AI tools (qwen3.6:35b with system prompt)
+## AI tools (qwen3.6:35b-a3b-q4_K_M via Ollama /api/chat with system prompt)
 
 | Tool | Args | When to use |
 |------|------|-------------|
@@ -38,6 +43,8 @@ LINE: Is file? (Switch)
 | `list_documents` | `filter="", limit=10` | "กี่ฉบับ/list/ทั้งหมด/อันไหนบ้าง" — registry list |
 | `get_stats` | (none) | "สรุป/ภาพรวม/สถิติ/สถานะ" — count + breakdown |
 | (none) | — | greeting/chat/capabilities question |
+
+> OpenRouter (`gemma-4-31b-it:free`) ถูกใช้ใน flow เก่า `02-line-search.json` (ใน `archive/`) แต่ไม่ใช้ใน flow ปัจจุบัน
 
 ## contracts schema requirements
 
@@ -54,15 +61,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_contracts_doc_no ON contracts (doc_no) WHE
 CREATE OR REPLACE FUNCTION next_doc_seq() RETURNS TEXT AS $$ ... $$ LANGUAGE plpgsql;
 ```
 
-## Startup scripts (run on Mac reboot)
+ดู schema ปัจจุบันใน `db/init.sql`.
+
+## Service management (host-native launchd)
 
 ```bash
-# 1) Postgres already auto-starts via brew services
-# 2) n8n
-cd /Users/fluke/Desktop/Work/PhuketLawFirm/infra/workflow
-nohup /tmp/start-plf-n8n.sh > /tmp/n8n.log 2>&1 &
+# Restart n8n
+launchctl kickstart -k gui/$(id -u)/com.lawpoc.n8n
 
-# 3) Cloudflared
-nohup /opt/homebrew/bin/cloudflared --config /Users/fluke/.cloudflared/config-n8n.yml \
-  tunnel run b8f4ccf5-67de-4bfa-b292-7641ad185006 > /tmp/cloudflared.log 2>&1 &
+# Restart MinIO
+launchctl kickstart -k gui/$(id -u)/com.lawpoc.minio
+
+# View n8n log
+tail -f /Users/fluke/Desktop/Work/Contents/infra/logs/n8n.log
+
+# Postgres auto-start via brew services (postgresql@18)
+# Cloudflared manual — tunnel ID b8f4ccf5-67de-4bfa-b292-7641ad185006
+#   ingress: n8n.jesadakorn.com → localhost:5678
+#            ai.jesadakorn.com   → localhost:11434
 ```
