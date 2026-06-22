@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS contracts (
     line_message_id TEXT,
     file_name       TEXT NOT NULL,
     file_type       TEXT,
+    file_mime       TEXT,
+    file_data       BYTEA,
     storage_bucket  TEXT,
     storage_path    TEXT,
     size_bytes      BIGINT,
@@ -27,6 +29,11 @@ CREATE TABLE IF NOT EXISTS contracts (
     metadata        JSONB,
     updated_at      TIMESTAMPTZ
 );
+
+-- Existing PoC databases may have been created before inline file preview was
+-- added. Keep this migration idempotent so re-running db/init.sql is safe.
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS file_mime TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS file_data BYTEA;
 
 CREATE INDEX IF NOT EXISTS idx_contracts_line_user ON contracts (line_user_id);
 CREATE INDEX IF NOT EXISTS idx_contracts_status    ON contracts (status);

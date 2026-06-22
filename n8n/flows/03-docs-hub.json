@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-22T07:28:51.850Z",
+  "updatedAt": "2026-06-22T12:05:18.257Z",
   "createdAt": "2026-06-18T04:19:01.736Z",
   "id": "TL2qrOygnWKY69xe",
   "name": "03 - Docs Hub",
@@ -548,34 +548,6 @@
       "typeVersion": 2.4
     },
     {
-      "id": "line-download-file",
-      "name": "LINE Download from LINE",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [
-        1136,
-        432
-      ],
-      "parameters": {
-        "url": "=https://api-data.line.me/v2/bot/message/{{ $json._event.message.id }}/content",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file"
-            }
-          }
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "27fef0b4-9224-4a77-9741-c4f8e3d0aede",
-          "name": "LINE Bearer Auth"
-        }
-      },
-      "typeVersion": 4.2
-    },
-    {
       "id": "line-chunk",
       "name": "LINE Chunk text",
       "type": "n8n-nodes-base.code",
@@ -606,8 +578,6 @@
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
         "headerParameters": {
           "parameters": [
             {
@@ -615,12 +585,6 @@
               "value": "application/json"
             }
           ]
-        }
-      },
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "27fef0b4-9224-4a77-9741-c4f8e3d0aede",
-          "name": "LINE Bearer Auth"
         }
       },
       "typeVersion": 4.2
@@ -639,47 +603,24 @@
       "typeVersion": 2
     },
     {
-      "id": "line-insert-contract",
-      "name": "LINE Insert contract row",
-      "type": "n8n-nodes-base.postgres",
+      "id": "line-build-sql",
+      "name": "LINE Build Store SQL",
+      "type": "n8n-nodes-base.code",
       "position": [
         2704,
         432
       ],
       "parameters": {
-        "query": "UPDATE contracts SET chunk_count = $2::int, status = 'ready' WHERE id = $1::uuid RETURNING id, doc_no",
-        "options": {
-          "queryReplacement": "={{ [$('LINE Register Start').first().json.id, $json.chunk_count || 0] }}"
-        },
-        "operation": "executeQuery"
-      },
-      "credentials": {
-        "postgres": {
-          "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
-          "name": "PG Contracts - localhost:5432"
-        }
-      },
-      "typeVersion": 2.4
-    },
-    {
-      "id": "line-build-sql",
-      "name": "LINE Build chunk INSERT SQL",
-      "type": "n8n-nodes-base.code",
-      "position": [
-        2928,
-        432
-      ],
-      "parameters": {
-        "jsCode": "// Build a multi-row INSERT for all chunks. Empty chunks → SELECT 1 (no-op).\nconst contractId = $('LINE Insert contract row').first().json.id;\nconst meta = $('LINE Combine metadata + vectors').first().json;\n\nif (!meta.rows || meta.rows.length === 0) {\n  // Scanned PDF / no text — Postgres gets a no-op\n  return [{ json: { sql: 'SELECT 1', no_chunks: true, contract_id: contractId } }];\n}\n\nconst escape = (s) => String(s).replace(/'/g, \"''\");\nconst values = meta.rows.map(r =>\n  `( '${contractId}', ${r.chunk_index}, $tag$${escape(r.content)}$tag$, ${r.content.length}, '${r.embedding}'::vector )`\n).join(',\\n');\nreturn [{\n  json: {\n    sql: `INSERT INTO contract_chunks (contract_id, chunk_index, content, token_count, embedding) VALUES ${values}`,\n    no_chunks: false,\n    contract_id: contractId\n  }\n}];\n"
+        "jsCode": "// Build one Postgres statement that marks the document ready and stores all vectors.\nconst start = $('LINE Register Start').first().json || {};\nconst meta = $('LINE Combine metadata + vectors').first().json || {};\nconst contractId = start.id;\nif (!contractId) {\n  throw new Error('Missing contract id from LINE Register Start');\n}\n\nconst rows = Array.isArray(meta.rows) ? meta.rows : [];\nconst chunkCount = rows.length;\nconst quoteIdent = String(contractId).replace(/'/g, \"''\");\nconst dollarTag = (i) => `$chunk_${i}$`;\nconst cleanForTag = (value, tag) => String(value ?? '').replaceAll(tag, '');\n\nlet insertedCte;\nif (chunkCount > 0) {\n  const values = rows.map((row, i) => {\n    const tag = dollarTag(i);\n    const content = cleanForTag(row.content, tag);\n    const vector = row.embedding ? `'${row.embedding}'::vector` : 'NULL';\n    return `((SELECT id FROM updated), ${Number(row.chunk_index) || 0}, ${tag}${content}${tag}, ${content.length}, ${vector})`;\n  }).join(',\\n');\n  insertedCte = `inserted AS (\\n  INSERT INTO contract_chunks (contract_id, chunk_index, content, token_count, embedding)\\n  VALUES ${values}\\n  RETURNING 1\\n)`;\n} else {\n  insertedCte = `inserted AS (SELECT 1 WHERE false)`;\n}\n\nconst sql = `WITH updated AS (\\n  UPDATE contracts\\n  SET chunk_count = ${chunkCount}::int, status = 'ready', error_message = NULL, updated_at = now()\\n  WHERE id = '${quoteIdent}'::uuid\\n  RETURNING id, doc_no, file_name\\n), deleted AS (\\n  DELETE FROM contract_chunks WHERE contract_id = (SELECT id FROM updated)\\n), ${insertedCte}\\nSELECT id, doc_no, file_name, ${chunkCount}::int AS chunk_count, (SELECT count(*) FROM inserted) AS inserted_chunks\\nFROM updated`;\n\nreturn [{ json: { sql, contract_id: contractId, chunk_count: chunkCount } }];\n"
       },
       "typeVersion": 2
     },
     {
       "id": "line-insert-chunks",
-      "name": "LINE Insert chunks",
+      "name": "PG: Store Embeddings",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        3152,
+        2928,
         432
       ],
       "parameters": {
@@ -700,14 +641,14 @@
       "name": "LINE Reply Success",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        3600,
+        3376,
         336
       ],
       "parameters": {
         "url": "https://api.line.me/v2/bot/message/push",
         "method": "POST",
         "options": {},
-        "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Smart Router').first().json._event.source.userId) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": \"บันทึก '{{ $('LINE Combine metadata + vectors').item.json.file_name }}' เรียบร้อย (chunks: {{ $('LINE Combine metadata + vectors').item.json.chunk_count }})\" }]\n}",
+        "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Smart Router').first().json._event.source.groupId || $('Smart Router').first().json._event.source.userId) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": \"บันทึกเอกสารเรียบร้อย\\nเลขที่: {{ $('PG: Store Embeddings').first().json.doc_no || $('LINE Register Start').first().json.doc_no }}\\nไฟล์: {{ $('LINE Combine metadata + vectors').item.json.file_name }}\\nChunks: {{ $('LINE Combine metadata + vectors').item.json.chunk_count }}\" }]\n}",
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
@@ -735,14 +676,14 @@
       "name": "LINE Reply Error",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        3600,
+        3376,
         528
       ],
       "parameters": {
         "url": "https://api.line.me/v2/bot/message/push",
         "method": "POST",
         "options": {},
-        "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Smart Router').first().json._event.source.userId) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": \"เกิดข้อผิดพลาด: {{ $json.error || 'unknown' }}\" }]\n}",
+        "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Smart Router').first().json._event.source.groupId || $('Smart Router').first().json._event.source.userId) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": \"บันทึกเอกสารไม่สำเร็จ: {{ $json.error || $json.message || 'unknown' }}\" }]\n}",
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
@@ -1520,7 +1461,7 @@
         432
       ],
       "parameters": {
-        "jsCode": "// Download + Decode combined.\n// HTTP node responseFormat=file returns filesystem-v2 ref that getBinaryDataBuffer can't read.\n// Code node v2.25 has no getCredentials on this.helpers — use $env or hardcoded token.\n\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\n// Try $env first (Code node v2.x exposes env vars)\nlet token = $env.LINE_CHANNEL_ACCESS_TOKEN;\n// Fallback to hardcoded (POC; will replace once proper credential wiring exists)\nif (!token) {\n  token = 'Ngf4v6eN3sk97GHP2Y5IaGOrlAQg4W25mLWJggI9Iw6HnrpBvIHqNz1lyUL1d1N9DiURJnYul4CdrMb7LbrDq45iRalBhqdFXMDAiuc0q8hzhYMHDUgJlFnAFI1PAxaoy8vKWqKEHtyxxbYAdB04t89/1O/w1cDnyilFU=';\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  // LINE returns 404 when message content has expired\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst src = evt.source || {};\nconst fname = msg.fileName || 'upload.pdf';\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nconst ext = fname.toLowerCase().split('.').pop();\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    // Expose LINE webhook fields so Register Start's queryReplacement can resolve them\n    line_user_id: src.userId || '',\n    line_group_id: src.groupId || '',\n    line_message_id: messageId || '',\n    file_type: ext || '',\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData, file: binaryData }\n}];\n"
+        "jsCode": "// Download LINE message content and expose both binary + base64 for storage.\n// The channel token must come from the n8n runtime environment.\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\nconst token = ($env.LINE_CHANNEL_ACCESS_TOKEN || '').trim();\nif (!token) {\n  throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN in n8n environment');\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst src = evt.source || {};\nconst fname = msg.fileName || 'upload.pdf';\nconst ext = fname.toLowerCase().split('.').pop();\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\nelse if (ext === 'txt') mime = 'text/plain';\nelse if (ext === 'docx') mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    line_user_id: src.userId || '',\n    line_group_id: src.groupId || '',\n    line_message_id: messageId || '',\n    file_type: ext || '',\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData, file: binaryData }\n}];\n"
       },
       "typeVersion": 2
     },
@@ -2226,24 +2167,6 @@
         ]
       ]
     },
-    "LINE Insert chunks": {
-      "main": [
-        [
-          {
-            "node": "LINE Reply Success",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "LINE Reply Error",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
     "LINE Reply Success": {
       "main": [
         [
@@ -2376,33 +2299,11 @@
         ]
       ]
     },
-    "LINE Insert contract row": {
-      "main": [
-        [
-          {
-            "node": "LINE Build chunk INSERT SQL",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "PG: Insert/Update Document": {
       "main": [
         [
           {
             "node": "Respond Registry",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LINE Build chunk INSERT SQL": {
-      "main": [
-        [
-          {
-            "node": "LINE Insert chunks",
             "type": "main",
             "index": 0
           }
@@ -2424,7 +2325,7 @@
       "main": [
         [
           {
-            "node": "LINE Insert contract row",
+            "node": "LINE Build Store SQL",
             "type": "main",
             "index": 0
           }
@@ -2485,6 +2386,35 @@
           }
         ]
       ]
+    },
+    "LINE Build Store SQL": {
+      "main": [
+        [
+          {
+            "node": "PG: Store Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: Store Embeddings": {
+      "main": [
+        [
+          {
+            "node": "LINE Reply Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LINE Reply Error",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -2528,7 +2458,7 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-06-22T07:28:51.851Z",
+    "updatedAt": "2026-06-22T12:05:18.257Z",
     "createdAt": "2026-06-22T07:28:51.851Z",
     "versionId": "712dce07-b919-4a48-9744-b64479d99362",
     "workflowId": "TL2qrOygnWKY69xe",
@@ -3074,34 +3004,6 @@
         "typeVersion": 2.4
       },
       {
-        "id": "line-download-file",
-        "name": "LINE Download from LINE",
-        "type": "n8n-nodes-base.httpRequest",
-        "position": [
-          1136,
-          432
-        ],
-        "parameters": {
-          "url": "=https://api-data.line.me/v2/bot/message/{{ $json._event.message.id }}/content",
-          "options": {
-            "response": {
-              "response": {
-                "responseFormat": "file"
-              }
-            }
-          },
-          "authentication": "genericCredentialType",
-          "genericAuthType": "httpHeaderAuth"
-        },
-        "credentials": {
-          "httpHeaderAuth": {
-            "id": "27fef0b4-9224-4a77-9741-c4f8e3d0aede",
-            "name": "LINE Bearer Auth"
-          }
-        },
-        "typeVersion": 4.2
-      },
-      {
         "id": "line-chunk",
         "name": "LINE Chunk text",
         "type": "n8n-nodes-base.code",
@@ -3132,8 +3034,6 @@
           "sendBody": true,
           "sendHeaders": true,
           "specifyBody": "json",
-          "authentication": "genericCredentialType",
-          "genericAuthType": "httpHeaderAuth",
           "headerParameters": {
             "parameters": [
               {
@@ -3141,12 +3041,6 @@
                 "value": "application/json"
               }
             ]
-          }
-        },
-        "credentials": {
-          "httpHeaderAuth": {
-            "id": "27fef0b4-9224-4a77-9741-c4f8e3d0aede",
-            "name": "LINE Bearer Auth"
           }
         },
         "typeVersion": 4.2
@@ -3165,47 +3059,24 @@
         "typeVersion": 2
       },
       {
-        "id": "line-insert-contract",
-        "name": "LINE Insert contract row",
-        "type": "n8n-nodes-base.postgres",
+        "id": "line-build-sql",
+        "name": "LINE Build Store SQL",
+        "type": "n8n-nodes-base.code",
         "position": [
           2704,
           432
         ],
         "parameters": {
-          "query": "UPDATE contracts SET chunk_count = $2::int, status = 'ready' WHERE id = $1::uuid RETURNING id, doc_no",
-          "options": {
-            "queryReplacement": "={{ [$('LINE Register Start').first().json.id, $json.chunk_count || 0] }}"
-          },
-          "operation": "executeQuery"
-        },
-        "credentials": {
-          "postgres": {
-            "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
-            "name": "PG Contracts - localhost:5432"
-          }
-        },
-        "typeVersion": 2.4
-      },
-      {
-        "id": "line-build-sql",
-        "name": "LINE Build chunk INSERT SQL",
-        "type": "n8n-nodes-base.code",
-        "position": [
-          2928,
-          432
-        ],
-        "parameters": {
-          "jsCode": "// Build a multi-row INSERT for all chunks. Empty chunks → SELECT 1 (no-op).\nconst contractId = $('LINE Insert contract row').first().json.id;\nconst meta = $('LINE Combine metadata + vectors').first().json;\n\nif (!meta.rows || meta.rows.length === 0) {\n  // Scanned PDF / no text — Postgres gets a no-op\n  return [{ json: { sql: 'SELECT 1', no_chunks: true, contract_id: contractId } }];\n}\n\nconst escape = (s) => String(s).replace(/'/g, \"''\");\nconst values = meta.rows.map(r =>\n  `( '${contractId}', ${r.chunk_index}, $tag$${escape(r.content)}$tag$, ${r.content.length}, '${r.embedding}'::vector )`\n).join(',\\n');\nreturn [{\n  json: {\n    sql: `INSERT INTO contract_chunks (contract_id, chunk_index, content, token_count, embedding) VALUES ${values}`,\n    no_chunks: false,\n    contract_id: contractId\n  }\n}];\n"
+          "jsCode": "// Build one Postgres statement that marks the document ready and stores all vectors.\nconst start = $('LINE Register Start').first().json || {};\nconst meta = $('LINE Combine metadata + vectors').first().json || {};\nconst contractId = start.id;\nif (!contractId) {\n  throw new Error('Missing contract id from LINE Register Start');\n}\n\nconst rows = Array.isArray(meta.rows) ? meta.rows : [];\nconst chunkCount = rows.length;\nconst quoteIdent = String(contractId).replace(/'/g, \"''\");\nconst dollarTag = (i) => `$chunk_${i}$`;\nconst cleanForTag = (value, tag) => String(value ?? '').replaceAll(tag, '');\n\nlet insertedCte;\nif (chunkCount > 0) {\n  const values = rows.map((row, i) => {\n    const tag = dollarTag(i);\n    const content = cleanForTag(row.content, tag);\n    const vector = row.embedding ? `'${row.embedding}'::vector` : 'NULL';\n    return `((SELECT id FROM updated), ${Number(row.chunk_index) || 0}, ${tag}${content}${tag}, ${content.length}, ${vector})`;\n  }).join(',\\n');\n  insertedCte = `inserted AS (\\n  INSERT INTO contract_chunks (contract_id, chunk_index, content, token_count, embedding)\\n  VALUES ${values}\\n  RETURNING 1\\n)`;\n} else {\n  insertedCte = `inserted AS (SELECT 1 WHERE false)`;\n}\n\nconst sql = `WITH updated AS (\\n  UPDATE contracts\\n  SET chunk_count = ${chunkCount}::int, status = 'ready', error_message = NULL, updated_at = now()\\n  WHERE id = '${quoteIdent}'::uuid\\n  RETURNING id, doc_no, file_name\\n), deleted AS (\\n  DELETE FROM contract_chunks WHERE contract_id = (SELECT id FROM updated)\\n), ${insertedCte}\\nSELECT id, doc_no, file_name, ${chunkCount}::int AS chunk_count, (SELECT count(*) FROM inserted) AS inserted_chunks\\nFROM updated`;\n\nreturn [{ json: { sql, contract_id: contractId, chunk_count: chunkCount } }];\n"
         },
         "typeVersion": 2
       },
       {
         "id": "line-insert-chunks",
-        "name": "LINE Insert chunks",
+        "name": "PG: Store Embeddings",
         "type": "n8n-nodes-base.postgres",
         "position": [
-          3152,
+          2928,
           432
         ],
         "parameters": {
@@ -3226,14 +3097,14 @@
         "name": "LINE Reply Success",
         "type": "n8n-nodes-base.httpRequest",
         "position": [
-          3600,
+          3376,
           336
         ],
         "parameters": {
           "url": "https://api.line.me/v2/bot/message/push",
           "method": "POST",
           "options": {},
-          "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Smart Router').first().json._event.source.userId) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": \"บันทึก '{{ $('LINE Combine metadata + vectors').item.json.file_name }}' เรียบร้อย (chunks: {{ $('LINE Combine metadata + vectors').item.json.chunk_count }})\" }]\n}",
+          "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Smart Router').first().json._event.source.groupId || $('Smart Router').first().json._event.source.userId) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": \"บันทึกเอกสารเรียบร้อย\\nเลขที่: {{ $('PG: Store Embeddings').first().json.doc_no || $('LINE Register Start').first().json.doc_no }}\\nไฟล์: {{ $('LINE Combine metadata + vectors').item.json.file_name }}\\nChunks: {{ $('LINE Combine metadata + vectors').item.json.chunk_count }}\" }]\n}",
           "sendBody": true,
           "sendHeaders": true,
           "specifyBody": "json",
@@ -3261,14 +3132,14 @@
         "name": "LINE Reply Error",
         "type": "n8n-nodes-base.httpRequest",
         "position": [
-          3600,
+          3376,
           528
         ],
         "parameters": {
           "url": "https://api.line.me/v2/bot/message/push",
           "method": "POST",
           "options": {},
-          "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Smart Router').first().json._event.source.userId) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": \"เกิดข้อผิดพลาด: {{ $json.error || 'unknown' }}\" }]\n}",
+          "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Smart Router').first().json._event.source.groupId || $('Smart Router').first().json._event.source.userId) }},\n  \"messages\": [{ \"type\": \"text\", \"text\": \"บันทึกเอกสารไม่สำเร็จ: {{ $json.error || $json.message || 'unknown' }}\" }]\n}",
           "sendBody": true,
           "sendHeaders": true,
           "specifyBody": "json",
@@ -4046,7 +3917,7 @@
           432
         ],
         "parameters": {
-          "jsCode": "// Download + Decode combined.\n// HTTP node responseFormat=file returns filesystem-v2 ref that getBinaryDataBuffer can't read.\n// Code node v2.25 has no getCredentials on this.helpers — use $env or hardcoded token.\n\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\n// Try $env first (Code node v2.x exposes env vars)\nlet token = $env.LINE_CHANNEL_ACCESS_TOKEN;\n// Fallback to hardcoded (POC; will replace once proper credential wiring exists)\nif (!token) {\n  token = 'Ngf4v6eN3sk97GHP2Y5IaGOrlAQg4W25mLWJggI9Iw6HnrpBvIHqNz1lyUL1d1N9DiURJnYul4CdrMb7LbrDq45iRalBhqdFXMDAiuc0q8hzhYMHDUgJlFnAFI1PAxaoy8vKWqKEHtyxxbYAdB04t89/1O/w1cDnyilFU=';\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  // LINE returns 404 when message content has expired\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst src = evt.source || {};\nconst fname = msg.fileName || 'upload.pdf';\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nconst ext = fname.toLowerCase().split('.').pop();\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    // Expose LINE webhook fields so Register Start's queryReplacement can resolve them\n    line_user_id: src.userId || '',\n    line_group_id: src.groupId || '',\n    line_message_id: messageId || '',\n    file_type: ext || '',\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData, file: binaryData }\n}];\n"
+          "jsCode": "// Download LINE message content and expose both binary + base64 for storage.\n// The channel token must come from the n8n runtime environment.\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\nconst token = ($env.LINE_CHANNEL_ACCESS_TOKEN || '').trim();\nif (!token) {\n  throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN in n8n environment');\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst src = evt.source || {};\nconst fname = msg.fileName || 'upload.pdf';\nconst ext = fname.toLowerCase().split('.').pop();\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\nelse if (ext === 'txt') mime = 'text/plain';\nelse if (ext === 'docx') mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    line_user_id: src.userId || '',\n    line_group_id: src.groupId || '',\n    line_message_id: messageId || '',\n    file_type: ext || '',\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData, file: binaryData }\n}];\n"
         },
         "typeVersion": 2
       },
@@ -4218,16 +4089,31 @@
       {
         "id": "line-extract-vision",
         "name": "LINE Extract via Vision LLM",
-        "type": "n8n-nodes-base.code",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
         "position": [
           1584,
           432
         ],
         "parameters": {
-          "mode": "runOnceForAllItems",
-          "jsCode": "// Extract text from file via Ollama Vision LLM (qwen3.6 35B-A3B).\n// Works for PDF (render→image→vision, all pages), JPG/PNG (direct vision), TXT (decode).\n// Empty result → downstream rolls back the file.\nconst inputs = $input.first().json || {};\nconst fileName = inputs.file_name || 'unknown';\nconst fileMime = inputs.file_mime || '';\nconst fileSize = inputs.file_size || 0;\nconst b64 = inputs.file_data_b64 || '';\n\nconst ext = fileName.toLowerCase().split('.').pop() || '';\nconst isPdf = ext === 'pdf' || fileMime === 'application/pdf';\nconst isImage = ['jpg','jpeg','png','webp','gif','bmp'].includes(ext) || fileMime.startsWith('image/');\nconst isText = ['txt','md','csv','log'].includes(ext) || fileMime.startsWith('text/');\n\nif (!b64) {\n  return [{ json: { text: '', source: 'no-data', chars: 0, error: 'no file_data_b64 from Decode' } }];\n}\n\n// === TEXT: decode directly ===\nif (isText) {\n  try {\n    const buf = Buffer.from(b64, 'base64');\n    const text = buf.toString('utf-8');\n    return [{ json: { text, source: 'text-direct', chars: text.length, pages: 0 } }];\n  } catch (e) {\n    return [{ json: { text: '', source: 'text-fail', chars: 0, error: e.message } }];\n  }\n}\n\n// === IMAGE (single) or PDF (multi-page) ===\n// For PDF: render all pages → array of PNGs → call vision once per page → concat text\n// For IMAGE: single vision call\n\nconst ollamaUrl = ($env.OLLAMA_URL || 'http://127.0.0.1:11434') + '/api/generate';\nconst visionModel = $env.OLLAMA_VISION_MODEL || 'qwen3.6:35b-a3b-q4_K_M';\nconst prompt = 'ดึงข้อความทั้งหมดจากเอกสารนี้ ตอบเป็น plain text เท่านั้น ไม่ต้องมี markdown formatting, code block, หรือคำอธิบาย ให้ข้อความดิบจากเอกสารเท่านั้น';\n\nlet imageB64List = [];\nlet source = 'unknown';\nlet pageCount = 0;\n\nif (isImage) {\n  imageB64List = [b64];\n  source = 'vision-image';\n  pageCount = 1;\n} else if (isPdf) {\n  // Render PDF → array of PNGs\n  const fs = require('fs');\n  const { execSync } = require('child_process');\n  const path = require('path');\n  const tmpDir = '/tmp/vision-pdf';\n  try { fs.mkdirSync(tmpDir, { recursive: true }); } catch (e) {}\n  const stamp = Date.now();\n  const pdfPath = `${tmpDir}/in-${stamp}.pdf`;\n  const pngPrefix = `${tmpDir}/out-${stamp}`;\n  try {\n    fs.writeFileSync(pdfPath, Buffer.from(b64, 'base64'));\n    // -r 120 dpi, ALL pages (no -f/-l)\n    execSync(`pdftoppm -png -r 120 \"${pdfPath}\" \"${pngPrefix}\"`, { timeout: 60000, stdio: 'pipe' });\n    const pages = fs.readdirSync(tmpDir)\n      .filter(f => f.startsWith(`out-${stamp}-`) && f.endsWith('.png'))\n      .sort()\n      .map(f => `${tmpDir}/${f}`);\n    if (pages.length === 0) {\n      return [{ json: { text: '', source: 'render-fail', chars: 0, error: 'pdftoppm produced no output' } }];\n    }\n    imageB64List = pages.map(p => fs.readFileSync(p).toString('base64'));\n    source = 'vision-pdf';\n    pageCount = pages.length;\n    // cleanup pngs (keep pdf for debugging)\n    try { for (const p of pages) fs.unlinkSync(p); } catch (e) {}\n  } catch (e) {\n    return [{ json: { text: '', source: 'render-fail', chars: 0, error: `pdftoppm failed: ${e.message}` } }];\n  }\n} else {\n  return [{ json: { text: '', source: 'unsupported', chars: 0, error: `unsupported file type: ext=${ext}, mime=${fileMime}` } }];\n}\n\n// === Call Ollama Vision LLM (one per page) ===\nconst pageTexts = [];\nlet totalEval = 0;\nlet totalDurationMs = 0;\nfor (let i = 0; i < imageB64List.length; i++) {\n  try {\n    const resp = await this.helpers.httpRequest({\n      method: 'POST',\n      url: ollamaUrl,\n      headers: { 'Content-Type': 'application/json' },\n      body: {\n        model: visionModel,\n        prompt,\n        images: [imageB64List[i]],\n        stream: false,\n        options: { temperature: 0.1 },\n      },\n      timeout: 180000,\n    });\n    const t = (resp && resp.response ? String(resp.response) : '').trim();\n    if (t) pageTexts.push(t);\n    totalEval += (resp && resp.eval_count) || 0;\n    totalDurationMs += (resp && resp.total_duration) ? Math.round(resp.total_duration / 1e6) : 0;\n  } catch (e) {\n    // One page failed — log but continue with others\n    pageTexts.push(`[page ${i+1} vision failed: ${e.message}]`);\n  }\n}\n\nconst fullText = pageTexts.join('\\n\\n');\nreturn [{ json: {\n  text: fullText,\n  source,\n  chars: fullText.length,\n  pages: pageCount,\n  vision_model: visionModel,\n  vision_eval_count: totalEval,\n  vision_duration_ms: totalDurationMs,\n}}];\n"
-        },
-        "typeVersion": 2
+          "method": "POST",
+          "url": "http://127.0.0.1:8765/vision",
+          "options": {
+            "timeout": 180000
+          },
+          "jsonBody": "={{ JSON.stringify({ file_data_b64: $json.file_data_b64, file_mime: $json.file_mime, file_name: $json.file_name }) }}",
+          "sendBody": true,
+          "sendHeaders": true,
+          "specifyBody": "json",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
       }
     ],
     "connections": {
@@ -4737,24 +4623,6 @@
           ]
         ]
       },
-      "LINE Insert chunks": {
-        "main": [
-          [
-            {
-              "node": "LINE Reply Success",
-              "type": "main",
-              "index": 0
-            }
-          ],
-          [
-            {
-              "node": "LINE Reply Error",
-              "type": "main",
-              "index": 1
-            }
-          ]
-        ]
-      },
       "LINE Reply Success": {
         "main": [
           [
@@ -4887,33 +4755,11 @@
           ]
         ]
       },
-      "LINE Insert contract row": {
-        "main": [
-          [
-            {
-              "node": "LINE Build chunk INSERT SQL",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
       "PG: Insert/Update Document": {
         "main": [
           [
             {
               "node": "Respond Registry",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "LINE Build chunk INSERT SQL": {
-        "main": [
-          [
-            {
-              "node": "LINE Insert chunks",
               "type": "main",
               "index": 0
             }
@@ -4935,7 +4781,7 @@
         "main": [
           [
             {
-              "node": "LINE Insert contract row",
+              "node": "LINE Build Store SQL",
               "type": "main",
               "index": 0
             }
@@ -4993,6 +4839,35 @@
               "node": "LINE Register Start",
               "type": "main",
               "index": 0
+            }
+          ]
+        ]
+      },
+      "LINE Build Store SQL": {
+        "main": [
+          [
+            {
+              "node": "PG: Store Embeddings",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "PG: Store Embeddings": {
+        "main": [
+          [
+            {
+              "node": "LINE Reply Success",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "LINE Reply Error",
+              "type": "main",
+              "index": 1
             }
           ]
         ]

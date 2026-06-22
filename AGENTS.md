@@ -12,14 +12,15 @@ LINE bot PoC: รับสัญญา (PDF/DOCX) จาก LINE → chunk + emb
 - View n8n log:       `tail -f /Users/fluke/Desktop/Work/Contents/infra/logs/n8n.log`
 - DB schema:          `psql -h localhost -U contract -d contracts -f db/init.sql`
 - Edit n8n env:       `vi /Users/fluke/Desktop/Work/Contents/infra/.env` แล้ว restart n8n
+- n8n REST API:       `N8N_API_KEY` อยู่ใน `infra/.env` (file mode 600) — ใช้ `curl -H "X-N8N-API-KEY: $(grep ^N8N_API_KEY= infra/.env | cut -d= -f2-)" http://localhost:5678/api/v1/...` สำหรับ programmatic flow/execution/credential access. ดู `n8n/API-PATTERNS.md` (ถ้ามี) สำหรับ snippet ที่ใช้บ่อย
 
 ## Project layout
 
 - `db/init.sql` — schema: `contracts`, `contract_chunks` (vector(1024) for bge-m3), `next_doc_seq()` + `touch_updated_at()` trigger (ivfflat index commented out — uncomment after >100 rows)
-- `n8n/flows/` — exported workflow JSON. Active: `03-docs-hub.json` (78KB, 71 nodes), `04-docs-admin.json`. Archived (host-native migration leftovers): `archive/01-*.json`, `archive/02-*.json`
+- `n8n/flows/` — exported workflow JSON. Active: `03-docs-hub.json`, `04-docs-admin.json`. Archived (host-native migration leftovers): `archive/01-*.json`, `archive/02-*.json`
 - `n8n/credentials.md`, `n8n/flows/CREDENTIAL-AUDIT.md` — credential IDs, flow wiring reference
 - `docs/LINE-SETUP.md`, `docs/N8N-SETUP.md` — operator runbooks for LINE channel + n8n env
-- `../infra/` — shared host-native infra (n8n runtime, MinIO, logs, launchd plists, backups)
+- `../infra/` — shared host-native infra (n8n runtime, MinIO, logs, launchd plists, backups). `infra/.env` มี `N8N_API_KEY` (full access n8n REST API) — ใช้แทน direct SQL write เวลาแก้ flow
 
 ## Infra layout (`/Users/fluke/Desktop/Work/Contents/infra/`)
 
@@ -44,6 +45,7 @@ LINE bot PoC: รับสัญญา (PDF/DOCX) จาก LINE → chunk + emb
 
 ## Code style
 
+- **n8n flow edits**: ใช้ **n8n REST API** ผ่าน `N8N_API_KEY` ไม่ใช่ direct SQL เขียน `workflow_entity.nodes/connections`. SQL write ข้าม n8n's version management และเคยทำให้ `activeVersionId` ไม่ตรงกับ `versionId` (UI แสดง flow เก่าทั้งที่ DB อัพเดตแล้ว). Pattern: edit `n8n/flows/<name>.json` ใน local → POST/PUT ผ่าน API → restart n8n
 - **n8n flows**: prefix node names with the subsystem (`LINE:`, `AI:`, `PG:`, `LLM:`); Code node JS uses `asyncCode: true`; SQL built dynamically uses dollar-quoting `$tag$...$tag$` for content + `'...'` escape for identifiers
 - **SQL**: parameters via Postgres node's `queryReplacement` array, NOT f-string interpolation; always escape single quotes in dynamic content
 - **Commits**: conventional (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`); body explains WHY not WHAT
@@ -64,12 +66,19 @@ LINE bot PoC: รับสัญญา (PDF/DOCX) จาก LINE → chunk + emb
 - Branch: `main` (remote: `git@github.com:fluke-jesadakorn/contents-project.git`)
 - Commit message: conventional commits with Thai-friendly body when relevant
 - Snapshot before edit: `pg_dump --schema-only contracts > /tmp/schema-pre.sql` before schema changes
-- After n8n flow edit: export → save to `n8n/flows/<name>.json` → commit
+- **n8n flow edit workflow** (ใช้ API แทน direct SQL):
+  1. Edit `n8n/flows/<name>.json` ใน local (use `jq` หรือ Python script สำหรับ node/connection manipulation)
+  2. Apply ผ่าน API: `curl -X PUT -H "X-N8N-API-KEY: $(grep ^N8N_API_KEY= infra/.env | cut -d= -f2-)" -H "Content-Type: application/json" -d @n8n/flows/<name>.json http://localhost:5678/api/v1/workflows/<id>`
+  3. Activate: `curl -X POST -H "X-N8N-API-KEY: ..." http://localhost:5678/api/v1/workflows/<id>/activate`
+  4. Restart n8n ถ้ามี credential/node type ใหม่: `launchctl kickstart -k gui/$(id -u)/com.lawpoc.n8n`
+  5. Re-export: `curl -H "X-N8N-API-KEY: ..." http://localhost:5678/api/v1/workflows/<id> | jq '.nodes, .connections' > n8n/flows/<name>.json` เพื่อ verify n8n normalized the JSON
+  6. Commit: `git add n8n/flows/<name>.json && git commit -m "feat: ..."`
 
 ## Security
 
 - **`.env` is gitignored** — never commit; use `.env.example` for the template
-- **`infra/.env` และ `infra/n8n-data/.n8n/config`** — sensitive (มี LINE token, OpenRouter key, encryptionKey); ไม่ได้ commit เพราะ `infra/` อยู่นอก repo
+- **`infra/.env` และ `infra/n8n-data/.n8n/config`** — sensitive (มี LINE token, OpenRouter key, encryptionKey, `N8N_API_KEY`); ไม่ได้ commit เพราะ `infra/` อยู่นอก repo. File mode 600.
+- **`N8N_API_KEY`**: full-access n8n REST API key. สร้างจาก n8n UI → Settings → n8n API → Create API key. ใช้แทน UI access สำหรับ programmatic flow changes. ถ้า leak ให้ revoke ทันทีจาก UI (key เดียวกันเปิดสิทธิ์ workflows + executions + credentials ทั้งหมด)
 - **LINE access tokens**: long-lived tokens are sensitive; rotate from LINE console if leaked
 - **OpenRouter API key**: free tier rate-limited; cache responses in production
 - **Ollama bge-m3**: local embedding; no data leaves the host unless proxied via Cloudflare tunnel
