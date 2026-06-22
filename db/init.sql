@@ -58,6 +58,25 @@ CREATE INDEX IF NOT EXISTS idx_chunks_contract ON contract_chunks (contract_id);
 -- CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON contract_chunks
 --   USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
+-- ===== Per-page image storage =====
+-- Stores the rendered page image (PDF page → JPEG @ 100 DPI from ocr-service)
+-- alongside the OCR'd chunks. Used for visual retrieval in admin UI ("ดู"
+-- modal thumbnail) and as a permanent visual record of the source page even
+-- if the original PDF in `contracts.file_data` is ever purged.
+-- PoC: image-only, no CLIP embedding — search stays text-based via bge-m3.
+CREATE TABLE IF NOT EXISTS contract_pages (
+    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    contract_id  UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    page_index   INT  NOT NULL,          -- 0-based, matches ocr-service /vision `pages[].page_index`
+    image_data   BYTEA NOT NULL,          -- JPEG bytes (~30-80KB per page @ 100 DPI)
+    image_mime   TEXT NOT NULL DEFAULT 'image/jpeg',
+    bytes        INT,                    -- size in bytes (for stats / admin UI)
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (contract_id, page_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pages_contract ON contract_pages (contract_id);
+
 -- ===== Doc registry helpers =====
 -- Sequence generator for `doc_no` (used by 03-docs-hub for INSERT when client
 -- didn't supply a doc_no). Format: DOC-YYYYMMDD-NNNN, monotonically incrementing.
