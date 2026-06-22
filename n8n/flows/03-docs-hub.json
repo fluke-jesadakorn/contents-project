@@ -1692,16 +1692,31 @@
     {
       "id": "line-extract-vision",
       "name": "LINE Extract via Vision LLM",
-      "type": "n8n-nodes-base.code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         1584,
         432
       ],
       "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// Extract text from file via Ollama Vision LLM (qwen3.6 35B-A3B).\n// Works for PDF (render→image→vision, all pages), JPG/PNG (direct vision), TXT (decode).\n// Empty result → downstream rolls back the file.\nconst inputs = $input.first().json || {};\nconst fileName = inputs.file_name || 'unknown';\nconst fileMime = inputs.file_mime || '';\nconst fileSize = inputs.file_size || 0;\nconst b64 = inputs.file_data_b64 || '';\n\nconst ext = fileName.toLowerCase().split('.').pop() || '';\nconst isPdf = ext === 'pdf' || fileMime === 'application/pdf';\nconst isImage = ['jpg','jpeg','png','webp','gif','bmp'].includes(ext) || fileMime.startsWith('image/');\nconst isText = ['txt','md','csv','log'].includes(ext) || fileMime.startsWith('text/');\n\nif (!b64) {\n  return [{ json: { text: '', source: 'no-data', chars: 0, error: 'no file_data_b64 from Decode' } }];\n}\n\n// === TEXT: decode directly ===\nif (isText) {\n  try {\n    const buf = Buffer.from(b64, 'base64');\n    const text = buf.toString('utf-8');\n    return [{ json: { text, source: 'text-direct', chars: text.length, pages: 0 } }];\n  } catch (e) {\n    return [{ json: { text: '', source: 'text-fail', chars: 0, error: e.message } }];\n  }\n}\n\n// === IMAGE (single) or PDF (multi-page) ===\n// For PDF: render all pages → array of PNGs → call vision once per page → concat text\n// For IMAGE: single vision call\n\nconst ollamaUrl = ($env.OLLAMA_URL || 'http://127.0.0.1:11434') + '/api/generate';\nconst visionModel = $env.OLLAMA_VISION_MODEL || 'qwen3.6:35b-a3b-q4_K_M';\nconst prompt = 'ดึงข้อความทั้งหมดจากเอกสารนี้ ตอบเป็น plain text เท่านั้น ไม่ต้องมี markdown formatting, code block, หรือคำอธิบาย ให้ข้อความดิบจากเอกสารเท่านั้น';\n\nlet imageB64List = [];\nlet source = 'unknown';\nlet pageCount = 0;\n\nif (isImage) {\n  imageB64List = [b64];\n  source = 'vision-image';\n  pageCount = 1;\n} else if (isPdf) {\n  // Render PDF → array of PNGs\n  const fs = require('fs');\n  const { execSync } = require('child_process');\n  const path = require('path');\n  const tmpDir = '/tmp/vision-pdf';\n  try { fs.mkdirSync(tmpDir, { recursive: true }); } catch (e) {}\n  const stamp = Date.now();\n  const pdfPath = `${tmpDir}/in-${stamp}.pdf`;\n  const pngPrefix = `${tmpDir}/out-${stamp}`;\n  try {\n    fs.writeFileSync(pdfPath, Buffer.from(b64, 'base64'));\n    // -r 120 dpi, ALL pages (no -f/-l)\n    execSync(`pdftoppm -png -r 120 \"${pdfPath}\" \"${pngPrefix}\"`, { timeout: 60000, stdio: 'pipe' });\n    const pages = fs.readdirSync(tmpDir)\n      .filter(f => f.startsWith(`out-${stamp}-`) && f.endsWith('.png'))\n      .sort()\n      .map(f => `${tmpDir}/${f}`);\n    if (pages.length === 0) {\n      return [{ json: { text: '', source: 'render-fail', chars: 0, error: 'pdftoppm produced no output' } }];\n    }\n    imageB64List = pages.map(p => fs.readFileSync(p).toString('base64'));\n    source = 'vision-pdf';\n    pageCount = pages.length;\n    // cleanup pngs (keep pdf for debugging)\n    try { for (const p of pages) fs.unlinkSync(p); } catch (e) {}\n  } catch (e) {\n    return [{ json: { text: '', source: 'render-fail', chars: 0, error: `pdftoppm failed: ${e.message}` } }];\n  }\n} else {\n  return [{ json: { text: '', source: 'unsupported', chars: 0, error: `unsupported file type: ext=${ext}, mime=${fileMime}` } }];\n}\n\n// === Call Ollama Vision LLM (one per page) ===\nconst pageTexts = [];\nlet totalEval = 0;\nlet totalDurationMs = 0;\nfor (let i = 0; i < imageB64List.length; i++) {\n  try {\n    const resp = await this.helpers.httpRequest({\n      method: 'POST',\n      url: ollamaUrl,\n      headers: { 'Content-Type': 'application/json' },\n      body: {\n        model: visionModel,\n        prompt,\n        images: [imageB64List[i]],\n        stream: false,\n        options: { temperature: 0.1 },\n      },\n      timeout: 180000,\n    });\n    const t = (resp && resp.response ? String(resp.response) : '').trim();\n    if (t) pageTexts.push(t);\n    totalEval += (resp && resp.eval_count) || 0;\n    totalDurationMs += (resp && resp.total_duration) ? Math.round(resp.total_duration / 1e6) : 0;\n  } catch (e) {\n    // One page failed — log but continue with others\n    pageTexts.push(`[page ${i+1} vision failed: ${e.message}]`);\n  }\n}\n\nconst fullText = pageTexts.join('\\n\\n');\nreturn [{ json: {\n  text: fullText,\n  source,\n  chars: fullText.length,\n  pages: pageCount,\n  vision_model: visionModel,\n  vision_eval_count: totalEval,\n  vision_duration_ms: totalDurationMs,\n}}];\n"
-      },
-      "typeVersion": 2
+        "method": "POST",
+        "url": "http://127.0.0.1:8765/vision",
+        "options": {
+          "timeout": 180000
+        },
+        "jsonBody": "={{ JSON.stringify({ file_data_b64: $json.file_data_b64, file_mime: $json.file_mime, file_name: $json.file_name }) }}",
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      }
     }
   ],
   "connections": {
