@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-22T12:05:18.257Z",
+  "updatedAt": "2026-06-22T18:35:39.647Z",
   "createdAt": "2026-06-18T04:19:01.736Z",
   "id": "TL2qrOygnWKY69xe",
   "name": "03 - Docs Hub",
@@ -1461,7 +1461,7 @@
         432
       ],
       "parameters": {
-        "jsCode": "// Download LINE message content and expose both binary + base64 for storage.\n// The channel token must come from the n8n runtime environment.\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\nconst token = ($env.LINE_CHANNEL_ACCESS_TOKEN || '').trim();\nif (!token) {\n  throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN in n8n environment');\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst src = evt.source || {};\nconst fname = msg.fileName || 'upload.pdf';\nconst ext = fname.toLowerCase().split('.').pop();\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\nelse if (ext === 'txt') mime = 'text/plain';\nelse if (ext === 'docx') mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    line_user_id: src.userId || '',\n    line_group_id: src.groupId || '',\n    line_message_id: messageId || '',\n    file_type: ext || '',\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData, file: binaryData }\n}];\n"
+        "jsCode": "// Download LINE message content and expose both binary + base64 for storage.\n// The channel token must come from the n8n runtime environment.\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\nconst token = ($env.LINE_CHANNEL_ACCESS_TOKEN || '').trim();\nif (!token) {\n  throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN in n8n environment');\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    // n8n's helper maps 'encoding' -> axios 'responseType' (see\n    // n8n-core/dist/execution-engine/.../http-request.js:60-62). 'encoding: null'\n    // was silently coerced to axios 'responseType: null' which defaults to\n    // 'json' -> UTF-8 decode + U+FFFD replacement for invalid bytes (verified June\n    // 2026: 69,301 bytes -> 111,939 bytes with 21,746 U+FFFD chars).\n    // 'encoding: arraybuffer' -> axios returns ArrayBuffer (raw bytes).\n    encoding: 'arraybuffer',\n    timeout: 30000,\n  });\n} catch (e) {\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\n// responseType: 'arraybuffer' returns ArrayBuffer; wrap to Buffer for downstream ops.\nconst buffer = Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst src = evt.source || {};\nconst fname = msg.fileName || 'upload.pdf';\nconst ext = fname.toLowerCase().split('.').pop();\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\nelse if (ext === 'txt') mime = 'text/plain';\nelse if (ext === 'docx') mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    line_user_id: src.userId || '',\n    line_group_id: src.groupId || '',\n    line_message_id: messageId || '',\n    file_type: ext || '',\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: binaryData\n}];\n"
       },
       "typeVersion": 2
     },
@@ -2431,9 +2431,9 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "712dce07-b919-4a48-9744-b64479d99362",
-  "activeVersionId": "712dce07-b919-4a48-9744-b64479d99362",
-  "versionCounter": 18,
+  "versionId": "54e1e9ec-58be-4782-ac77-0ed2c5753ab5",
+  "activeVersionId": "54e1e9ec-58be-4782-ac77-0ed2c5753ab5",
+  "versionCounter": 41,
   "triggerCount": 3,
   "sourceWorkflowId": null,
   "shared": [
@@ -2458,9 +2458,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-06-22T12:05:18.257Z",
-    "createdAt": "2026-06-22T07:28:51.851Z",
-    "versionId": "712dce07-b919-4a48-9744-b64479d99362",
+    "updatedAt": "2026-06-22T18:35:39.652Z",
+    "createdAt": "2026-06-22T18:35:39.652Z",
+    "versionId": "54e1e9ec-58be-4782-ac77-0ed2c5753ab5",
     "workflowId": "TL2qrOygnWKY69xe",
     "nodes": [
       {
@@ -3917,7 +3917,7 @@
           432
         ],
         "parameters": {
-          "jsCode": "// Download LINE message content and expose both binary + base64 for storage.\n// The channel token must come from the n8n runtime environment.\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\nconst token = ($env.LINE_CHANNEL_ACCESS_TOKEN || '').trim();\nif (!token) {\n  throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN in n8n environment');\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    encoding: null,\n    timeout: 30000,\n  });\n} catch (e) {\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\nconst buffer = Buffer.isBuffer(response) ? response : Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst src = evt.source || {};\nconst fname = msg.fileName || 'upload.pdf';\nconst ext = fname.toLowerCase().split('.').pop();\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\nelse if (ext === 'txt') mime = 'text/plain';\nelse if (ext === 'docx') mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    line_user_id: src.userId || '',\n    line_group_id: src.groupId || '',\n    line_message_id: messageId || '',\n    file_type: ext || '',\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: { data: binaryData, file: binaryData }\n}];\n"
+          "jsCode": "// Download LINE message content and expose both binary + base64 for storage.\n// The channel token must come from the n8n runtime environment.\nconst sm = $('Smart Router').first().json;\nconst evt = sm._event || {};\nconst messageId = evt.message?.id;\nif (!messageId) {\n  throw new Error('No message id from Smart Router event');\n}\n\nconst token = ($env.LINE_CHANNEL_ACCESS_TOKEN || '').trim();\nif (!token) {\n  throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN in n8n environment');\n}\n\nlet response;\ntry {\n  response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api-data.line.me/v2/bot/message/${messageId}/content`,\n    headers: { Authorization: `Bearer ${token}` },\n    // n8n's helper maps 'encoding' -> axios 'responseType' (see\n    // n8n-core/dist/execution-engine/.../http-request.js:60-62). 'encoding: null'\n    // was silently coerced to axios 'responseType: null' which defaults to\n    // 'json' -> UTF-8 decode + U+FFFD replacement for invalid bytes (verified June\n    // 2026: 69,301 bytes -> 111,939 bytes with 21,746 U+FFFD chars).\n    // 'encoding: arraybuffer' -> axios returns ArrayBuffer (raw bytes).\n    encoding: 'arraybuffer',\n    timeout: 30000,\n  });\n} catch (e) {\n  throw new Error(`LINE content download failed: ${e.message} (message_id=${messageId})`);\n}\n\n// responseType: 'arraybuffer' returns ArrayBuffer; wrap to Buffer for downstream ops.\nconst buffer = Buffer.from(response);\nif (!buffer || buffer.length === 0) {\n  throw new Error('Empty response from LINE content API');\n}\n\nconst msg = evt.message || {};\nconst src = evt.source || {};\nconst fname = msg.fileName || 'upload.pdf';\nconst ext = fname.toLowerCase().split('.').pop();\nlet mime = msg.type === 'image' ? 'image/jpeg' : 'application/octet-stream';\nif (ext === 'pdf') mime = 'application/pdf';\nelse if (ext === 'png') mime = 'image/png';\nelse if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';\nelse if (ext === 'txt') mime = 'text/plain';\nelse if (ext === 'docx') mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\n\nconst b64 = buffer.toString('base64');\nconst binaryData = await this.helpers.prepareBinaryData(buffer, fname, mime);\n\nreturn [{\n  json: Object.assign({}, sm, {\n    _event: evt,\n    line_user_id: src.userId || '',\n    line_group_id: src.groupId || '',\n    line_message_id: messageId || '',\n    file_type: ext || '',\n    file_data_b64: b64,\n    file_mime: mime,\n    file_name: fname,\n    file_size: buffer.length,\n  }),\n  binary: binaryData\n}];\n"
         },
         "typeVersion": 2
       },
@@ -4880,18 +4880,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-06-22T07:28:51.906Z",
-        "id": 9,
+        "createdAt": "2026-06-22T18:35:39.760Z",
+        "id": 65,
         "workflowId": "TL2qrOygnWKY69xe",
-        "versionId": "712dce07-b919-4a48-9744-b64479d99362",
+        "versionId": "54e1e9ec-58be-4782-ac77-0ed2c5753ab5",
         "event": "deactivated",
         "userId": "35364927-4efa-4921-b395-25d6fee03c8d"
       },
       {
-        "createdAt": "2026-06-22T07:28:51.928Z",
-        "id": 10,
+        "createdAt": "2026-06-22T18:35:39.781Z",
+        "id": 66,
         "workflowId": "TL2qrOygnWKY69xe",
-        "versionId": "712dce07-b919-4a48-9744-b64479d99362",
+        "versionId": "54e1e9ec-58be-4782-ac77-0ed2c5753ab5",
         "event": "activated",
         "userId": "35364927-4efa-4921-b395-25d6fee03c8d"
       }
