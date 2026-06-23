@@ -139,7 +139,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM (\n  SELECT id, doc_no, file_name, file_type, category, status, source, size_bytes, chunk_count, line_user_id, uploaded_at, updated_at, error_message\n  FROM contracts c\n  WHERE (($1::text IS NULL OR $1 = '')\n      OR LOWER(COALESCE(file_name,'')) LIKE '%' || LOWER($1) || '%'\n      OR LOWER(COALESCE(category,'')) LIKE '%' || LOWER($1) || '%'\n      OR LOWER(COALESCE(source,'')) LIKE '%' || LOWER($1) || '%'\n      OR LOWER(COALESCE(doc_no,'')) LIKE '%' || LOWER($1) || '%')\n    AND ($2::text IS NULL OR $2 = '' OR status = $2)\n  ORDER BY uploaded_at DESC\n  LIMIT $3::int OFFSET $4::int\n) real\nUNION ALL\nSELECT NULL::uuid, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL\nWHERE NOT EXISTS (SELECT 1 FROM contracts)\nORDER BY 1 NULLS LAST",
+        "query": "WITH matched AS (\n  SELECT id, doc_no, file_name, file_type, category, status, source,\n         size_bytes, chunk_count, line_user_id, uploaded_at, updated_at, error_message\n  FROM contracts c\n  WHERE (($1::text IS NULL OR $1 = '')\n      OR LOWER(COALESCE(file_name,'')) LIKE '%' || LOWER($1) || '%'\n      OR LOWER(COALESCE(category,'')) LIKE '%' || LOWER($1) || '%'\n      OR LOWER(COALESCE(source,'')) LIKE '%' || LOWER($1) || '%'\n      OR LOWER(COALESCE(doc_no,'')) LIKE '%' || LOWER($1) || '%')\n    AND ($2::text IS NULL OR $2 = '' OR status = $2)\n  ORDER BY uploaded_at DESC\n  LIMIT $3::int OFFSET $4::int\n)\nSELECT COALESCE(json_agg(row_to_json(matched)), '[]'::json)::text AS data_json,\n       COUNT(*)::int AS count\nFROM matched",
         "options": {
           "queryReplacement": "={{ [($json.query && $json.query.q) || null, ($json.query && $json.query.status) || null, parseInt(($json.query && $json.query.limit) || 200, 10), parseInt(($json.query && $json.query.offset) || 0, 10)] }}"
         }
@@ -251,7 +251,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Wrap list results - always output 1 item even if empty\nlet items = $input.all().map(i => i.json);\n// Filter out dummy rows (where id IS NULL)\nitems = items.filter(it => it && it.id != null);\nreturn [{json: {ok: true, action: 'list', count: items.length, data: items}}];"
+        "jsCode": "// Parse json_agg output from PG: Admin List - always exactly 1 row.\nconst row = $input.first().json;\nconst data = JSON.parse(row.data_json || '[]');\nreturn [{json: {ok: true, action: 'list', count: row.count, data}}];"
       },
       "id": "wrap-list",
       "name": "Wrap List",
@@ -634,7 +634,7 @@
   "pinData": {},
   "versionId": "eca9fb59-d070-4ebe-b85f-326763f5899d",
   "activeVersionId": "c9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f",
-  "versionCounter": 12,
+  "versionCounter": 13,
   "updatedAt": "2026-06-22T12:08:19.051Z",
   "id": "AdM1nFlow12345678CD0cHub2",
   "createdAt": "2026-06-18T04:19:01.736Z",
