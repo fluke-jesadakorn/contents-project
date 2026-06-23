@@ -625,6 +625,61 @@
           }
         ]
       ]
+    },
+    "Admin Semantic Search": {
+      "main": [
+        [
+          {
+            "node": "Parse Semantic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Semantic": {
+      "main": [
+        [
+          {
+            "node": "Embed Semantic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Semantic": {
+      "main": [
+        [
+          {
+            "node": "PG: Admin Semantic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: Admin Semantic": {
+      "main": [
+        [
+          {
+            "node": "Wrap Semantic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Semantic": {
+      "main": [
+        [
+          {
+            "node": "Respond Semantic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -634,7 +689,7 @@
   "pinData": {},
   "versionId": "eca9fb59-d070-4ebe-b85f-326763f5899d",
   "activeVersionId": "c9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f",
-  "versionCounter": 23,
+  "versionCounter": 25,
   "updatedAt": "2026-06-22T12:08:19.051Z",
   "id": "AdM1nFlow12345678CD0cHub2",
   "createdAt": "2026-06-18T04:19:01.736Z",
