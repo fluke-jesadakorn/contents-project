@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 interface HRUser {
   id: string;
@@ -57,12 +57,32 @@ interface Employee {
   created_at: string;
 }
 
+// ─── Calendar Helpers ───────────────────────────────────────────────────────
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+function getFirstDayOfMonth(year: number, month: number) {
+  return new Date(year, month, 1).getDay(); // 0 = Sun
+}
+function toYMD(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+const THAI_MONTHS = [
+  'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+  'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม',
+];
+const DAY_LABELS = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+
 export default function HRDashboard() {
   const [hrUsers, setHrUsers] = useState<HRUser[]>([]);
   const [selectedHrId, setSelectedHrId] = useState<string>('');
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'employees'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'employees' | 'calendar' | 'analytics'>('requests');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, approved: 0, rejected: 0 });
   const [deptStats, setDeptStats] = useState<DeptStat[]>([]);
@@ -71,7 +91,14 @@ export default function HRDashboard() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredEmployees = employees.filter(emp => 
+  // Calendar state
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [tooltipReq, setTooltipReq] = useState<{ req: LeaveRequest; x: number; y: number } | null>(null);
+
+  // Export state
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  const filteredEmployees = employees.filter(emp =>
     emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -89,8 +116,6 @@ export default function HRDashboard() {
         setStats(data.stats);
         setDeptStats(data.deptStats);
         setEmployees(data.employees || []);
-        
-        // Auto-select first HR user if none selected
         if (data.hrUsers.length > 0 && !selectedHrId) {
           setSelectedHrId(data.hrUsers[0].id);
         }
@@ -108,38 +133,42 @@ export default function HRDashboard() {
     fetchData();
   }, []);
 
+  // Close tooltip on outside click
+  useEffect(() => {
+    const handler = () => setTooltipReq(null);
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, []);
+
   const handleDecision = async (requestId: string, action: 'approve' | 'reject') => {
     if (!selectedHrId) {
       alert('โปรดเลือกผู้ใช้ HR ที่จะอนุมัติงานก่อน');
       return;
     }
-
     let rejectReason = '';
     if (action === 'reject') {
       const reasonInput = prompt('โปรดระบุเหตุผลในการปฏิเสธคำขอลางานนี้ (จำเป็น):');
-      if (reasonInput === null) return; // User cancelled prompt
+      if (reasonInput === null) return;
       if (!reasonInput.trim()) {
         alert('จำเป็นต้องระบุเหตุผลในการปฏิเสธคำขอลา');
         return;
       }
       rejectReason = reasonInput.trim();
     }
-
     try {
       setSubmittingId(requestId);
       const res = await fetch('/api/leave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          requestId, 
-          action, 
+        body: JSON.stringify({
+          requestId,
+          action,
           hrId: selectedHrId,
-          rejectReason: action === 'reject' ? rejectReason : undefined
+          rejectReason: action === 'reject' ? rejectReason : undefined,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        // Refresh data
         await fetchData();
       } else {
         alert('เกิดข้อผิดพลาด: ' + data.error);
@@ -155,7 +184,7 @@ export default function HRDashboard() {
     switch (type) {
       case 'sick': return '🤒 ลาป่วย';
       case 'annual': return '✈️ ลาพักร้อน';
-      case 'personal': return 'ลากิจ';
+      case 'personal': return '💼 ลากิจ';
       default: return type;
     }
   };
@@ -171,11 +200,384 @@ export default function HRDashboard() {
     }
   };
 
-  // Find max dept days to calculate bar percentage
   const maxDeptDays = deptStats.length > 0 ? Math.max(...deptStats.map(d => d.total_days)) : 1;
+
+  // ─── Analytics: Monthly Trend (last 6 months) ────────────────────────────
+  const monthlyTrend = useMemo(() => {
+    const now = new Date();
+    const months: { key: string; label: string; sick: number; annual: number; personal: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = `${THAI_MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+      months.push({ key, label, sick: 0, annual: 0, personal: 0 });
+    }
+    for (const req of requests) {
+      const created = req.created_at.slice(0, 7); // YYYY-MM
+      const slot = months.find(m => m.key === created);
+      if (slot) {
+        if (req.leave_type === 'sick') slot.sick += req.days;
+        else if (req.leave_type === 'annual') slot.annual += req.days;
+        else if (req.leave_type === 'personal') slot.personal += req.days;
+      }
+    }
+    return months;
+  }, [requests]);
+
+  const maxMonthlyDays = useMemo(() => {
+    return Math.max(...monthlyTrend.map(m => m.sick + m.annual + m.personal), 1);
+  }, [monthlyTrend]);
+
+  // ─── Analytics: Leave Type Distribution (approved) ───────────────────────
+  const leaveTypeCounts = useMemo(() => {
+    const approved = requests.filter(r => r.status === 'approved');
+    const sick = approved.filter(r => r.leave_type === 'sick').reduce((a, b) => a + b.days, 0);
+    const annual = approved.filter(r => r.leave_type === 'annual').reduce((a, b) => a + b.days, 0);
+    const personal = approved.filter(r => r.leave_type === 'personal').reduce((a, b) => a + b.days, 0);
+    const total = sick + annual + personal || 1;
+    return { sick, annual, personal, total };
+  }, [requests]);
+
+  // ─── Analytics: Burnout Risk ──────────────────────────────────────────────
+  const burnoutRisk = useMemo(() => {
+    return employees.filter(e => e.used_annual_leave === 0 && e.total_annual_leave > 0);
+  }, [employees]);
+
+  // ─── Calendar: Leaves for a given cell date ───────────────────────────────
+  const getRequestsForDate = (cellDate: string) => {
+    return requests.filter(req =>
+      req.status === 'approved' &&
+      req.start_date <= cellDate &&
+      req.end_date >= cellDate
+    );
+  };
+
+  // ─── Export handler ───────────────────────────────────────────────────────
+  const handleExport = (period: 'this-month' | 'last-month' | 'all') => {
+    setShowExportMenu(false);
+    const now = new Date();
+    if (period === 'all') {
+      window.open('/api/export', '_blank');
+    } else {
+      const d = period === 'this-month'
+        ? new Date(now.getFullYear(), now.getMonth(), 1)
+        : new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      window.open(`/api/export?month=${month}`, '_blank');
+    }
+  };
+
+  // ─── Calendar Tab Renderer ────────────────────────────────────────────────
+  const renderCalendar = () => {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfMonth(year, month);
+    const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    const prevMonth = () => setCalendarDate(new Date(year, month - 1, 1));
+    const nextMonth = () => setCalendarDate(new Date(year, month + 1, 1));
+
+    const leaveChipClass = (type: string) => {
+      if (type === 'sick') return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+      if (type === 'annual') return 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+      return 'bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Calendar Header */}
+        <div className="flex items-center justify-between bg-slate-900/40 border border-slate-800 px-6 py-4 rounded-2xl">
+          <button
+            onClick={prevMonth}
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition font-bold text-sm cursor-pointer"
+          >
+            ← ก่อนหน้า
+          </button>
+          <div className="text-center">
+            <h2 className="text-xl font-extrabold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+              {THAI_MONTHS[month]} {year + 543}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">{year}</p>
+          </div>
+          <button
+            onClick={nextMonth}
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition font-bold text-sm cursor-pointer"
+          >
+            ถัดไป →
+          </button>
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="bg-slate-900/30 border border-slate-800 rounded-2xl overflow-hidden">
+          {/* Day headers */}
+          <div className="grid grid-cols-7 border-b border-slate-800">
+            {DAY_LABELS.map((d, i) => (
+              <div
+                key={d}
+                className={`py-3 text-center text-xs font-bold uppercase tracking-wider ${i === 0 ? 'text-rose-400' : i === 6 ? 'text-indigo-400' : 'text-slate-400'}`}
+              >
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div className="grid grid-cols-7">
+            {cells.map((day, idx) => {
+              if (day === null) {
+                return <div key={`empty-${idx}`} className="min-h-[110px] border-b border-r border-slate-800/60 bg-slate-950/30" />;
+              }
+              const cellDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const todayStr = toYMD(new Date());
+              const isToday = cellDate === todayStr;
+              const cellRequests = getRequestsForDate(cellDate);
+              const dayOfWeek = (firstDay + day - 1) % 7;
+              const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+              return (
+                <div
+                  key={cellDate}
+                  className={`min-h-[110px] p-2 border-b border-r border-slate-800/60 flex flex-col gap-1 transition-colors ${
+                    isToday ? 'bg-indigo-950/40' : isWeekend ? 'bg-slate-950/50' : 'bg-transparent hover:bg-slate-900/20'
+                  }`}
+                >
+                  <span className={`text-xs font-bold self-start px-1.5 py-0.5 rounded-md ${
+                    isToday
+                      ? 'bg-indigo-500 text-white'
+                      : isWeekend
+                      ? 'text-slate-500'
+                      : 'text-slate-400'
+                  }`}>
+                    {day}
+                  </span>
+                  <div className="flex flex-col gap-0.5 flex-1">
+                    {cellRequests.slice(0, 3).map(req => (
+                      <button
+                        key={req.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTooltipReq({ req, x: e.clientX, y: e.clientY });
+                        }}
+                        title={`${req.employee_name} - ${getLeaveTypeThai(req.leave_type)}`}
+                        className={`text-[10px] px-1.5 py-0.5 rounded-md truncate text-left font-semibold cursor-pointer hover:opacity-80 transition-opacity ${leaveChipClass(req.leave_type)}`}
+                      >
+                        {req.employee_name.split(' ')[0]}
+                      </button>
+                    ))}
+                    {cellRequests.length > 3 && (
+                      <span className="text-[10px] text-slate-500 font-semibold px-1">+{cellRequests.length - 3} เพิ่มเติม</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-4 items-center bg-slate-900/30 border border-slate-800 px-5 py-3 rounded-xl">
+          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">ตำนาน:</span>
+          <span className="flex items-center gap-1.5 text-xs text-emerald-300 font-semibold">
+            <span className="w-3 h-3 rounded-sm bg-emerald-500/40 border border-emerald-500/50 inline-block" />
+            ลาป่วย
+          </span>
+          <span className="flex items-center gap-1.5 text-xs text-indigo-300 font-semibold">
+            <span className="w-3 h-3 rounded-sm bg-indigo-500/40 border border-indigo-500/50 inline-block" />
+            ลาพักร้อน
+          </span>
+          <span className="flex items-center gap-1.5 text-xs text-amber-300 font-semibold">
+            <span className="w-3 h-3 rounded-sm bg-amber-500/40 border border-amber-500/50 inline-block" />
+            ลากิจ
+          </span>
+          <span className="ml-auto text-xs text-slate-500 italic">คลิกที่ชิปเพื่อดูรายละเอียด</span>
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Analytics Tab Renderer ───────────────────────────────────────────────
+  const renderAnalytics = () => {
+    const sickPct = Math.round((leaveTypeCounts.sick / leaveTypeCounts.total) * 360);
+    const annualPct = Math.round((leaveTypeCounts.annual / leaveTypeCounts.total) * 360);
+    const conicGrad = `conic-gradient(
+      #10b981 0deg ${sickPct}deg,
+      #6366f1 ${sickPct}deg ${sickPct + annualPct}deg,
+      #f59e0b ${sickPct + annualPct}deg 360deg
+    )`;
+
+    return (
+      <div className="space-y-8">
+        {/* KPI Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
+            <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">คำขอทั้งหมด</span>
+            <span className="text-3xl font-black text-slate-100 mt-2">{stats.total}</span>
+          </div>
+          <div className="bg-amber-500/10 border border-amber-500/20 p-5 rounded-2xl flex flex-col justify-between">
+            <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">รออนุมัติ</span>
+            <span className="text-3xl font-black text-amber-300 mt-2">{stats.pending}</span>
+          </div>
+          <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-2xl flex flex-col justify-between">
+            <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">อนุมัติแล้ว</span>
+            <span className="text-3xl font-black text-emerald-300 mt-2">{stats.approved}</span>
+          </div>
+          <div className="bg-rose-500/10 border border-rose-500/20 p-5 rounded-2xl flex flex-col justify-between">
+            <span className="text-rose-400 text-xs font-bold uppercase tracking-wider">ปฏิเสธแล้ว</span>
+            <span className="text-3xl font-black text-rose-300 mt-2">{stats.rejected}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Monthly Trend Bar Chart */}
+          <div className="lg:col-span-2 bg-slate-900/40 border border-slate-800 p-6 rounded-2xl">
+            <h2 className="text-base font-bold text-slate-200 mb-1 flex items-center gap-2">
+              📈 แนวโน้มการลา (6 เดือนล่าสุด)
+            </h2>
+            <p className="text-xs text-slate-500 mb-5">นับจากวันที่ส่งคำขอ (ทุกสถานะ) หน่วย: วัน</p>
+            <div className="flex items-end gap-3 h-40">
+              {monthlyTrend.map(m => {
+                const total = m.sick + m.annual + m.personal;
+                const pct = (total / maxMonthlyDays) * 100;
+                const sickH = total > 0 ? (m.sick / total) * pct : 0;
+                const annualH = total > 0 ? (m.annual / total) * pct : 0;
+                const personalH = total > 0 ? (m.personal / total) * pct : 0;
+                return (
+                  <div key={m.key} className="flex-1 flex flex-col items-center gap-1 group">
+                    <span className="text-[10px] text-slate-400 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">{total > 0 ? `${total}ว` : '-'}</span>
+                    <div
+                      className="w-full flex flex-col-reverse rounded-t-lg overflow-hidden"
+                      style={{ height: `${Math.max(pct, total > 0 ? 4 : 0)}%`, minHeight: total > 0 ? '4px' : '0' }}
+                    >
+                      <div style={{ height: `${sickH}%` }} className="bg-emerald-500/70 w-full transition-all duration-500" />
+                      <div style={{ height: `${annualH}%` }} className="bg-indigo-500/70 w-full transition-all duration-500" />
+                      <div style={{ height: `${personalH}%` }} className="bg-amber-500/70 w-full transition-all duration-500" />
+                    </div>
+                    <span className="text-[10px] text-slate-500 text-center leading-tight">{m.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-4 mt-4 pt-4 border-t border-slate-800">
+              <span className="flex items-center gap-1.5 text-xs text-emerald-300"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/70 inline-block" />ลาป่วย</span>
+              <span className="flex items-center gap-1.5 text-xs text-indigo-300"><span className="w-2.5 h-2.5 rounded-sm bg-indigo-500/70 inline-block" />ลาพักร้อน</span>
+              <span className="flex items-center gap-1.5 text-xs text-amber-300"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500/70 inline-block" />ลากิจ</span>
+            </div>
+          </div>
+
+          {/* Pie Chart: Leave Type Distribution */}
+          <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl flex flex-col items-center justify-center">
+            <h2 className="text-base font-bold text-slate-200 mb-1 self-start">🍰 สัดส่วนประเภทการลา</h2>
+            <p className="text-xs text-slate-500 mb-5 self-start">เฉพาะที่อนุมัติแล้ว (วันสะสม)</p>
+            <div
+              className="w-36 h-36 rounded-full shadow-2xl shadow-indigo-950/50"
+              style={{ background: conicGrad }}
+            />
+            <div className="mt-5 space-y-2 w-full">
+              {[
+                { label: 'ลาป่วย', days: leaveTypeCounts.sick, color: 'bg-emerald-500', text: 'text-emerald-300' },
+                { label: 'ลาพักร้อน', days: leaveTypeCounts.annual, color: 'bg-indigo-500', text: 'text-indigo-300' },
+                { label: 'ลากิจ', days: leaveTypeCounts.personal, color: 'bg-amber-500', text: 'text-amber-300' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 font-semibold text-slate-300">
+                    <span className={`w-2.5 h-2.5 rounded-sm ${item.color} inline-block opacity-80`} />
+                    {item.label}
+                  </span>
+                  <span className={`font-extrabold ${item.text}`}>
+                    {item.days} วัน ({Math.round((item.days / leaveTypeCounts.total) * 100)}%)
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Department Horizontal Bar Chart */}
+          <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl">
+            <h2 className="text-base font-bold text-slate-200 mb-1 flex items-center gap-2">
+              🏢 วันลาตามแผนก (อนุมัติแล้ว)
+            </h2>
+            <p className="text-xs text-slate-500 mb-5">วันลาสะสมทุกประเภทที่ได้รับการอนุมัติ</p>
+            {deptStats.length === 0 ? (
+              <p className="text-slate-500 text-sm italic text-center py-8">ยังไม่มีข้อมูล</p>
+            ) : (
+              <div className="space-y-4">
+                {deptStats.map(dept => {
+                  const pct = (dept.total_days / maxDeptDays) * 100;
+                  return (
+                    <div key={dept.department} className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-slate-300">{dept.department}</span>
+                        <span className="text-purple-400 font-bold">{dept.total_days} วัน</span>
+                      </div>
+                      <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Burnout Risk Alert */}
+          <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl">
+            <h2 className="text-base font-bold text-slate-200 mb-1 flex items-center gap-2">
+              🔥 ความเสี่ยง Burnout
+            </h2>
+            <p className="text-xs text-slate-500 mb-5">พนักงานที่ยังไม่ได้ใช้วันพักร้อนเลย (0/{'>'}0 วัน)</p>
+            {burnoutRisk.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <span className="text-3xl mb-2">✅</span>
+                <p className="text-emerald-400 font-semibold text-sm">พนักงานทุกคนใช้วันพักร้อนแล้ว</p>
+                <p className="text-slate-500 text-xs mt-1">ไม่พบความเสี่ยง Burnout</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
+                {burnoutRisk.map(emp => (
+                  <div
+                    key={emp.id}
+                    className="bg-rose-950/30 border border-rose-500/25 px-4 py-3 rounded-xl flex items-center justify-between gap-3"
+                  >
+                    <div>
+                      <div className="font-bold text-sm text-rose-200">{emp.name}</div>
+                      <div className="text-[11px] text-rose-400/70 mt-0.5">{emp.department} · {emp.position}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-bold text-rose-400">0 / {emp.total_annual_leave} วัน</div>
+                      <div className="text-[10px] text-rose-500/60 mt-0.5">ลาพักร้อนสะสม</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12 font-sans selection:bg-indigo-500 selection:text-white">
+      {/* Tooltip Overlay for calendar chips */}
+      {tooltipReq && (
+        <div
+          className="fixed z-50 bg-slate-800 border border-slate-700 text-slate-100 text-xs px-3 py-2 rounded-xl shadow-2xl pointer-events-none max-w-xs"
+          style={{ top: tooltipReq.y + 12, left: tooltipReq.x + 8 }}
+        >
+          <div className="font-bold text-sm text-indigo-300">{tooltipReq.req.employee_name}</div>
+          <div className="mt-0.5 text-slate-400">{getLeaveTypeThai(tooltipReq.req.leave_type)}</div>
+          <div className="text-slate-500 mt-0.5 font-mono">{tooltipReq.req.start_date} → {tooltipReq.req.end_date}</div>
+          <div className="text-slate-300 font-bold mt-0.5">{tooltipReq.req.days} วัน</div>
+        </div>
+      )}
+
       {/* Header Panel */}
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-800 pb-6 mb-8 gap-4">
         <div>
@@ -186,12 +588,10 @@ export default function HRDashboard() {
             ระบบตรวจสอบสิทธิ์ สถิติการลา และพิจารณาอนุมัติคำขอหยุดงานสำหรับฝ่ายบุคคล
           </p>
         </div>
-
-        {/* HR Switcher Dropdown */}
         <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-950/20 self-start md:self-auto">
           <span className="text-xs text-indigo-400 font-bold uppercase tracking-wider">สลับบัญชี HR:</span>
-          <select 
-            value={selectedHrId} 
+          <select
+            value={selectedHrId}
             onChange={(e) => setSelectedHrId(e.target.value)}
             className="bg-transparent border-0 text-slate-200 text-sm font-semibold focus:ring-0 focus:outline-none cursor-pointer"
           >
@@ -205,7 +605,7 @@ export default function HRDashboard() {
       </div>
 
       {/* Tab Switcher */}
-      <div className="max-w-7xl mx-auto flex gap-4 border-b border-slate-800 pb-3 mb-8">
+      <div className="max-w-7xl mx-auto flex flex-wrap gap-3 border-b border-slate-800 pb-3 mb-8">
         <button
           onClick={() => { setActiveTab('requests'); setSelectedEmployeeId(null); }}
           className={`px-4 py-2 text-sm font-bold rounded-lg transition border cursor-pointer ${
@@ -226,12 +626,32 @@ export default function HRDashboard() {
         >
           👥 ทำเนียบพนักงาน ({employees.length} คน)
         </button>
+        <button
+          onClick={() => { setActiveTab('calendar'); }}
+          className={`px-4 py-2 text-sm font-bold rounded-lg transition border cursor-pointer ${
+            activeTab === 'calendar'
+              ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-950/45'
+              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          📅 ปฏิทินการลา
+        </button>
+        <button
+          onClick={() => { setActiveTab('analytics'); }}
+          className={`px-4 py-2 text-sm font-bold rounded-lg transition border cursor-pointer ${
+            activeTab === 'analytics'
+              ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-950/45'
+              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          📊 วิเคราะห์ข้อมูล
+        </button>
       </div>
 
       <div className="max-w-7xl mx-auto space-y-8">
         {loading && requests.length === 0 ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500" />
           </div>
         ) : error ? (
           <div className="p-4 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-xl text-center">
@@ -277,8 +697,8 @@ export default function HRDashboard() {
                           <span className="text-indigo-400 font-bold">{dept.total_days} วัน</span>
                         </div>
                         <div className="h-2.5 w-full bg-slate-850 rounded-full overflow-hidden border border-slate-800/40">
-                          <div 
-                            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-500" 
+                          <div
+                            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-500"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -291,16 +711,54 @@ export default function HRDashboard() {
 
             {/* Leave Requests Table */}
             <div className="bg-slate-900/30 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-              <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+              <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center gap-3">
                 <h2 className="text-lg font-bold text-slate-200">
                   📋 รายการขอลาหยุดทั้งหมด
                 </h2>
-                <button 
-                  onClick={fetchData} 
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600/80 hover:bg-indigo-600 border border-indigo-500/20 text-white transition cursor-pointer"
-                >
-                  โหลดข้อมูลใหม่
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Export Button */}
+                  <div className="relative">
+                    <button
+                      id="export-btn"
+                      onClick={() => setShowExportMenu(v => !v)}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-700/70 hover:bg-emerald-700 border border-emerald-600/30 text-white transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      ⬇️ ส่งออก CSV
+                    </button>
+                    {showExportMenu && (
+                      <div className="absolute right-0 top-full mt-1.5 z-30 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden min-w-[180px]">
+                        <button
+                          id="export-this-month"
+                          onClick={() => handleExport('this-month')}
+                          className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition cursor-pointer"
+                        >
+                          เดือนนี้
+                        </button>
+                        <button
+                          id="export-last-month"
+                          onClick={() => handleExport('last-month')}
+                          className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition cursor-pointer"
+                        >
+                          เดือนที่แล้ว
+                        </button>
+                        <button
+                          id="export-all"
+                          onClick={() => handleExport('all')}
+                          className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition cursor-pointer border-t border-slate-700"
+                        >
+                          ทั้งหมด
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    id="refresh-btn"
+                    onClick={fetchData}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600/80 hover:bg-indigo-600 border border-indigo-500/20 text-white transition cursor-pointer"
+                  >
+                    โหลดข้อมูลใหม่
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -396,7 +854,7 @@ export default function HRDashboard() {
               </div>
             </div>
           </>
-        ) : (
+        ) : activeTab === 'employees' ? (
           /* Tab 2: Employees Directory */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left Side: Employee List */}
@@ -404,7 +862,6 @@ export default function HRDashboard() {
               <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3 mb-2">
                 👥 รายชื่อพนักงาน
               </h2>
-              {/* Search Box */}
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500 text-xs">
                   🔍
@@ -476,7 +933,6 @@ export default function HRDashboard() {
 
                 return (
                   <div className="space-y-6">
-                    {/* Employee Profile Card */}
                     <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl space-y-6">
                       <div className="flex flex-col md:flex-row md:justify-between md:items-start border-b border-slate-850 pb-5 gap-4">
                         <div>
@@ -492,55 +948,47 @@ export default function HRDashboard() {
                         </div>
                       </div>
 
-                      {/* Job Description */}
                       <div>
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">📋 ขอบข่ายหน้าที่งาน (Job Description)</h3>
                         <div className="bg-slate-950/40 border border-slate-850 p-4 rounded-xl text-sm text-slate-300 leading-relaxed italic">
-                          "{emp.job_description || 'ไม่มีรายละเอียดขอบข่ายหน้าที่งานระบุไว้'}"
+                          &ldquo;{emp.job_description || 'ไม่มีรายละเอียดขอบข่ายหน้าที่งานระบุไว้'}&rdquo;
                         </div>
                       </div>
 
-                      {/* Leave Balance Indicators */}
                       <div>
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">📊 สิทธิ์วันลาคงเหลือ</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {/* Sick */}
                           <div className="bg-slate-950/30 border border-slate-850 p-3.5 rounded-xl space-y-2">
                             <div className="flex justify-between text-xs">
                               <span className="font-bold text-slate-300">🤒 ลาป่วย</span>
                               <span className="text-emerald-400 font-extrabold">{sickRem} / {emp.total_sick_leave} วัน</span>
                             </div>
                             <div className="h-2 w-full bg-slate-850 rounded-full overflow-hidden">
-                              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(sickRem/emp.total_sick_leave)*100}%` }} />
+                              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(sickRem / emp.total_sick_leave) * 100}%` }} />
                             </div>
                           </div>
-
-                          {/* Annual */}
                           <div className="bg-slate-950/30 border border-slate-850 p-3.5 rounded-xl space-y-2">
                             <div className="flex justify-between text-xs">
                               <span className="font-bold text-slate-300">✈️ ลาพักร้อน</span>
                               <span className="text-indigo-400 font-extrabold">{annualRem} / {emp.total_annual_leave} วัน</span>
                             </div>
                             <div className="h-2 w-full bg-slate-850 rounded-full overflow-hidden">
-                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(annualRem/emp.total_annual_leave)*100}%` }} />
+                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(annualRem / emp.total_annual_leave) * 100}%` }} />
                             </div>
                           </div>
-
-                          {/* Personal */}
                           <div className="bg-slate-950/30 border border-slate-850 p-3.5 rounded-xl space-y-2">
                             <div className="flex justify-between text-xs">
                               <span className="font-bold text-slate-300">💼 ลากิจ</span>
                               <span className="text-amber-400 font-extrabold">{personalRem} / {emp.total_personal_leave} วัน</span>
                             </div>
                             <div className="h-2 w-full bg-slate-850 rounded-full overflow-hidden">
-                              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${(personalRem/emp.total_personal_leave)*100}%` }} />
+                              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${(personalRem / emp.total_personal_leave) * 100}%` }} />
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Employee Leave History */}
                     <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
                       <h3 className="text-sm font-bold text-slate-200 border-b border-slate-850 pb-3 mb-4 flex items-center gap-2">
                         📜 ประวัติการยื่นใบลาทั้งหมด
@@ -559,16 +1007,10 @@ export default function HRDashboard() {
                                     <span className="text-slate-500 font-bold">•</span>
                                     <span className="text-slate-200 font-bold">{req.days} วัน</span>
                                   </div>
-                                  <div className="text-slate-400 font-mono">
-                                    {req.start_date} ถึง {req.end_date}
-                                  </div>
-                                  <div className="text-slate-400 italic">
-                                    เหตุผล: {req.reason || 'ไม่ได้ระบุ'}
-                                  </div>
+                                  <div className="text-slate-400 font-mono">{req.start_date} ถึง {req.end_date}</div>
+                                  <div className="text-slate-400 italic">เหตุผล: {req.reason || 'ไม่ได้ระบุ'}</div>
                                   {req.status === 'rejected' && req.reject_reason && (
-                                    <div className="text-rose-400 font-medium">
-                                      เหตุผลปฏิเสธ: {req.reject_reason}
-                                    </div>
+                                    <div className="text-rose-400 font-medium">เหตุผลปฏิเสธ: {req.reject_reason}</div>
                                   )}
                                 </div>
                                 <div className="flex flex-col items-start md:items-end gap-1">
@@ -588,6 +1030,10 @@ export default function HRDashboard() {
               })()}
             </div>
           </div>
+        ) : activeTab === 'calendar' ? (
+          renderCalendar()
+        ) : (
+          renderAnalytics()
         )}
       </div>
     </main>
