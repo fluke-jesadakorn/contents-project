@@ -57,12 +57,31 @@ export async function GET() {
       ORDER BY total_days DESC
     `);
 
+    // 5. Get all employees details for user profiles
+    const employeesRes = await query(`
+      SELECT 
+        id, 
+        employee_code, 
+        name, 
+        department, 
+        position, 
+        role, 
+        job_description, 
+        total_sick_leave, used_sick_leave,
+        total_annual_leave, used_annual_leave,
+        total_personal_leave, used_personal_leave,
+        created_at
+      FROM employees 
+      ORDER BY name ASC
+    `);
+
     return NextResponse.json({
       success: true,
       hrUsers: hrUsersRes.rows,
       requests: requestsRes.rows,
       stats: statsRes.rows[0] || { total: 0, pending: 0, approved: 0, rejected: 0 },
       deptStats: deptStatsRes.rows,
+      employees: employeesRes.rows,
     });
   } catch (error: any) {
     console.error('Error fetching HR dashboard data:', error);
