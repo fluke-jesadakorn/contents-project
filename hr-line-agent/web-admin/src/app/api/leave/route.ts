@@ -86,9 +86,9 @@ export async function POST(request: Request) {
           const leaveTypeThai = type === 'sick' ? '🤒 ลาป่วย' : type === 'annual' ? '✈️ ลาพักร้อน' : type === 'personal' ? '💼 ลากิจ' : type;
           let messageText = '';
           if (action === 'approve') {
-            messageText = `✅ คำขอลาของคุณได้รับการอนุมัติแล้ว!\n\n📋 รายละเอียด:\n- ประเภท: ${leaveTypeThai}\n- ระยะเวลา: ${start_date} ถึง ${end_date} (${numDays} วัน)\n- ผู้อนุมัติ: ${hr_name}`;
+            messageText = `✅ คำขอลาของคุณได้รับการอนุมัติแล้ว!\n\n📋 รายละเอียด:\n- ประเภท: ${leaveTypeThai}\n- ระยะเวลา: ${start_date} ถึง ${end_date} (${numDays} วัน)\n- ผู้อนุมัติ: ${hr_name}\n\n- ${hr_name}`;
           } else {
-            messageText = `❌ คำขอลาของคุณถูกปฏิเสธ\n\n📋 รายละเอียด:\n- ประเภท: ${leaveTypeThai}\n- ระยะเวลา: ${start_date} ถึง ${end_date} (${numDays} วัน)\n- เหตุผลการปฏิเสธ: ${rejectReason}\n- ผู้พิจารณา: ${hr_name}`;
+            messageText = `❌ คำขอลาของคุณถูกปฏิเสธ\n\n📋 รายละเอียด:\n- ประเภท: ${leaveTypeThai}\n- ระยะเวลา: ${start_date} ถึง ${end_date} (${numDays} วัน)\n- เหตุผลการปฏิเสธ: ${rejectReason}\n- ผู้พิจารณา: ${hr_name}\n\n- ${hr_name}`;
           }
 
           const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
