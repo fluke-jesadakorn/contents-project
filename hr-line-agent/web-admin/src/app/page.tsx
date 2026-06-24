@@ -21,6 +21,7 @@ interface LeaveRequest {
   end_date: string;
   days: number;
   reason: string;
+  reject_reason: string | null;
   status: 'pending' | 'approved' | 'rejected';
   approved_by: string | null;
   approved_by_name: string | null;
@@ -84,12 +85,28 @@ export default function HRDashboard() {
       return;
     }
 
+    let rejectReason = '';
+    if (action === 'reject') {
+      const reasonInput = prompt('โปรดระบุเหตุผลในการปฏิเสธคำขอลางานนี้ (จำเป็น):');
+      if (reasonInput === null) return; // User cancelled prompt
+      if (!reasonInput.trim()) {
+        alert('จำเป็นต้องระบุเหตุผลในการปฏิเสธคำขอลา');
+        return;
+      }
+      rejectReason = reasonInput.trim();
+    }
+
     try {
       setSubmittingId(requestId);
       const res = await fetch('/api/leave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId, action, hrId: selectedHrId }),
+        body: JSON.stringify({ 
+          requestId, 
+          action, 
+          hrId: selectedHrId,
+          rejectReason: action === 'reject' ? rejectReason : undefined
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -278,6 +295,11 @@ export default function HRDashboard() {
                               {req.approved_by_name && (
                                 <span className="text-[10px] text-slate-500">
                                   โดย: {req.approved_by_name}
+                                </span>
+                              )}
+                              {req.status === 'rejected' && req.reject_reason && (
+                                <span className="text-[10px] text-rose-400 mt-1 max-w-[150px] break-words" title={req.reject_reason}>
+                                  เหตุผล: {req.reject_reason}
                                 </span>
                               )}
                             </div>

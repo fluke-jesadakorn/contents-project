@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS leave_requests (
     end_date       DATE NOT NULL,
     days           NUMERIC(3, 1) NOT NULL,
     reason         TEXT,
+    reject_reason  TEXT,
     status         TEXT NOT NULL DEFAULT 'pending',   -- 'pending' | 'approved' | 'rejected'
     approved_by    UUID REFERENCES employees(id),
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),

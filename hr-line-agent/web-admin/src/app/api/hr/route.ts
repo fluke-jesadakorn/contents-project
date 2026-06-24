@@ -24,6 +24,7 @@ export async function GET() {
         lr.end_date::text,
         lr.days::float as days,
         lr.reason,
+        lr.reject_reason,
         lr.status,
         lr.approved_by,
         appr.name as approved_by_name,
