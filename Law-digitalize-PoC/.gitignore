@@ -1,0 +1,29 @@
+# secrets
+.env
+.env.local
+*.env
+
+# Docker volumes (don't commit data)
+postgres-data/
+minio-data/
+
+# n8n local data
+n8n_data/
+
+# OS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# Python (in case someone re-adds the api service)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs
+*.log
+logs/

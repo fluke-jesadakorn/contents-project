@@ -1,0 +1,866 @@
+{
+  "name": "02 - Document Registry & Stats",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "docs-registry",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-registry",
+      "name": "Registry Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        240
+      ],
+      "webhookId": "docs-registry-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize incoming payload for INSERT\nconst body = ($input.first().json.body || $input.first().json || {});\nconst docNo = (body.doc_no || '').toString().trim() || null;\nconst fileName = (body.filename || body.file_name || 'unknown').toString();\nconst fileType = (body.file_type || 'unknown').toString();\nconst category = body.category || null;\nconst status = body.status || 'registered';\nconst lineUserId = body.line_user_id || null;\nconst lineMessageId = body.line_message_id || null;\nconst lineGroupId = body.line_group_id || null;\nconst storageBucket = body.storage_bucket || null;\nconst storagePath = body.storage_path || null;\nconst sizeBytes = (body.size_bytes === '' || body.size_bytes === undefined) ? null : Number(body.size_bytes);\nconst chunkCount = (body.chunk_count === '' || body.chunk_count === undefined) ? 0 : Number(body.chunk_count);\nconst source = body.source || 'api';\nconst metadata = body.metadata ? JSON.stringify(body.metadata) : null;\nreturn [{ json: {\n  doc_no: docNo, file_name: fileName, file_type: fileType,\n  category, status, line_user_id: lineUserId, line_message_id: lineMessageId,\n  line_group_id: lineGroupId, storage_bucket: storageBucket,\n  storage_path: storagePath, size_bytes: sizeBytes, chunk_count: chunkCount,\n  source, metadata, needs_generate: !docNo\n}}];\n"
+      },
+      "id": "code-prep-reg",
+      "name": "Prep Registry Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT 'DOC-' || to_char(now() AT TIME ZONE 'Asia/Bangkok', 'YYYYMMDD') || '-' || lpad(next_doc_seq()::text, 3, '0') AS doc_no",
+        "options": {}
+      },
+      "id": "pg-gen-seq",
+      "name": "PG: Get Next Seq",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        680,
+        100
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
+          "name": "PG Contracts - localhost:5432"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO contracts (doc_no, file_name, file_type, category, status, line_user_id, line_group_id, line_message_id, storage_bucket, storage_path, size_bytes, chunk_count, source, metadata) VALUES ('{{ ($('Prep Registry Row').item.json.needs_generate ? $('PG: Get Next Seq').item.json.doc_no : $('Prep Registry Row').item.json.doc_no).replace(/'/g, \"''\") }}', '{{ $('Prep Registry Row').item.json.file_name.replace(/'/g, \"''\") }}', '{{ $('Prep Registry Row').item.json.file_type.replace(/'/g, \"''\") }}', {{ $('Prep Registry Row').item.json.category ? \"'\" + $('Prep Registry Row').item.json.category.replace(/'/g, \"''\") + \"'\" : \"NULL\" }}, '{{ $('Prep Registry Row').item.json.status.replace(/'/g, \"''\") }}', {{ $('Prep Registry Row').item.json.line_user_id ? \"'\" + $('Prep Registry Row').item.json.line_user_id.replace(/'/g, \"''\") + \"'\" : \"NULL\" }}, {{ $('Prep Registry Row').item.json.line_group_id ? \"'\" + $('Prep Registry Row').item.json.line_group_id.replace(/'/g, \"''\") + \"'\" : \"NULL\" }}, {{ $('Prep Registry Row').item.json.line_message_id ? \"'\" + $('Prep Registry Row').item.json.line_message_id.replace(/'/g, \"''\") + \"'\" : \"NULL\" }}, {{ $('Prep Registry Row').item.json.storage_bucket ? \"'\" + $('Prep Registry Row').item.json.storage_bucket.replace(/'/g, \"''\") + \"'\" : \"NULL\" }}, {{ $('Prep Registry Row').item.json.storage_path ? \"'\" + $('Prep Registry Row').item.json.storage_path.replace(/'/g, \"''\") + \"'\" : \"NULL\" }}, {{ $('Prep Registry Row').item.json.size_bytes === null ? \"NULL\" : $('Prep Registry Row').item.json.size_bytes }}, {{ $('Prep Registry Row').item.json.chunk_count }}, '{{ $('Prep Registry Row').item.json.source.replace(/'/g, \"''\") }}', {{ $('Prep Registry Row').item.json.metadata ? \"'\" + $('Prep Registry Row').item.json.metadata.replace(/'/g, \"''\") + \"'::jsonb\" : \"NULL\" }}) ON CONFLICT (doc_no) DO UPDATE SET file_name = EXCLUDED.file_name, file_type = EXCLUDED.file_type, category = EXCLUDED.category, status = EXCLUDED.status, updated_at = now(), metadata = COALESCE(EXCLUDED.metadata, contracts.metadata) RETURNING id, doc_no, file_name, file_type, status, uploaded_at;",
+        "options": {}
+      },
+      "id": "pg-insert-doc",
+      "name": "PG: Insert/Update Document",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1140,
+        240
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
+          "name": "PG Contracts - localhost:5432"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ ({ ok: true, doc: $('PG: Insert/Update Document').first().json, generated: $('Prep Registry Row').item.json.needs_generate }) }}",
+        "options": {}
+      },
+      "id": "resp-reg",
+      "name": "Respond Registry",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "docs-stats",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-stats",
+      "name": "Stats Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        600
+      ],
+      "webhookId": "docs-stats-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detect if this is a stats request\nconst body = $input.first().json.body || $input.first().json || {};\nconst message = (body.message || body.text || '').toString().toLowerCase();\nconst keywords = ['สรุปผล', 'สถิติ', 'stats', 'summary', 'รายงาน', 'list', 'ทั้งหมด', 'all'];\nconst matched = keywords.find(k => message.includes(k.toLowerCase()));\nconst isStats = !!matched || body.mode === 'stats';\nconst docNo = body.doc_no || null;\nconst days = parseInt(String(body.days ?? '7'), 10);\nreturn [{ json: {\n  is_stats: isStats,\n  doc_no: docNo,\n  days: isNaN(days) ? 7 : days\n}}];\n"
+      },
+      "id": "code-parse-stats",
+      "name": "Parse Stats Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.is_stats }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "stats"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sw-stats",
+      "name": "Is stats?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        680,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=WITH params AS (SELECT ({{ $('Parse Stats Request').item.json.days }})::int AS days), base AS (  SELECT * FROM contracts, params   WHERE uploaded_at >= now() - (params.days || ' days')::interval), agg AS (  SELECT     (SELECT COUNT(*) FROM base) AS total,     (SELECT COUNT(*) FROM base WHERE status='ready') AS ready,     (SELECT COUNT(*) FROM base WHERE status='pending') AS pending,     (SELECT COUNT(*) FROM base WHERE status='failed') AS failed,     (SELECT COUNT(*) FROM base WHERE status='registered') AS registered,     (SELECT COUNT(*) FROM base WHERE uploaded_at::date = CURRENT_DATE) AS today_count ) SELECT row_to_json(agg) AS summary, (SELECT json_agg(t) FROM (SELECT file_type, COUNT(*) AS cnt FROM base GROUP BY file_type ORDER BY cnt DESC LIMIT 5) t) AS by_type, (SELECT json_agg(t) FROM (SELECT category, COUNT(*) AS cnt FROM base WHERE category IS NOT NULL GROUP BY category ORDER BY cnt DESC LIMIT 5) t) AS by_category, (SELECT json_agg(t) FROM (SELECT doc_no, file_name, file_type, status, uploaded_at FROM base ORDER BY uploaded_at DESC LIMIT 5) t) AS recent FROM agg;",
+        "options": {}
+      },
+      "id": "pg-stats",
+      "name": "PG: Aggregate Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        900,
+        480
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
+          "name": "PG Contracts - localhost:5432"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = ($('PG: Aggregate Stats').first().json || {});\nconst summary = r.summary || {};\nconst days = $('Parse Stats Request').item.json.days;\nconst lines = [];\nlines.push(`📊 สรุปเอกสาร (ย้อนหลัง ${days} วัน)`);\nlines.push(`• ทั้งหมด: ${summary.total ?? 0} ฉบับ`);\nlines.push(`• วันนี้: ${summary.today_count ?? 0} ฉบับ`);\nlines.push(`• registered: ${summary.registered ?? 0} | ready: ${summary.ready ?? 0} | pending: ${summary.pending ?? 0} | failed: ${summary.failed ?? 0}`);\nconst byType = r.by_type || [];\nif (byType.length) {\n  lines.push('');\n  lines.push('— แยกตามประเภท —');\n  for (const t of byType) lines.push(`  • ${t.file_type || 'unknown'}: ${t.cnt}`);\n}\nconst byCat = r.by_category || [];\nif (byCat.length) {\n  lines.push('');\n  lines.push('— แยกตามหมวด —');\n  for (const c of byCat) lines.push(`  • ${c.category || 'ไม่ระบุ'}: ${c.cnt}`);\n}\nconst recent = r.recent || [];\nif (recent.length) {\n  lines.push('');\n  lines.push('— 5 ฉบับล่าสุด —');\n  for (const d of recent) {\n    const dt = new Date(d.uploaded_at).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });\n    lines.push(`  • ${d.doc_no} | ${d.file_name} [${d.status}] @ ${dt}`);\n  }\n}\nreturn [{ json: { summary_text: lines.join('\\n'), raw: r } }];\n"
+      },
+      "id": "code-format-stats",
+      "name": "Format Stats Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ ({ ok: true, summary_text: $('Format Stats Text').first().json.summary_text, raw: $('Format Stats Text').first().json.raw, days: $('Parse Stats Request').item.json.days }) }}",
+        "options": {}
+      },
+      "id": "resp-stats",
+      "name": "Respond Stats",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ ({ ok: false, is_stats: false, message: 'ไม่พบคำสั่งสถิติ — ส่ง message ที่มีคำว่า สรุปผล/สถิติ/stats/summary/รายงาน/list/all หรือระบุ mode=stats' }) }}",
+        "options": {}
+      },
+      "id": "resp-other",
+      "name": "Respond Not Stats",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        900,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.needs_generate }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "generate"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.needs_generate }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "passthrough"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sw-needs-gen",
+      "name": "Needs generate?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        680,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Passthrough: re-emit Prep Registry Row's payload as the resolved doc_no\nreturn [{ json: { ...$('Prep Registry Row').first().json, needs_generate: false, doc_no: $('Prep Registry Row').first().json.doc_no } }];\n"
+      },
+      "id": "code-passthrough",
+      "name": "Passthrough (use provided doc_no)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "docs-search",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-search",
+      "name": "Search Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        900
+      ],
+      "webhookId": "docs-search-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse query string from URL and pre-compute param values\nconst req = $input.first().json;\nconst q = req.query || {};\nconst query = (q.q ? String(q.q) : '').trim();\nlet mode = q.mode ? String(q.mode) : (query ? 'vector' : 'list');\nif (mode !== 'list' && mode !== 'vector') mode = 'list';\nconst limit = parseInt(q.limit || '20', 10);\nconst safeLimit = isNaN(limit) ? 20 : limit;\n// Output list_params as ARRAY so n8n pg treats each element as $1, $2, ...\nreturn [{ json: { \n  query, mode, limit: safeLimit,\n  list_params: [query, safeLimit],\n  vector_params: [['[]', safeLimit]]\n}}];\n"
+      },
+      "id": "code-parse-search",
+      "name": "Parse Search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "list",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "vector",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "vector"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sw-mode",
+      "name": "Mode Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        680,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT doc_no, file_name, file_type, category, status, source, (SELECT COUNT(*) FROM contract_chunks WHERE contract_id = c.id) AS chunk_count, uploaded_at FROM contracts c WHERE (($1::text IS NULL OR $1 = '') OR LOWER(file_name) LIKE '%' || LOWER($1) || '%' OR LOWER(COALESCE(category,'')) LIKE '%' || LOWER($1) || '%') ORDER BY uploaded_at DESC LIMIT $2::int",
+        "options": {
+          "queryReplacement": "={{ $json.list_params }}",
+          "nodeVersion": 2.5
+        }
+      },
+      "id": "pg-list",
+      "name": "PG: List Docs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        900,
+        800
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
+          "name": "PG Contracts - localhost:5432"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.OLLAMA_URL || 'http://127.0.0.1:11434') }}/api/embed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"bge-m3\",\n  \"input\": {{ JSON.stringify($('Parse Search').item.json.query) }}\n}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "embed-query",
+      "name": "Embed Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT c.doc_no, c.file_name, ch.chunk_index, ch.content, 1 - (ch.embedding <=> $1::vector) AS similarity FROM contract_chunks ch JOIN contracts c ON c.id = ch.contract_id WHERE ch.embedding IS NOT NULL ORDER BY ch.embedding <=> $1::vector LIMIT $2::int",
+        "options": {
+          "queryReplacement": "={{ $json.vector_params }}",
+          "nodeVersion": 2.5
+        }
+      },
+      "id": "pg-vector",
+      "name": "PG: Vector Search",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1140,
+        1000
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
+          "name": "PG Contracts - localhost:5432"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// === Executive Summary Renderer ===\nconst items = $input.all();\nconst mode = $('Parse Search').item.json.mode;\nconst query = $('Parse Search').item.json.query;\nconst limit = $('Parse Search').item.json.limit || 20;\n\nlet docs = [], results = [], stats = {}, daily = [], recent = [], byStatus = [];\n\ntry {\n  if (mode === 'vector') {\n    const v = $('PG: Vector Search').all() || [];\n    results = v.map(i => i.json);\n  } else {\n    const l = $('PG: List Docs').all() || [];\n    docs = l.map(i => i.json);\n  }\n  // Daily Activity now returns { stats: {total,ready,...}, daily: [{day,cnt}] }\n  const dailyRows = ($('PG: Daily Activity').all() || []).map(i => i.json);\n  if (dailyRows.length) {\n    const first = dailyRows[0];\n    stats = first.stats || {};\n    daily = first.daily || [];\n  } else {\n    stats = { total: 0, ready: 0, registered: 0, pending: 0, failed: 0, chunks: 0 };\n    daily = [];\n  }\n  recent = ($('PG: Recent Activity').all() || []).map(i => i.json);\n  byStatus = ($('PG: By Status').all() || []).map(i => i.json);\n} catch (e) {\n  stats = { total: 0, ready: 0, registered: 0, pending: 0, failed: 0, chunks: 0 };\n  daily = [];\n}\n\nconst escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));\nconst fmtNum = (n) => n == null ? '?' : Number(n).toLocaleString('th-TH');\nconst fmtPct = (n) => n == null ? '?' : (Number(n) * 100).toFixed(0) + '%';\n\n// ===== Executive Summary KPIs =====\nconst kpiCards = `\n<div class=\"kpi-row\">\n  <div class=\"kpi-card kpi-primary\">\n    <div class=\"kpi-label\">📄 เอกสารทั้งหมด</div>\n    <div class=\"kpi-value\">${fmtNum(stats.total)}</div>\n    <div class=\"kpi-sub\">${fmtNum(stats.chunks)} chunks</div>\n  </div>\n  <div class=\"kpi-card kpi-success\">\n    <div class=\"kpi-label\">✅ พร้อมใช้งาน</div>\n    <div class=\"kpi-value\">${fmtNum(stats.ready)}</div>\n    <div class=\"kpi-sub\">${fmtPct(stats.total ? stats.ready / stats.total : 0)} ของทั้งหมด</div>\n  </div>\n  <div class=\"kpi-card kpi-warn\">\n    <div class=\"kpi-label\">⏳ กำลังประมวลผล</div>\n    <div class=\"kpi-value\">${fmtNum((Number(stats.registered)||0) + (Number(stats.pending)||0))}</div>\n    <div class=\"kpi-sub\">registered: ${fmtNum(stats.registered)} · pending: ${fmtNum(stats.pending)}</div>\n  </div>\n  <div class=\"kpi-card kpi-danger\">\n    <div class=\"kpi-label\">❌ ล้มเหลว</div>\n    <div class=\"kpi-value\">${fmtNum(stats.failed)}</div>\n    <div class=\"kpi-sub\">${fmtPct(stats.total ? stats.failed / stats.total : 0)} ของทั้งหมด</div>\n  </div>\n</div>`;\n\n// ===== Daily Activity Chart =====\nlet chartHtml = '<div class=\"empty-mini\">ยังไม่มีข้อมูล</div>';\nif (daily && daily.length) {\n  const maxCnt = Math.max(...daily.map(d => Number(d.cnt)||0), 1);\n  const bars = daily.map(d => {\n    const h = Math.max(2, Math.round((Number(d.cnt)||0) / maxCnt * 80));\n    const dd = String(d.day || '').slice(5);\n    return `<div class=\"chart-bar-col\">\n      <div class=\"chart-bar\" style=\"height:${h}px\" title=\"${escapeHtml(d.day)}: ${d.cnt}\"></div>\n      <div class=\"chart-label\">${dd}</div>\n    </div>`;\n  }).join('');\n  chartHtml = `<div class=\"chart\">${bars}</div>\n<div class=\"chart-legend\">📊 กิจกรรม 14 วันล่าสุด (เอกสารต่อวัน)</div>`;\n}\n\n// ===== Recent Activity Timeline =====\nlet recentHtml = '<div class=\"empty-mini\">ยังไม่มีข้อมูล</div>';\nif (recent && recent.length) {\n  recentHtml = recent.slice(0, 8).map(d => {\n    const dt = new Date(d.uploaded_at);\n    const dtStr = dt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });\n    const statusClass = `status-${d.status || 'unknown'}`;\n    return `<div class=\"timeline-item\">\n      <div class=\"timeline-dot ${statusClass}\"></div>\n      <div class=\"timeline-content\">\n        <div class=\"timeline-title\">${escapeHtml(d.file_name)}</div>\n        <div class=\"timeline-meta\">\n          <span class=\"doc-no-mini\">${escapeHtml(d.doc_no)}</span>\n          <span>${dtStr}</span>\n          <span class=\"doc-status ${statusClass}\">${escapeHtml(d.status)}</span>\n        </div>\n      </div>\n    </div>`;\n  }).join('');\n}\n\n// ===== Status Breakdown =====\nlet byStatusHtml = '<div class=\"empty-mini\">ยังไม่มีข้อมูล</div>';\nif (byStatus && byStatus.length) {\n  byStatusHtml = `<table class=\"status-table\">` +\n    byStatus.map(r => `<tr><td><span class=\"status-dot status-${escapeHtml(r.status || 'unknown')}\"></span>${escapeHtml(r.status)}</td><td class=\"num\">${fmtNum(r.cnt)}</td></tr>`).join('') +\n    `</table>`;\n}\n\n// ===== Search Results =====\nfunction renderListPage(docs) {\n  if (!docs.length) return '<div class=\"empty\">ไม่พบเอกสาร</div>';\n  return docs.map(d => {\n    const uploaded = (d.uploaded_at || '').slice(0, 19).replace('T', ' ');\n    return `\n<div class=\"doc-item\">\n  <span class=\"doc-no\">${escapeHtml(d.doc_no)}</span>\n  <span class=\"doc-name\">${escapeHtml(d.file_name)}</span>\n  <div class=\"doc-meta\">\n    <span>${escapeHtml(d.file_type)}</span>\n    <span>${escapeHtml(d.category || '—')}</span>\n    <span>${escapeHtml(uploaded)}</span>\n    <span class=\"doc-status status-${escapeHtml(d.status || 'unknown')}\">${escapeHtml(d.status)}</span>\n  </div>\n</div>`;\n  }).join('');\n}\n\nfunction renderVectorResults(results, query) {\n  if (!results.length) return '<div class=\"empty\">ไม่พบผลลัพธ์</div>';\n  return results.map(r => {\n    const sim = ((r.similarity || 0) * 100).toFixed(1);\n    let content = (r.content || '').slice(0, 500);\n    if (query) {\n      query.split(/\\s+/).filter(w => w.length > 1).forEach(w => {\n        content = content.replace(new RegExp(w, 'gi'), m => '<span class=\"search-q\">' + m + '</span>');\n      });\n    }\n    return `\n<div class=\"result-card\">\n  <div class=\"result-meta\">\n    <span class=\"result-similarity\">📊 ${sim}%</span>\n    <span>${escapeHtml(r.doc_no)}</span>\n    <span>${escapeHtml(r.file_name)}</span>\n    <span>chunk #${escapeHtml(r.chunk_index)}</span>\n  </div>\n  <div class=\"result-content\">${content}${(r.content || '').length > 500 ? '...' : ''}</div>\n</div>`;\n  }).join('');\n}\n\n// ===== Tabs =====\nconst listTabActive = mode === 'list' ? 'active' : '';\nconst vectorTabActive = mode === 'vector' ? 'active' : '';\nconst listLink = '/webhook/docs-search?mode=list';\nconst vectorLink = '/webhook/docs-search?mode=vector&q=' + encodeURIComponent(query || '');\nconst isOverview = !query && mode === 'list';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"th\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>${isOverview ? 'Executive Summary' : 'Document Search'} — Law Firm</title>\n<style>\n* { box-sizing: border-box; margin: 0; padding: 0; }\nbody { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Noto Sans Thai\", sans-serif; background: #f5f7fa; color: #2c3e50; padding: 24px; }\n.container { max-width: 1280px; margin: 0 auto; }\nheader { background: linear-gradient(135deg, #1a3a5c 0%, #2c5e8a 100%); color: white; padding: 24px 32px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(26,58,92,0.15); }\nheader h1 { font-size: 26px; margin-bottom: 6px; }\n.subtitle { opacity: 0.85; font-size: 14px; }\n.tabs { display: flex; gap: 4px; margin-bottom: 16px; background: #e1e8ed; padding: 4px; border-radius: 8px; }\n.tab { padding: 10px 24px; cursor: pointer; background: transparent; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; color: #5a6c7d; text-decoration: none; transition: all 0.15s; display: inline-block; }\n.tab:hover { background: rgba(255,255,255,0.5); }\n.tab.active { background: white; color: #1a3a5c; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }\n.search-box { background: white; padding: 16px 20px; border-radius: 8px; margin-bottom: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }\n.search-form { display: flex; gap: 8px; }\ninput[type=\"text\"] { flex: 1; padding: 10px 14px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }\nbutton { padding: 10px 20px; background: #1a3a5c; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }\nbutton:hover { background: #122a44; }\n.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }\n.kpi-card { background: white; padding: 20px 24px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); border-left: 4px solid #cbd5e0; }\n.kpi-primary { border-left-color: #1a3a5c; }\n.kpi-success { border-left-color: #0a6b3e; }\n.kpi-warn { border-left-color: #c47a00; }\n.kpi-danger { border-left-color: #a01818; }\n.kpi-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7785; font-weight: 600; margin-bottom: 6px; }\n.kpi-value { font-size: 32px; font-weight: 700; color: #1a3a5c; line-height: 1; margin-bottom: 4px; }\n.kpi-sub { font-size: 12px; color: #6b7785; }\n.overview-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }\n.panel { background: white; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); padding: 20px 24px; }\n.panel-title { font-size: 14px; font-weight: 700; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #ecf0f3; }\n.chart { display: flex; align-items: flex-end; gap: 6px; height: 100px; padding: 8px 0; }\n.chart-bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; }\n.chart-bar { background: linear-gradient(to top, #2c5e8a, #4a8ec8); width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; transition: all 0.2s; }\n.chart-bar:hover { background: linear-gradient(to top, #1a3a5c, #2c5e8a); }\n.chart-label { font-size: 10px; color: #6b7785; margin-top: 4px; }\n.chart-legend { font-size: 12px; color: #6b7785; margin-top: 12px; }\n.timeline-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #ecf0f3; }\n.timeline-item:last-child { border-bottom: none; }\n.timeline-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }\n.timeline-dot.status-ready { background: #0a6b3e; }\n.timeline-dot.status-registered { background: #c47a00; }\n.timeline-dot.status-pending { background: #c47a00; }\n.timeline-dot.status-failed { background: #a01818; }\n.timeline-content { flex: 1; min-width: 0; }\n.timeline-title { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.timeline-meta { display: flex; gap: 10px; font-size: 11px; color: #6b7785; margin-top: 2px; flex-wrap: wrap; }\n.doc-no-mini { background: #e8f0fe; color: #1a3a5c; padding: 1px 6px; border-radius: 3px; font-family: monospace; font-size: 10px; }\n.status-table { width: 100%; border-collapse: collapse; }\n.status-table td { padding: 8px 0; border-bottom: 1px solid #ecf0f3; font-size: 13px; }\n.status-table td.num { text-align: right; font-weight: 600; color: #1a3a5c; }\n.status-table tr:last-child td { border-bottom: none; }\n.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }\n.status-dot.status-ready { background: #0a6b3e; }\n.status-dot.status-registered { background: #c47a00; }\n.status-dot.status-pending { background: #c47a00; }\n.status-dot.status-failed { background: #a01818; }\n.empty-mini { color: #6b7785; font-size: 13px; padding: 20px; text-align: center; }\n.docs-list { background: white; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); overflow: hidden; }\n.doc-item { padding: 14px 20px; border-bottom: 1px solid #ecf0f3; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }\n.doc-item:last-child { border-bottom: none; }\n.doc-no { background: #e8f0fe; color: #1a3a5c; padding: 4px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; font-weight: 600; }\n.doc-name { flex: 1; font-weight: 500; min-width: 200px; }\n.doc-meta { color: #6b7785; font-size: 12px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }\n.doc-status { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }\n.status-ready { background: #d4f5e1; color: #0a6b3e; }\n.status-registered { background: #fff4d4; color: #8a6708; }\n.status-pending { background: #fde7d4; color: #9c4a0a; }\n.status-failed { background: #fdd4d4; color: #a01818; }\n.empty { padding: 40px; text-align: center; color: #6b7785; }\n.result-card { background: white; padding: 16px 20px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }\n.result-meta { display: flex; gap: 12px; font-size: 12px; color: #6b7785; margin-bottom: 8px; flex-wrap: wrap; }\n.result-similarity { background: #e8f0fe; color: #1a3a5c; padding: 2px 8px; border-radius: 4px; font-weight: 600; }\n.result-content { font-size: 14px; line-height: 1.6; color: #2c3e50; white-space: pre-wrap; word-wrap: break-word; }\n.search-q { background: #fff8c5; padding: 2px 6px; border-radius: 3px; font-weight: 600; }\n.section-title { font-size: 18px; font-weight: 700; color: #1a3a5c; margin: 24px 0 12px 0; }\n.footer { text-align: center; padding: 20px; color: #6b7785; font-size: 12px; margin-top: 24px; border-top: 1px solid #ecf0f3; }\n@media (max-width: 768px) { .overview-row { grid-template-columns: 1fr; } }\n</style>\n</head>\n<body>\n<div class=\"container\">\n<header>\n  <h1>${isOverview ? '📊 Executive Summary' : '📋 Document Registry'}</h1>\n  <div class=\"subtitle\">Law Firm — Document Pipeline & Search</div>\n</header>\n\n<div class=\"tabs\">\n  <a class=\"tab ${listTabActive}\" href=\"${listLink}\">📋 ${isOverview ? 'Overview' : 'List'}</a>\n  <a class=\"tab ${vectorTabActive}\" href=\"${vectorLink}\">🔍 Vector Search</a>\n</div>\n\n<div class=\"search-box\">\n  <form class=\"search-form\" method=\"get\" action=\"/webhook/docs-search\">\n    <input type=\"hidden\" name=\"mode\" value=\"${mode}\">\n    <input type=\"text\" name=\"q\" value=\"${escapeHtml(query)}\" placeholder=\"${mode === 'vector' ? 'ค้นหาด้วย semantic search... (e.g. สัญญาเช่า ผิดนัด)' : 'กรองรายการ (filename, category)...'}\" autofocus>\n    <button type=\"submit\">${mode === 'vector' ? '🔍 Search' : '🔎 Filter'}</button>\n  </form>\n</div>\n\n${isOverview ? kpiCards : ''}\n\n${isOverview ? `\n<div class=\"overview-row\">\n  <div class=\"panel\">\n    <div class=\"panel-title\">📈 กิจกรรมการอัปโหลด</div>\n    ${chartHtml}\n  </div>\n  <div class=\"panel\">\n    <div class=\"panel-title\">📌 สถานะเอกสาร</div>\n    ${byStatusHtml}\n  </div>\n</div>\n\n<div class=\"overview-row\">\n  <div class=\"panel\">\n    <div class=\"panel-title\">🕐 เอกสารล่าสุด</div>\n    ${recentHtml}\n  </div>\n  <div class=\"panel\">\n    <div class=\"panel-title\">🔗 Quick Links</div>\n    <div style=\"display: flex; flex-direction: column; gap: 10px;\">\n      <a href=\"/webhook/docs-search?mode=list\" style=\"padding: 12px 16px; background: #f5f7fa; border-radius: 6px; text-decoration: none; color: #1a3a5c; font-weight: 500;\">📋 ดูเอกสารทั้งหมด</a>\n      <a href=\"/webhook/docs-search?mode=vector\" style=\"padding: 12px 16px; background: #f5f7fa; border-radius: 6px; text-decoration: none; color: #1a3a5c; font-weight: 500;\">🔍 Vector Search</a>\n      <a href=\"/webhook/docs-stats\" style=\"padding: 12px 16px; background: #f5f7fa; border-radius: 6px; text-decoration: none; color: #1a3a5c; font-weight: 500;\">📊 Stats JSON API</a>\n      <code style=\"padding: 12px 16px; background: #fff8c5; border-radius: 6px; font-size: 11px; color: #5a4a08; word-break: break-all;\">POST /webhook/docs-registry<br>{filename, file_type, ...}</code>\n    </div>\n  </div>\n</div>\n` : ''}\n\n<div class=\"section-title\">${mode === 'vector' ? '🔍 ผลการค้นหา (Semantic)' : isOverview ? '📄 เอกสารทั้งหมด' : '🔎 ผลการกรอง'}</div>\n${mode === 'vector' ? renderVectorResults(results, query) : '<div class=\"docs-list\">' + renderListPage(docs) + '</div>'}\n\n<div class=\"footer\">\n  Generated at ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })} • n8n workflow: 02 - Document Registry & Stats • Global URLs: /webhook/docs-search · /webhook/docs-stats · /webhook/docs-registry\n</div>\n</div>\n</body>\n</html>`;\n\nreturn [{ json: { html: html, contentType: 'text/html' } }];\n"
+      },
+      "id": "code-render-html",
+      "name": "Render HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Render HTML').first().json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "resp-html",
+      "name": "Respond HTML",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1620,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build vector_params for n8n pg node - array of raw values\nconst embeddings = $json.embeddings || ($json.embedding ? [$json.embedding] : []);\nconst vec = embeddings[0] || [];\nconst limit = $('Parse Search').item.json.limit || 10;\n// Format: '[0.1,0.2,...]' as string for pg vector literal\nconst vectorStr = '[' + vec.map(Number).join(',') + ']';\nreturn [{ json: { ...$json, vector_params: [vectorStr, limit] } }];\n"
+      },
+      "id": "code-build-vec-params",
+      "name": "Build Vector Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT (SELECT row_to_json(s) FROM (SELECT (SELECT COUNT(*) FROM contracts) AS total, (SELECT COUNT(*) FROM contracts WHERE status='ready') AS ready, (SELECT COUNT(*) FROM contracts WHERE status='registered') AS registered, (SELECT COUNT(*) FROM contracts WHERE status='pending') AS pending, (SELECT COUNT(*) FROM contracts WHERE status='failed') AS failed, (SELECT COUNT(*) FROM contract_chunks) AS chunks) s) AS stats, (SELECT COALESCE(json_agg(daily), '[]'::json) FROM (  SELECT to_char(\"uploaded_at\" AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD') AS day, COUNT(*)::int AS cnt   FROM contracts   WHERE \"uploaded_at\" >= (now() - interval '14 days')   GROUP BY 1 ORDER BY 1) daily) AS daily",
+        "options": {}
+      },
+      "id": "pg-daily",
+      "name": "PG: Daily Activity",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1140,
+        760
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
+          "name": "PG Contracts - localhost:5432"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT doc_no, file_name, file_type, status, uploaded_at FROM contracts ORDER BY uploaded_at DESC LIMIT 8",
+        "options": {}
+      },
+      "id": "pg-recent",
+      "name": "PG: Recent Activity",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1140,
+        980
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
+          "name": "PG Contracts - localhost:5432"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT status, COUNT(*)::int AS cnt FROM contracts WHERE status IS NOT NULL GROUP BY status ORDER BY status",
+        "options": {}
+      },
+      "id": "pg-by-status",
+      "name": "PG: By Status",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1140,
+        1000
+      ],
+      "credentials": {
+        "127.0.0.1": {
+          "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
+          "name": "PG Contracts - localhost:5432"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Registry Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prep Registry Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Registry Row": {
+      "main": [
+        [
+          {
+            "node": "Needs generate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: Get Next Seq": {
+      "main": [
+        [
+          {
+            "node": "PG: Insert/Update Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: Insert/Update Document": {
+      "main": [
+        [
+          {
+            "node": "Respond Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stats Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Stats Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Stats Request": {
+      "main": [
+        [
+          {
+            "node": "Is stats?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is stats?": {
+      "main": [
+        [
+          {
+            "node": "PG: Aggregate Stats",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Not Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: Aggregate Stats": {
+      "main": [
+        [
+          {
+            "node": "Format Stats Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Stats Text": {
+      "main": [
+        [
+          {
+            "node": "Respond Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs generate?": {
+      "main": [
+        [
+          {
+            "node": "PG: Get Next Seq",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Passthrough (use provided doc_no)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Passthrough (use provided doc_no)": {
+      "main": [
+        [
+          {
+            "node": "PG: Insert/Update Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Search": {
+      "main": [
+        [
+          {
+            "node": "Mode Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mode Switch": {
+      "main": [
+        [
+          {
+            "node": "PG: List Docs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Embed Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: List Docs": {
+      "main": [
+        [
+          {
+            "node": "PG: Daily Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Query": {
+      "main": [
+        [
+          {
+            "node": "Build Vector Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: Vector Search": {
+      "main": [
+        [
+          {
+            "node": "PG: Daily Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render HTML": {
+      "main": [
+        [
+          {
+            "node": "Respond HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Vector Params": {
+      "main": [
+        [
+          {
+            "node": "PG: Vector Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: Daily Activity": {
+      "main": [
+        [
+          {
+            "node": "PG: Recent Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: Recent Activity": {
+      "main": [
+        [
+          {
+            "node": "PG: By Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG: By Status": {
+      "main": [
+        [
+          {
+            "node": "Render HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  },
+  "staticData": null,
+  "tags": [],
+  "pinData": {},
+  "versionId": "1.0.0",
+  "triggerCount": 3,
+  "active": false
+}

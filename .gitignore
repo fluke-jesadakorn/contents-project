@@ -1,29 +1,48 @@
-# secrets
+# Secrets and config
 .env
 .env.local
 *.env
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Docker volumes (don't commit data)
+# Dependency directories
+**/node_modules/
+/node_modules/
+
+# Build outputs
+**/.next/
+/out/
+/build/
+/dist/
+
+# Local databases and storage
 postgres-data/
 minio-data/
-
-# n8n local data
+n8n-data/
 n8n_data/
-
-# OS
-.DS_Store
-
-# Editor
-.idea/
-.vscode/
-*.swp
-
-# Python (in case someone re-adds the api service)
-__pycache__/
-*.pyc
-.venv/
-venv/
+**/minio-data/
+**/n8n-data/
 
 # Logs
 *.log
 logs/
+**/logs/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Large media files
+Video/
+*.mkv
+*.mp4
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp

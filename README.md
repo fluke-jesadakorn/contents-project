@@ -1,104 +1,56 @@
-# Law Digitalize PoC
+# Contents Project Workspace
 
-LINE Messaging API bot ที่:
-1. รับไฟล์สัญญา (PDF/DOCX) จาก LINE → chunk + embed → เก็บใน Postgres+pgvector
-2. ตอบคำถามเกี่ยวกับสัญญาผ่าน RAG (vector search + LLM)
-3. Flow ทั้งหมด orchestrate ใน n8n (host-native, ไม่ใช้ docker แล้ว)
+ยินดีต้อนรับสู่พื้นที่ทำงาน (Workspace) ของโครงการ **Contents Project** ซึ่งเป็นการรวมระบบ Proof of Concept (PoC) สองระบบหลักที่ทำงานร่วมกันบนโครงสร้างพื้นฐานภายในตัวเครื่อง (Local Infrastructure) เดียวกัน
 
-## Stack (host-native, ย้ายออกจาก docker แล้ว)
+---
 
-| Layer | Tech | Host |
-|---|---|---|
-| Bot | LINE Messaging API | LINE console |
-| Orchestration | **n8n self-hosted** v2.26.8 (npm global, node 22 via nvm) | host native, launchd `com.lawpoc.n8n` |
-| Vector DB | Postgres 18 + pgvector | brew `postgresql@18` บน `localhost:5432` |
-| n8n DB | Postgres 18 (DB แยก `lawpoc_n8n`) | เดียวกับ contracts |
-| File storage | MinIO (S3-compatible) | host native, launchd `com.lawpoc.minio` บน `localhost:9000` |
-| Embeddings | **Ollama + bge-m3** (1024 dim, multilingual) | host native `localhost:11434` |
-| LLM (chat agent) | **Ollama + qwen3.6:35b-a3b-q4_K_M** | host native `localhost:11434` |
-| LLM (legacy) | OpenRouter free — `gemma-4-31b-it:free` | API (used by archived flows only) |
-| Webhook URL | Cloudflare tunnel `n8n.jesadakorn.com` | https (LINE ต้องการ HTTPS) |
+## 📂 โครงสร้างระบบใน Workspace
 
-## Layout
+พื้นที่ทำงานนี้แบ่งออกเป็น 3 ส่วนหลักๆ ดังนี้:
 
-```
-/Users/fluke/Desktop/Work/Contents/
-├── Law-digitalize-PoC/              # project (flow json, schema, docs)
-│   ├── .env                         # project-level reference
-│   ├── db/init.sql                  # schema (vector(1024) for bge-m3)
-│   ├── n8n/flows/                   # exported workflow JSON
-│   └── docs/
-└── infra/                           # shared host-native infra
-    ├── .env                         # n8n + minio runtime env
-    ├── n8n-data/                    # N8N_USER_FOLDER (config, sqlite cache)
-    │   └── .n8n/config              # encryptionKey
-    ├── minio-data/                  # MinIO data dir
-    ├── logs/                        # n8n.log, minio.log
-    ├── launchd/                     # com.lawpoc.{n8n,minio}.plist
-    ├── scripts/
-    │   ├── start-n8n.js             # launchd entrypoint (loads .env)
-    │   └── start-n8n.sh             # manual run alternative
-    └── backups/                     # migration snapshots + ongoing
-```
+### 1. [Law-digitalize-PoC](file:///Users/fluke/Desktop/Work/Contents/Law-digitalize-PoC) (ระบบสืบค้นและจัดการเอกสารทางกฎหมาย)
+ระบบค้นหาเอกสารสัญญาทางกฎหมายด้วยความสามารถของ AI (RAG - Retrieval-Augmented Generation) 
+* **ฟีเจอร์**: อัปโหลดเอกสาร PDF กฎหมาย, ทำระบบดึงข้อความอัตโนมัติ (OCR via Native macOS Vision API), ค้นหาข้อมูลด้วยเวกเตอร์ค้นหา (Semantic Search) และมี Dashboard (Next.js) ให้ฝ่ายบริหารสืบค้นข้อมูล
+* **โครงสร้างภายใน**: Next.js (Admin UI & Executive Presentation Deck), PostgreSQL (Vector extension), MinIO (Object Storage) และ n8n Workflows
 
-## สถาปัตยกรรม
+### 2. [hr-line-agent](file:///Users/fluke/Desktop/Work/Contents/hr-line-agent) (ระบบบอทบริการฝ่ายบุคคล - HR LINE Bot & Dashboard)
+ระบบช่วยพนักงานขอลาหยุดงาน เช็คสิทธิ์วันหยุดตนเอง และขอดูขอบข่ายงาน (Job Description) ผ่านแชทบอท LINE OA
+* **ฟีเจอร์**: บันทึกคำขอลาหยุดเข้าฐานข้อมูล, ตรวจเช็คยอดวันลาด้วย Flex Message (แถบ Progress Bar คาดสีสวยงาม), ทำรายการแบบทีละขั้นตอน (State Machine / Slot Filling) รองรับข้อความธรรมชาติของพนักงาน และมี Next.js Dashboard หลังบ้านเพื่อให้ HR อนุมัติ/ปฏิเสธแบบเรียลไทม์
+* **โครงสร้างภายใน**: Next.js Web Admin Portal, PostgreSQL (`hr_db`), n8n Workflows (พร้อมการดึงค่า Header Auth จาก Environment ตัวแปรระบบโดยตรงเพื่อไม่ให้ชนกับระบบอื่น)
 
-```
-LINE user
-   │
-   │ POST file/text
-   ▼
-LINE Messaging API
-   │ webhook
-   ▼
-n8n.jesadakorn.com  ◀─── cloudflared tunnel ──── n8n:5678 (host native)
-   │
-    │ 1. Extract text  (n8n Extract from File)
-    │ 2. Chunk          (n8n Code node JS)
-    │ 3. Embed          (Ollama bge-m3 via localhost:11434)
-    │ 4. Store          (Postgres pgvector via localhost:5432)
-    │ 5. RAG search     (same)
-    │ 6. LLM            (Ollama qwen3.6:35b-a3b-q4_K_M via localhost:11434)
-    │ 7. Reply          (LINE Reply API)
-   ▼
-LINE user
-```
+### 3. [infra](file:///Users/fluke/Desktop/Work/Contents/infra) (โครงสร้างพื้นฐานและการจัดการระบบ)
+รวบรวมไฟล์การตั้งค่าและ Daemon สคริปต์ที่รันระบบสนับสนุนทั้งหมดในเครื่อง macOS Host-native:
+* **บริการภายใน**: 
+  - **n8n** (พอร์ต `5678`): ระบบรัน Flow Orchestration อัตโนมัติ
+  - **MinIO** (พอร์ต `9000` / Console `9001`): ระบบเก็บไฟล์สำหรับเอกสารสัญญากฎหมาย
+  - **PostgreSQL 18** (พอร์ต `5432`): ฐานข้อมูลหลักของทั้งสองโปรเจกต์ (`lawpoc_n8n`, `hr_db`)
+  - **OCR Native Service** (พอร์ต `8765`): บริการดึงข้อความจากภาพ/PDF ทำงานร่วมกันบนสคริปต์ Swift และ Node.js
+* ** launchd plists**: การตั้งค่าไฟล์ Daemon ในตัว macOS เพื่อช่วยสตาร์ทและกู้คืนบริการให้อัตโนมัติ (`com.lawpoc.*`)
 
-## เริ่มใช้งานเร็ว
+---
+
+## 🛠️ การเปิดรันบริการทั้งหมดในเครื่อง (Startup Runbook)
+
+บริการหลังบ้านทั้งหมดทำงานผ่าน `launchd` ของ macOS ซึ่งจะถูกสตาร์ทอัตโนมัติอยู่แล้วเมื่อเปิดเครื่อง หากต้องการควบคุมด้วยตนเอง:
 
 ```bash
-# 1. Services start อัตโนมัติตอน boot ผ่าน launchd
-#    ตรวจสถานะ:
+# 1. ตรวจสอบสถานะการทำงานของบริการทั้งหมด
 launchctl list | grep lawpoc
 
-# 2. หากต้องการ start/stop manual:
-launchctl kickstart -k gui/$(id -u)/com.lawpoc.n8n
-launchctl kickstart -k gui/$(id -u)/com.lawpoc.minio
-
-# 3. ดู log:
-tail -f /Users/fluke/Desktop/Work/Contents/infra/logs/n8n.log
-tail -f /Users/fluke/Desktop/Work/Contents/infra/logs/minio.log
-
-# 4. เข้า n8n UI:
-open https://n8n.jesadakorn.com
-
-# 5. ตรวจ DB:
-PGPASSWORD=contractpw psql -h localhost -U contract -d contracts -c "SELECT count(*) FROM contracts;"
-PGPASSWORD=n8n_pw psql -h localhost -U n8n_user -d lawpoc_n8n -c "SELECT name, active FROM workflow_entity;"
-
-# 6. ตรวจ MinIO:
-mc ls local/epsx-contracts
+# 2. ตัวอย่างการสตาร์ท/รีสตาร์ทบริการ n8n
+# (หรือสั่ง kill pid ของบริการแล้ว launchd จะทำการ respawn ให้อัตโนมัติเนื่องจากมี KeepAlive=true)
+kill $(pgrep -f start-n8n.js)
 ```
 
-ดู `docs/` สำหรับรายละเอียด LINE setup + n8n setup
+### รายละเอียดพอร์ตการเชื่อมต่อโลคอล:
+* **Next.js HR Admin**: http://localhost:3000
+* **n8n Editor (HTTPS)**: https://n8n.jesadakorn.com (พอร์ตภายใน `5678`)
+* **MinIO Console**: http://localhost:9001
+* **PostgreSQL**: `localhost:5432`
 
-## Prerequisites
+---
 
-- brew + `postgresql@18`, `pgvector`, `minio`, `minio-mc`, `nvm`
-- node 22 (via nvm) — node 26 ไม่รองรับ n8n 2.26.8 (isolated-vm native build fail)
-- `npm install -g n8n@2.26.8` (installed under nvm node 22)
-- Ollama + bge-m3 ติดตั้งบน host (`brew install ollama` + `ollama pull bge-m3`)
-- Cloudflare account (zone `jesadakorn.com` ต้อง manage อยู่) + cloudflared tunnel
-- LINE Official Account + Messaging API channel
-- OpenRouter API key (free tier ใช้ได้)
-- macOS: `/Users/fluke/.nvm/versions/node/v22.23.0/bin/node` ต้องได้รับ Full Disk Access (System Settings > Privacy & Security) เพื่อให้ launchd เข้าถึง `~/Desktop/` ได้
+## 📝 รายละเอียดโปรเจกต์เชิงลึก
+กรุณาเปิดอ่านไฟล์ README ของแต่ละโปรเจกต์ย่อยสำหรับคู่มือและวิธีการตั้งค่าโดยละเอียด:
+* **คู่มือระบบ HR**: [hr-line-agent/README.md](file:///Users/fluke/Desktop/Work/Contents/hr-line-agent/README.md)
+* **คู่มือระบบสืบค้นกฎหมาย**: [Law-digitalize-PoC/README.md](file:///Users/fluke/Desktop/Work/Contents/Law-digitalize-PoC/README.md)

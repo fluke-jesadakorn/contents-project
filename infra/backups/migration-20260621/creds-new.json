@@ -1,0 +1,36 @@
+[
+  {
+    "id": "a70ff3bd-3863-49c2-b2d4-e74d97d77c01",
+    "name": "PG Contracts - localhost:5432",
+    "type": "postgres",
+    "data": {
+      "host": "localhost",
+      "port": 5432,
+      "database": "contracts",
+      "user": "contract",
+      "password": "contractpw",
+      "ssl": "disable"
+    }
+  },
+  {
+    "id": "27fef0b4-9224-4a77-9741-c4f8e3d0aede",
+    "name": "LINE Bearer Auth",
+    "type": "httpHeaderAuth",
+    "data": {
+      "name": "Authorization",
+      "value": "Bearer Ngf4v6eN3sk97GHP2Y5IaGOrlAQg4W25mLWJggI9Iw6HnrpBvIHqNz1lyUL1d1N9DiURJnYul4CdrMb7LbrDq45iRalBhqdFXMDAiuc0q8hqp1G7hzhYMHDUgJlFnAFI1PAxaoy8vKWqKEHtyxxbYAdB04t89/1O/w1cDnyilFU="
+    }
+  },
+  {
+    "id": "f719a9dd-b576-4cd5-bde6-13fb6344c447",
+    "name": "MinIO Contracts",
+    "type": "s3",
+    "data": {
+      "endpoint": "http://localhost:9000",
+      "region": "us-east-1",
+      "accessKeyId": "minioadmin",
+      "secretAccessKey": "minioadmin",
+      "forcePathStyle": true
+    }
+  }
+]
