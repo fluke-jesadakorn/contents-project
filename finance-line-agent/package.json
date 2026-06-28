@@ -1,0 +1,13 @@
+{
+  "name": "finance-line-agent",
+  "version": "1.0.0",
+  "description": "Account and Finance AI Agent (FinAgent PoC)",
+  "main": "index.js",
+  "scripts": {
+    "embed": "node db/embed_coa.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "pg": "^8.12.0"
+  }
+}

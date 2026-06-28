@@ -98,6 +98,12 @@ export default function HRDashboard() {
   // Export state
   const [showExportMenu, setShowExportMenu] = useState(false);
 
+  // Quota adjustment state
+  interface QuotaForm { sick: number; annual: number; personal: number; reason: string; }
+  const [quotaForm, setQuotaForm] = useState<QuotaForm | null>(null);
+  const [quotaSubmitting, setQuotaSubmitting] = useState(false);
+  const [quotaSuccess, setQuotaSuccess] = useState<{ changes: { label: string; from: number; to: number }[] } | null>(null);
+
   const filteredEmployees = employees.filter(emp =>
     emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -139,6 +145,46 @@ export default function HRDashboard() {
     window.addEventListener('click', handler);
     return () => window.removeEventListener('click', handler);
   }, []);
+
+  // Reset quota form when employee selection changes
+  useEffect(() => {
+    setQuotaForm(null);
+    setQuotaSuccess(null);
+  }, [selectedEmployeeId]);
+
+  const handleQuotaAdjust = async (emp: Employee) => {
+    if (!selectedHrId) { alert('โปรดเลือก HR ผู้ดำเนินการก่อน'); return; }
+    if (!quotaForm) return;
+    if (!quotaForm.reason.trim()) { alert('กรุณาระบุเหตุผลในการปรับสิทธิ์วันลา'); return; }
+    try {
+      setQuotaSubmitting(true);
+      const res = await fetch('/api/employee/leave-quota', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: emp.id,
+          hrId: selectedHrId,
+          totalSickLeave: quotaForm.sick,
+          totalAnnualLeave: quotaForm.annual,
+          totalPersonalLeave: quotaForm.personal,
+          reason: quotaForm.reason,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setQuotaSuccess({ changes: data.changes });
+        setQuotaForm(null);
+        await fetchData();
+        setTimeout(() => setQuotaSuccess(null), 8000);
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message);
+    } finally {
+      setQuotaSubmitting(false);
+    }
+  };
 
   const handleDecision = async (requestId: string, action: 'approve' | 'reject') => {
     if (!selectedHrId) {
@@ -986,6 +1032,127 @@ export default function HRDashboard() {
                             </div>
                           </div>
                         </div>
+                      </div>
+
+                      {/* ── Quota Adjustment Section (HR Only) ─────────────── */}
+                      <div className="border-t border-slate-800 pt-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">⚙️ ปรับโควตาวันลา (HR)</h3>
+                          {!quotaForm ? (
+                            <button
+                              onClick={() => setQuotaForm({ sick: emp.total_sick_leave, annual: emp.total_annual_leave, personal: emp.total_personal_leave, reason: '' })}
+                              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600/70 hover:bg-indigo-600 border border-indigo-500/30 text-white transition cursor-pointer flex items-center gap-1.5"
+                            >
+                              ✏️ แก้ไขโควตา
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setQuotaForm(null)}
+                              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-300 transition cursor-pointer"
+                            >
+                              ✕ ยกเลิก
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Success Banner */}
+                        {quotaSuccess && (
+                          <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 space-y-2">
+                            <p className="text-emerald-400 font-bold text-sm flex items-center gap-2">✅ ปรับโควตาสำเร็จแล้ว!</p>
+                            {quotaSuccess.changes.map(c => {
+                              const delta = c.to - c.from;
+                              return (
+                                <div key={c.label} className="flex items-center gap-2 text-xs">
+                                  <span className="text-slate-300 font-semibold w-20">{c.label}</span>
+                                  <span className="text-slate-400">{c.from} → {c.to} วัน</span>
+                                  <span className={`font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    {delta > 0 ? `▲ +${delta}` : `▼ ${delta}`}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                            <p className="text-emerald-500/70 text-[11px] mt-1">📲 แจ้งเตือนถูกส่งไปยัง LINE ของพนักงานแล้ว</p>
+                          </div>
+                        )}
+
+                        {/* Edit Form */}
+                        {quotaForm && (() => {
+                          const rows: { key: 'sick' | 'annual' | 'personal'; emoji: string; label: string; color: string; ring: string }[] = [
+                            { key: 'sick',     emoji: '🤒', label: 'ลาป่วย',    color: 'text-emerald-400', ring: 'focus:ring-emerald-500/40 focus:border-emerald-500' },
+                            { key: 'annual',   emoji: '✈️', label: 'ลาพักร้อน', color: 'text-indigo-400',  ring: 'focus:ring-indigo-500/40 focus:border-indigo-500' },
+                            { key: 'personal', emoji: '💼', label: 'ลากิจ',     color: 'text-amber-400',   ring: 'focus:ring-amber-500/40 focus:border-amber-500' },
+                          ];
+                          return (
+                            <div className="space-y-4">
+                              {/* Leave type rows */}
+                              <div className="grid grid-cols-1 gap-3">
+                                {rows.map(row => {
+                                  const original = row.key === 'sick' ? emp.total_sick_leave : row.key === 'annual' ? emp.total_annual_leave : emp.total_personal_leave;
+                                  const current = quotaForm[row.key];
+                                  const delta = current - original;
+                                  return (
+                                    <div key={row.key} className="flex items-center gap-3 bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-3">
+                                      <span className="text-slate-300 text-xs font-bold w-24 shrink-0">{row.emoji} {row.label}</span>
+                                      <span className="text-slate-500 text-xs w-16 shrink-0">เดิม: <span className="text-slate-300 font-semibold">{original}</span> วัน</span>
+                                      {/* Decrement */}
+                                      <button
+                                        onClick={() => setQuotaForm(prev => prev ? { ...prev, [row.key]: Math.max(0, prev[row.key] - 1) } : prev)}
+                                        className="w-7 h-7 rounded-lg bg-rose-600/30 hover:bg-rose-600/60 border border-rose-500/30 text-rose-300 font-bold text-base leading-none flex items-center justify-center transition cursor-pointer shrink-0"
+                                      >−</button>
+                                      {/* Input */}
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={365}
+                                        value={current}
+                                        onChange={e => setQuotaForm(prev => prev ? { ...prev, [row.key]: Math.max(0, parseInt(e.target.value) || 0) } : prev)}
+                                        className={`w-16 text-center bg-slate-900 border border-slate-700 rounded-lg py-1 text-sm font-bold text-slate-100 focus:outline-none focus:ring-1 ${row.ring} transition`}
+                                      />
+                                      {/* Increment */}
+                                      <button
+                                        onClick={() => setQuotaForm(prev => prev ? { ...prev, [row.key]: prev[row.key] + 1 } : prev)}
+                                        className="w-7 h-7 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/60 border border-emerald-500/30 text-emerald-300 font-bold text-base leading-none flex items-center justify-center transition cursor-pointer shrink-0"
+                                      >+</button>
+                                      <span className="text-xs font-bold ml-1 shrink-0">
+                                        {delta === 0 ? <span className="text-slate-600">—</span> : delta > 0 ? <span className="text-emerald-400">▲ +{delta}</span> : <span className="text-rose-400">▼ {delta}</span>}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Reason textarea */}
+                              <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">📝 เหตุผลในการปรับ <span className="text-rose-400">*</span></label>
+                                <textarea
+                                  rows={2}
+                                  placeholder="เช่น ปรับตามนโยบายใหม่ประจำปี / พนักงานได้รับสิทธิ์เพิ่มพิเศษ..."
+                                  value={quotaForm.reason}
+                                  onChange={e => setQuotaForm(prev => prev ? { ...prev, reason: e.target.value } : prev)}
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 transition resize-none"
+                                />
+                              </div>
+
+                              {/* Save button */}
+                              <button
+                                onClick={() => handleQuotaAdjust(emp)}
+                                disabled={quotaSubmitting || !quotaForm.reason.trim()}
+                                className="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-950/40 flex items-center justify-center gap-2 cursor-pointer"
+                              >
+                                {quotaSubmitting ? (
+                                  <><span className="animate-spin inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />กำลังบันทึก...</>
+                                ) : (
+                                  <>💾 บันทึกและแจ้งเตือนพนักงาน</>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Placeholder when form is closed */}
+                        {!quotaForm && !quotaSuccess && (
+                          <p className="text-slate-600 text-xs italic">คลิก "แก้ไขโควตา" เพื่อปรับสิทธิ์วันลาสำหรับพนักงานคนนี้</p>
+                        )}
                       </div>
                     </div>
 

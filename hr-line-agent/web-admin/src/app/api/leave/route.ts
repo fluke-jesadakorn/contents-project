@@ -34,13 +34,22 @@ export async function POST(request: Request) {
     const updateRequestRes = await client.query(
       `UPDATE leave_requests 
        SET status = $1, approved_by = $2, reject_reason = $3, updated_at = NOW() 
-       WHERE id = $4 
+       WHERE id = $4 AND status = 'pending'
        RETURNING employee_id, leave_type, days::float as days`,
       [statusText, hrId, action === 'reject' ? rejectReason : null, requestId]
     );
 
     if (updateRequestRes.rowCount === 0) {
-      throw new Error('Leave request not found or not updated');
+      // Could be: not found, or already processed (not pending)
+      const checkRes = await client.query(
+        `SELECT status FROM leave_requests WHERE id = $1`,
+        [requestId]
+      );
+      if (checkRes.rows.length === 0) {
+        throw new Error('Leave request not found');
+      }
+      const currentStatus = checkRes.rows[0].status;
+      throw new Error(`Cannot process: leave request is already "${currentStatus}" (ใบลานี้ได้รับการดำเนินการไปแล้ว)`);
     }
 
     const { employee_id, leave_type, days } = updateRequestRes.rows[0];
@@ -84,37 +93,78 @@ export async function POST(request: Request) {
         
         if (emp_line_id) {
           const leaveTypeThai = type === 'sick' ? '🤒 ลาป่วย' : type === 'annual' ? '✈️ ลาพักร้อน' : type === 'personal' ? '💼 ลากิจ' : type;
-          let messageText = '';
-          if (action === 'approve') {
-            messageText = `✅ คำขอลาของคุณได้รับการอนุมัติแล้ว!\n\n📋 รายละเอียด:\n- ประเภท: ${leaveTypeThai}\n- ระยะเวลา: ${start_date} ถึง ${end_date} (${numDays} วัน)\n- ผู้อนุมัติ: ${hr_name}\n\n- ${hr_name}`;
-          } else {
-            messageText = `❌ คำขอลาของคุณถูกปฏิเสธ\n\n📋 รายละเอียด:\n- ประเภท: ${leaveTypeThai}\n- ระยะเวลา: ${start_date} ถึง ${end_date} (${numDays} วัน)\n- เหตุผลการปฏิเสธ: ${rejectReason}\n- ผู้พิจารณา: ${hr_name}\n\n- ${hr_name}`;
+          const isApproved = action === 'approve';
+          const headerBg  = isApproved ? '#064e3b' : '#4c0519';
+          const headerAccent = isApproved ? '#10b981' : '#f43f5e';
+          const statusText = isApproved ? '✅ อนุมัติแล้ว' : '❌ ปฏิเสธแล้ว';
+          const statusSub  = isApproved ? 'คำขอลาของคุณได้รับการอนุมัติ' : 'คำขอลาของคุณถูกปฏิเสธ';
+
+          const flexRows: object[] = [
+            { type: 'box', layout: 'horizontal', contents: [
+              { type: 'text', text: 'ประเภท', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: leaveTypeThai, size: 'sm', color: '#e2e8f0', weight: 'bold', flex: 3 },
+            ]},
+            { type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+              { type: 'text', text: 'ระยะเวลา', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: `${start_date} – ${end_date} (${numDays} วัน)`, size: 'sm', color: '#e2e8f0', flex: 3 },
+            ]},
+            { type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+              { type: 'text', text: isApproved ? 'ผู้อนุมัติ' : 'ผู้พิจารณา', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: hr_name, size: 'sm', color: '#e2e8f0', weight: 'bold', flex: 3 },
+            ]},
+          ];
+          if (!isApproved && rejectReason) {
+            flexRows.push({ type: 'separator', margin: 'md' });
+            flexRows.push({ type: 'box', layout: 'horizontal', margin: 'md', contents: [
+              { type: 'text', text: 'เหตุผล', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: rejectReason, size: 'sm', color: '#fda4af', wrap: true, flex: 3 },
+            ]});
           }
+
+          const flexMsg = {
+            type: 'flex',
+            altText: `${statusText} • ${leaveTypeThai} ${numDays} วัน`,
+            contents: {
+              type: 'bubble',
+              styles: { body: { backgroundColor: '#0f172a' }, footer: { backgroundColor: '#0f172a' } },
+              header: {
+                type: 'box', layout: 'vertical', backgroundColor: headerBg, paddingAll: 'lg',
+                contents: [
+                  { type: 'text', text: statusText, weight: 'bold', size: 'xl', color: headerAccent },
+                  { type: 'text', text: statusSub, size: 'sm', color: '#94a3b8', margin: 'xs' },
+                ],
+              },
+              body: {
+                type: 'box', layout: 'vertical', backgroundColor: '#0f172a', paddingAll: 'lg',
+                contents: [
+                  { type: 'separator', color: '#1e293b' },
+                  { type: 'box', layout: 'vertical', margin: 'lg', spacing: 'xs', contents: flexRows },
+                ],
+              },
+              footer: {
+                type: 'box', layout: 'vertical', backgroundColor: '#0f172a',
+                contents: [{ type: 'text', text: '- HR Leave Portal', size: 'xs', color: '#334155', align: 'end' }],
+              },
+            },
+          };
 
           const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
           if (lineToken) {
-            fetch('https://api.line.me/v2/bot/message/push', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${lineToken}`
-              },
-              body: JSON.stringify({
-                to: emp_line_id,
-                messages: [
-                  {
-                    type: 'text',
-                    text: messageText
-                  }
-                ]
-              })
-            }).then(r => {
+            try {
+              const r = await fetch('https://api.line.me/v2/bot/message/push', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lineToken}` },
+                body: JSON.stringify({ to: emp_line_id, messages: [flexMsg] }),
+              });
               if (!r.ok) {
-                r.text().then(t => console.error('LINE Push API error response:', t));
+                const t = await r.text();
+                console.error('LINE Push API error:', t);
               } else {
-                console.log(`LINE Push message sent successfully to ${emp_line_id}`);
+                console.log(`LINE Push sent to ${emp_line_id}`);
               }
-            }).catch(e => console.error('Fetch error sending LINE Push message:', e));
+            } catch (e: any) {
+              console.error('Fetch error LINE Push:', e.message);
+            }
           } else {
             console.warn('LINE_CHANNEL_ACCESS_TOKEN not configured in process.env');
           }

@@ -6,13 +6,13 @@ const LINE_API = 'https://api.line.me/v2/bot/message/push';
 export async function POST(request: Request) {
   const client = await pool.connect();
   try {
-    const { employeeId, employeeName, department, lineToken } = await request.json();
+    const { employeeId, employeeName, department } = await request.json();
 
     if (!employeeId || !department) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
-    const token = lineToken || process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
     if (!token) {
       return NextResponse.json({ success: false, error: 'No LINE token available' }, { status: 500 });
     }
@@ -27,11 +27,11 @@ export async function POST(request: Request) {
     );
     const leave = leaveRes.rows[0];
 
-    // Find manager or HR in same department (or any hr role as fallback)
+    // Find manager in same department first, fallback to any HR — both must have line_user_id
     const managerRes = await client.query(
       `SELECT line_user_id, name FROM employees 
-       WHERE (role = 'manager' AND department = $1) OR role = 'hr'
-       AND line_user_id IS NOT NULL
+       WHERE ((role = 'manager' AND department = $1) OR role = 'hr')
+         AND line_user_id IS NOT NULL
        ORDER BY (role = 'manager' AND department = $1) DESC
        LIMIT 1`,
       [department]
@@ -55,54 +55,63 @@ export async function POST(request: Request) {
       altText: `🔔 คำขอลาใหม่จาก ${employeeName}`,
       contents: {
         type: 'bubble',
+        styles: {
+          header: { backgroundColor: '#1e1b4b' },
+          body:   { backgroundColor: '#0f172a' },
+          footer: { backgroundColor: '#0f172a' },
+        },
         header: {
           type: 'box',
           layout: 'vertical',
-          backgroundColor: '#4f46e5',
+          backgroundColor: '#1e1b4b',
+          paddingAll: 'lg',
           contents: [
-            { type: 'text', text: '🔔 คำขอลาใหม่', weight: 'bold', size: 'lg', color: '#ffffff' },
-            { type: 'text', text: `รออนุมัติจากคุณ`, size: 'sm', color: '#c7d2fe' }
-          ]
+            { type: 'text', text: '🔔 คำขอลาใหม่', weight: 'bold', size: 'xl', color: '#818cf8' },
+            { type: 'text', text: 'รออนุมัติจากคุณ', size: 'sm', color: '#6366f1', margin: 'xs' },
+          ],
         },
         body: {
           type: 'box',
           layout: 'vertical',
+          backgroundColor: '#0f172a',
+          paddingAll: 'lg',
           contents: [
-            { type: 'text', text: `👤 ${employeeName}`, weight: 'bold', size: 'md' },
+            { type: 'text', text: `👤 ${employeeName}`, weight: 'bold', size: 'md', color: '#e2e8f0' },
             { type: 'text', text: `แผนก: ${department}`, size: 'sm', color: '#64748b', margin: 'xs' },
-            { type: 'separator', margin: 'md' },
+            { type: 'separator', margin: 'md', color: '#1e293b' },
             ...(leave ? [
-              { type: 'box', layout: 'baseline', margin: 'md', contents: [
-                { type: 'text', text: 'ประเภท:', size: 'sm', color: '#94a3b8', flex: 2 },
-                { type: 'text', text: leaveTypeLabel(leave.leave_type), size: 'sm', weight: 'bold', flex: 3 }
+              { type: 'box', layout: 'horizontal', margin: 'md', contents: [
+                { type: 'text', text: 'ประเภท:', size: 'sm', color: '#475569', flex: 2 },
+                { type: 'text', text: leaveTypeLabel(leave.leave_type), size: 'sm', weight: 'bold', flex: 3, color: '#e2e8f0' },
               ]},
-              { type: 'box', layout: 'baseline', margin: 'xs', contents: [
-                { type: 'text', text: 'ระยะเวลา:', size: 'sm', color: '#94a3b8', flex: 2 },
-                { type: 'text', text: `${leave.start_date} ถึง ${leave.end_date} (${leave.days} วัน)`, size: 'sm', weight: 'bold', flex: 3 }
+              { type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+                { type: 'text', text: 'ระยะเวลา:', size: 'sm', color: '#475569', flex: 2 },
+                { type: 'text', text: `${leave.start_date} – ${leave.end_date} (${leave.days} วัน)`, size: 'sm', weight: 'bold', flex: 3, color: '#e2e8f0' },
               ]},
-              { type: 'box', layout: 'baseline', margin: 'xs', contents: [
-                { type: 'text', text: 'เหตุผล:', size: 'sm', color: '#94a3b8', flex: 2 },
-                { type: 'text', text: leave.reason, size: 'sm', flex: 3, wrap: true }
-              ]}
+              { type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+                { type: 'text', text: 'เหตุผล:', size: 'sm', color: '#475569', flex: 2 },
+                { type: 'text', text: leave.reason, size: 'sm', flex: 3, wrap: true, color: '#94a3b8' },
+              ]},
             ] : [
-              { type: 'text', text: 'ไม่พบรายละเอียดใบลา', size: 'sm', color: '#94a3b8', margin: 'md' }
-            ])
-          ]
+              { type: 'text', text: 'ไม่พบรายละเอียดใบลา', size: 'sm', color: '#475569', margin: 'md' },
+            ]),
+          ],
         },
         footer: {
           type: 'box',
           layout: 'vertical',
+          backgroundColor: '#0f172a',
           contents: [
             {
               type: 'button',
               action: { type: 'uri', label: '📋 ดูและอนุมัติที่ Web Admin', uri: 'http://localhost:3000/hr' },
               style: 'primary',
-              color: '#4f46e5'
+              color: '#4f46e5',
             },
-            { type: 'text', text: '- bot', size: 'xs', color: '#94a3b8', align: 'end', margin: 'xs' }
-          ]
-        }
-      }
+            { type: 'text', text: '- HR Leave Portal', size: 'xs', color: '#334155', align: 'end', margin: 'sm' },
+          ],
+        },
+      },
     };
 
     // Push message to manager
