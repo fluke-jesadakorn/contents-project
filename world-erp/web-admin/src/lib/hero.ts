@@ -29,10 +29,8 @@ export function pickFeaturedTile(
   isLocked: (t: TileWithMeta) => boolean,
 ): TileWithMeta | null {
   if (!tiles || tiles.length === 0) return null;
-  const hubOpen = tiles.find((t) => t.group === 'hub' && !isLocked(t));
-  if (hubOpen) return hubOpen;
-  const anyOpen = tiles.find((t) => !isLocked(t));
-  return anyOpen ?? null;
+  const open = tiles.find((t) => t.group !== 'hub' && !isLocked(t));
+  return open ?? null;
 }
 
 export interface HeroKpis {

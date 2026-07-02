@@ -163,7 +163,7 @@ export const HubHero: React.FC<HubHeroProps> = ({
             label="Spotlight"
             value={featured ? GROUP_LABEL[featured.group].label : '—'}
             accent="emerald"
-            caption={featured ? 'first hub tile' : 'no open tile'}
+            caption={featured ? 'top open tile' : 'no open tile'}
             valueClassName="text-base"
           />
         </div>
