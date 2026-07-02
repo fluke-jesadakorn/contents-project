@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Kpi } from './ui/Kpi';
 import { HubAmbient } from './HubAmbient';
 import { Tile } from './tiles/Tile';
+import { TileTooltipProvider } from './TileTooltip';
 import {
   GROUP_LABEL,
   type TileWithMeta,
@@ -87,13 +88,14 @@ export const HubHero: React.FC<HubHeroProps> = ({
     : '🌙';
 
   return (
-    <section
-      aria-label="Hub hero"
-      className="relative overflow-hidden rounded-3xl border border-slate-800/80 glass-panel-heavy shadow-2xl shadow-black/50 animate-fade-in"
-    >
-      <HubAmbient variant="hero" />
+    <TileTooltipProvider>
+      <section
+        aria-label="Hub hero"
+        className="relative overflow-hidden rounded-3xl border border-slate-800/80 glass-panel-heavy shadow-2xl shadow-black/50 animate-fade-in"
+      >
+        <HubAmbient variant="hero" />
 
-      <div className="relative z-10 p-5 sm:p-7 lg:p-9 space-y-6">
+        <div className="relative z-10 p-5 sm:p-7 lg:p-9 space-y-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-widest text-indigo-200">
@@ -227,6 +229,7 @@ export const HubHero: React.FC<HubHeroProps> = ({
         </div>
       </div>
     </section>
+    </TileTooltipProvider>
   );
 };
 
