@@ -64,6 +64,7 @@ import { LedgerCommentaryView } from './workspaces/LedgerCommentaryView';
 import { PolicyEditor } from './PolicyEditor';
 import { PageLayout } from './PageLayout';
 import { buildCrumbs } from './breadcrumbs';
+import { BreadcrumbSetter } from './breadcrumbs/BreadcrumbSetter';
 import { AISettingsView } from './workspaces/AISettingsView';
 import { DirectoryHR } from './workspaces/DirectoryHR';
 import { DepartmentsHR } from './workspaces/DepartmentsHR';
@@ -430,6 +431,13 @@ export function TilePage({
 
   return (
     <>
+      <BreadcrumbSetter
+        crumbs={buildCrumbs({
+          group: tile.group,
+          tile,
+          subView: activeSubView || null,
+        })}
+      />
       <MobileNav
         open={false}
         onClose={() => {}}
@@ -438,11 +446,6 @@ export function TilePage({
       />
 
       <PageLayout
-        breadcrumbs={buildCrumbs({
-          group: tile.group,
-          tile,
-          subView: activeSubView || null,
-        })}
         title={tile.display_name}
         subtitle={tileSubtitle}
       >

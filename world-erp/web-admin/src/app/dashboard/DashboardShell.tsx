@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { MobileNav } from '@/components/MobileNav';
 import { PageLayout } from '@/components/PageLayout';
+import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
 import { ROOT_CRUMB } from '@/components/breadcrumbs';
 
 interface DashboardShellProps {
@@ -27,6 +28,7 @@ export function DashboardShell({
 
   return (
     <>
+      <BreadcrumbSetter crumbs={[ROOT_CRUMB, { label: 'Dashboard' }]} />
       <MobileNav
         open={openMobile}
         onClose={() => setOpenMobile(false)}
@@ -35,7 +37,6 @@ export function DashboardShell({
       />
 
       <PageLayout
-        breadcrumbs={[ROOT_CRUMB, { label: 'Dashboard' }]}
         title={kindLabel}
         subtitle={tagline}
       >

@@ -5,7 +5,7 @@ export const ROOT_CRUMB: Crumb = { label: 'World ERP', href: '/', icon: '🌐' }
 
 export const groupCrumb = (group: TileGroup): Crumb => ({
   label: GROUP_LABEL[group].label.toUpperCase(),
-  href: `/?group=${group}`,
+  href: `/group/${group}`,
   icon: GROUP_LABEL[group].icon,
 });
 

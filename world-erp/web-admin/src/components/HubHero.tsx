@@ -4,12 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { Kpi } from './ui/Kpi';
 import { HubAmbient } from './HubAmbient';
-import { Tile } from './tiles/Tile';
 import { TileTooltipProvider } from './TileTooltip';
-import {
-  GROUP_LABEL,
-  type TileWithMeta,
-} from './tile-config';
+import { type TileWithMeta } from './tile-config';
 import {
   roleLabel,
   roleBadge,
@@ -20,8 +16,7 @@ import {
 import {
   greetingLine,
   kpiSummary,
-  metaLine,
-  pickFeaturedTile,
+  pickPendingApprovals,
   timeGreeting,
   type GreetingKey,
 } from '@/lib/hero';
@@ -37,8 +32,8 @@ interface HubHeroProps {
     staff_level?: number | null;
   } | null;
   tiles: TileWithMeta[];
+  pendingPrs: any[];
   isLocked: (t: TileWithMeta) => boolean;
-  onOpenTile: (t: TileWithMeta) => void;
   onOpenCommand: () => void;
   onOpenPersona?: () => void;
   onOpenNotifications?: () => void;
@@ -63,15 +58,15 @@ const QUICK_ACTIONS: Array<{
 export const HubHero: React.FC<HubHeroProps> = ({
   actor,
   tiles,
+  pendingPrs,
   isLocked,
-  onOpenTile,
   onOpenCommand,
   onOpenPersona,
   onOpenNotifications,
   unreadCount,
 }) => {
   const kpis = kpiSummary(tiles, isLocked);
-  const featured = pickFeaturedTile(tiles, isLocked);
+  const pending = pickPendingApprovals(pendingPrs ?? []);
 
   const fullname = (actor?.fullname || '').trim() || 'there';
   const greetingKey: GreetingKey = timeGreeting();
@@ -160,21 +155,17 @@ export const HubHero: React.FC<HubHeroProps> = ({
             caption="active in catalog"
           />
           <Kpi
-            label="Spotlight"
-            value={featured ? GROUP_LABEL[featured.group].label : '—'}
+            label="Pending"
+            value={pending.length}
             accent="emerald"
-            caption={featured ? 'top open tile' : 'no open tile'}
+            caption={pending.length === 0 ? 'all clear' : 'awaiting review'}
             valueClassName="text-base"
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
           <div className="lg:col-span-3">
-            <Spotlight
-              tile={featured}
-              isLocked={isLocked}
-              onOpen={onOpenTile}
-            />
+            <PendingApprovals prs={pending} />
           </div>
           <div className="lg:col-span-2 grid grid-cols-2 lg:grid-cols-1 gap-2.5 sm:gap-3">
             {QUICK_ACTIONS.map((a) => {
@@ -233,51 +224,128 @@ export const HubHero: React.FC<HubHeroProps> = ({
   );
 };
 
-interface SpotlightProps {
-  tile: TileWithMeta | null;
-  isLocked: (t: TileWithMeta) => boolean;
-  onOpen: (t: TileWithMeta) => void;
+interface PendingApprovalsProps {
+  prs: any[];
 }
 
-const Spotlight: React.FC<SpotlightProps> = ({ tile, isLocked, onOpen }) => {
-  if (!tile) {
-    return (
-      <div className="relative h-full min-h-[210px] rounded-2xl border border-dashed border-slate-700 bg-slate-950/30 p-5 flex flex-col items-center justify-center text-center">
-        <div className="text-3xl mb-2 opacity-50" aria-hidden>🗂</div>
-        <div className="text-sm font-bold text-slate-300">No spotlight tile</div>
-        <div className="text-[11px] text-slate-500 font-mono mt-1 max-w-[28ch]">
-          No open tile available for your role right now.
-        </div>
-      </div>
-    );
+const PENDING_HREF = '/subordinate-prs';
+
+const STAGE_PILL: Record<string, { label: string; tone: string }> = {
+  supervisor_review:         { label: 'Supervisor',  tone: 'border-amber-500/40   text-amber-200   bg-amber-500/10'   },
+  head_review:               { label: 'Head',        tone: 'border-amber-500/40   text-amber-200   bg-amber-500/10'   },
+  account_officer_review:    { label: 'Accountant',  tone: 'border-cyan-500/40    text-cyan-200    bg-cyan-500/10'    },
+  account_supervisor_review: { label: 'Acct. Sup.',  tone: 'border-cyan-500/40    text-cyan-200    bg-cyan-500/10'    },
+  accounting_review:         { label: 'Accounting',  tone: 'border-cyan-500/40    text-cyan-200    bg-cyan-500/10'    },
+  cfo_review:                { label: 'CFO',         tone: 'border-purple-500/40  text-purple-200  bg-purple-500/10'  },
+  ceo_review:                { label: 'CEO',         tone: 'border-purple-500/40  text-purple-200  bg-purple-500/10'  },
+  finance_review:            { label: 'Finance',     tone: 'border-purple-500/40  text-purple-200  bg-purple-500/10'  },
+  po_pending:                { label: 'PO Pending',  tone: 'border-indigo-500/40  text-indigo-200  bg-indigo-500/10'  },
+};
+
+function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return '';
+  const diff = Date.now() - t;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function fmtMoney(n: number | string | null | undefined, currency: string | null | undefined): string {
+  const num = Number(n ?? 0);
+  if (!Number.isFinite(num)) return '—';
+  const cur = currency || 'THB';
+  try {
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(num) + ' ' + cur;
+  } catch {
+    return `${num} ${cur}`;
   }
-  const locked = isLocked(tile);
-  const groupMeta = GROUP_LABEL[tile.group] ?? { label: 'Hub', icon: '🗂️' };
-  const meta = metaLine(tile.access_meta ?? null);
+}
+
+const PendingApprovals: React.FC<PendingApprovalsProps> = ({ prs }) => {
+  const items = (prs ?? []).slice(0, 4);
+
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(tile)}
-      aria-label={`Open ${tile.display_name}`}
-      className="group relative w-full h-full text-left rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950/50 transition-all hover:border-slate-700 hover:shadow-2xl hover:shadow-black/60"
+    <Link
+      href={PENDING_HREF}
+      aria-label="Open pending approvals"
+      className="group relative block w-full h-full rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950/50 transition-all hover:border-slate-700 hover:shadow-2xl hover:shadow-black/60"
     >
-      <Tile
-        tile={tile}
-        active
-        href={locked ? undefined : tile.href}
-        state={locked ? 'locked' : 'open'}
-        onClick={() => onOpen(tile)}
-      />
-      <div className="absolute top-2 left-2 z-20 inline-flex items-center gap-1.5 rounded-full bg-slate-950/80 border border-indigo-500/40 px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-widest text-indigo-200 shadow">
-        <span aria-hidden>⭐</span>
-        Spotlight · {groupMeta.icon} {groupMeta.label}
-      </div>
-      {meta && (
-        <div className="absolute bottom-2 left-2 right-2 z-20 px-2 py-1 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[10px] font-mono text-slate-300 truncate">
-          {meta}
+      <div className="flex items-center justify-between gap-2 px-4 sm:px-5 pt-4 sm:pt-5">
+        <div className="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-widest text-indigo-200">
+          <span aria-hidden>🛒</span>
+          Pending approvals
         </div>
+        <div className="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-widest text-slate-400">
+          <span className={`min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5 text-[9px] font-black ${items.length === 0 ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40' : 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/40'}`}>
+            {items.length}
+          </span>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-center px-5 py-8 min-h-[160px]">
+          <div className="text-3xl mb-2 opacity-70" aria-hidden>✅</div>
+          <div className="text-sm font-bold text-slate-200">All clear</div>
+          <div className="text-[11px] text-slate-500 font-mono mt-1 max-w-[28ch]">
+            No purchase requests waiting on your approval.
+          </div>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-800/70 mt-2">
+          {items.map((pr) => {
+            const pill = STAGE_PILL[pr.status] ?? { label: pr.status ?? 'pending', tone: 'border-slate-600 text-slate-300 bg-slate-700/30' };
+            const vendor = pr.vendor_name || `PR-${pr.id}`;
+            return (
+              <li key={pr.id} className="flex items-center gap-3 px-4 sm:px-5 py-2.5 transition-colors hover:bg-slate-900/40">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono text-[10px] text-slate-500 shrink-0">PR-{pr.id}</span>
+                    <span className="truncate text-[13px] font-bold text-white">{vendor}</span>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-500 font-mono truncate">
+                    <span className="truncate">{pr.requester_name ?? '—'}</span>
+                    {pr.requester_dept_group_name && (
+                      <>
+                        <span className="text-slate-700">·</span>
+                        <span className="truncate">{pr.requester_dept_group_name}</span>
+                      </>
+                    )}
+                    <span className="text-slate-700">·</span>
+                    <span className="shrink-0">{timeAgo(pr.created_at)}</span>
+                  </div>
+                </div>
+                <div className="shrink-0 flex flex-col items-end gap-1">
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-widest ${pill.tone}`}>
+                    {pill.label}
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-slate-200 tabular-nums">
+                    {fmtMoney(pr.total_estimate, pr.currency)}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
-    </button>
+
+      <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-slate-800/70 mt-1">
+        <span className="text-[10px] font-mono text-slate-500 truncate">
+          {items.length === 0
+            ? 'Awaiting new submissions'
+            : `Top ${items.length} of ${prs.length} waiting`}
+        </span>
+        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-indigo-300 group-hover:text-indigo-200 transition-colors">
+          View all →
+        </span>
+      </div>
+    </Link>
   );
 };
 

@@ -24,13 +24,20 @@ export function greetingLine(name: string, key: GreetingKey = timeGreeting()): s
       : `Good evening, ${safe}`;
 }
 
-export function pickFeaturedTile(
-  tiles: TileWithMeta[],
-  isLocked: (t: TileWithMeta) => boolean,
-): TileWithMeta | null {
-  if (!tiles || tiles.length === 0) return null;
-  const open = tiles.find((t) => t.group !== 'hub' && !isLocked(t));
-  return open ?? null;
+export function pickPendingApprovals(prs: any[]): any[] {
+  if (!Array.isArray(prs) || prs.length === 0) return [];
+  const pending = prs.filter((pr) => {
+    const s = String(pr?.status ?? '');
+    if (!s) return false;
+    if (s === 'approved' || s === 'rejected' || s === 'paid' || s === 'draft') return false;
+    return s.endsWith('_review') || s === 'po_pending';
+  });
+  pending.sort((a, b) => {
+    const ta = new Date(a?.created_at ?? 0).getTime();
+    const tb = new Date(b?.created_at ?? 0).getTime();
+    return ta - tb;
+  });
+  return pending;
 }
 
 export interface HeroKpis {

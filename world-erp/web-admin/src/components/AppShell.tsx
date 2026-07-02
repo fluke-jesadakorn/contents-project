@@ -3,6 +3,8 @@ import { Navbar } from './Navbar';
 import { NavbarSkeleton } from './NavbarSkeleton';
 import { NavbarRemount } from './NavbarRemount';
 import { ScrollReset } from './ScrollReset';
+import { BreadcrumbBar } from './BreadcrumbBar';
+import { BreadcrumbProvider } from './breadcrumbs/BreadcrumbProvider';
 import { getActor } from '@/lib/server/actor';
 import { getDashboardData } from '@/lib/server/queries';
 
@@ -20,15 +22,16 @@ async function NavbarData() {
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => (
-  <>
+  <BreadcrumbProvider>
     <ScrollReset />
     <NavbarRemount>
       <Suspense fallback={<NavbarSkeleton />}>
         <NavbarData />
       </Suspense>
     </NavbarRemount>
+    <BreadcrumbBar />
     {children}
-  </>
+  </BreadcrumbProvider>
 );
 
 export default AppShell;

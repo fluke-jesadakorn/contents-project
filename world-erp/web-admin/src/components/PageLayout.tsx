@@ -1,8 +1,6 @@
 import React from 'react';
-import { Breadcrumb, type Crumb } from './Breadcrumb';
 
 interface PageLayoutProps {
-  breadcrumbs: Crumb[];
   title: string;
   subtitle?: string;
   children: React.ReactNode;
@@ -10,7 +8,6 @@ interface PageLayoutProps {
 }
 
 export const PageLayout: React.FC<PageLayoutProps> = ({
-  breadcrumbs,
   title,
   subtitle,
   children,
@@ -23,14 +20,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
         className || '',
       ].join(' ')}
     >
-      {breadcrumbs.length > 0 && (
-        <Breadcrumb
-          crumbs={breadcrumbs}
-          className="!mb-0 !bg-transparent !border-0 !px-0 !py-0 !text-slate-500 text-[12px] font-mono"
-        />
-      )}
-
-      <h1 className="mt-3 text-[28px] font-bold tracking-tight text-white leading-tight">
+      <h1 className="text-[28px] font-bold tracking-tight text-white leading-tight">
         {title}
       </h1>
 

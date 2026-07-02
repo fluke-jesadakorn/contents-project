@@ -81,18 +81,34 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       perform: () => onNavigate(tileHref(t.id)),
     }));
 
-    const personas: PaletteAction[] = users.slice(0, 12).map((u) => ({
-      id: `user:${u.id}`,
-      label: `${u.fullname} · ${u.employee_code}`,
-      hint: u.role_name,
-      group: 'Switch Role',
-      glyph: roleGlyph(u.role_name),
-      perform: () => switchPersona(u.id),
-    }));
+    const personaPrefixes = ['as ', 'role ', 'user ', '@', 'login '];
+    const q = query.trim().toLowerCase();
+    const personaActive =
+      personaPrefixes.some((p) => q.startsWith(p)) || q === 'as' || q === 'role' || q === 'user';
+
+    const personas: PaletteAction[] = personaActive
+      ? users.slice(0, 8).map((u) => ({
+          id: `user:${u.id}`,
+          label: `${u.fullname} · ${u.employee_code}`,
+          hint: u.role_name,
+          group: 'Switch Role',
+          glyph: roleGlyph(u.role_name),
+          perform: () => switchPersona(u.id),
+        }))
+      : q
+        ? users.slice(0, 3).map((u) => ({
+            id: `user:${u.id}`,
+            label: `${u.fullname} · ${u.employee_code}`,
+            hint: u.role_name,
+            group: 'Switch Role',
+            glyph: roleGlyph(u.role_name),
+            perform: () => switchPersona(u.id),
+          }))
+        : [];
 
     return [...tileActions, ...personas];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, currentUser, users, tiles, onNavigate]);
+  }, [role, currentUser, users, tiles, onNavigate, query]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -171,7 +187,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       if (!out[a.group]) out[a.group] = [];
       out[a.group].push(a);
     }
-    return Object.entries(out);
+    const order = ['Tiles', 'AI Suggestion', 'Switch Role'];
+    return Object.entries(out).sort(
+      ([a], [b]) => {
+        const ai = order.indexOf(a);
+        const bi = order.indexOf(b);
+        if (ai === -1 && bi === -1) return a.localeCompare(b);
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      },
+    );
   }, [finalList]);
 
   useEffect(() => {
@@ -242,7 +268,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type a command, search tabs, tiles, or switch roles…"
+            placeholder="Search tiles, features, or pages — type “as …” to switch user"
             className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-slate-500"
           />
           <kbd className="hidden sm:inline-flex text-[9px] font-mono px-1.5 py-0.5 rounded border border-slate-700 text-slate-400 bg-slate-900">

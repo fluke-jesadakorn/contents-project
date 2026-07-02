@@ -14,6 +14,7 @@ import { TilePage } from '@/components/TilePage';
 import { OrgChartHR } from '@/components/workspaces/OrgChartHR';
 import { NoPermissionView } from '@/components/NoPermissionView';
 import { PageLayout } from '@/components/PageLayout';
+import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
 import { ROOT_CRUMB, buildCrumbs } from '@/components/breadcrumbs';
 
 interface Props {
@@ -43,18 +44,20 @@ export async function SlugTile({ slug, actor }: Props) {
   const tileRow = await getTileBySlug(slug);
   if (!tileRow) {
     return (
-      <PageLayout
-        breadcrumbs={[ROOT_CRUMB, { label: `/${slug}` }]}
-        title="Not found"
-        subtitle="The feature you are looking for does not exist or has been renamed."
-      >
-        <NoPermissionView
-          kind="not_found"
-          actor={actor as any}
-          attemptedPath={`/${slug}`}
-          reason="The feature you are looking for does not exist or has been renamed."
-        />
-      </PageLayout>
+      <>
+        <BreadcrumbSetter crumbs={[ROOT_CRUMB, { label: `/${slug}` }]} />
+        <PageLayout
+          title="Not found"
+          subtitle="The feature you are looking for does not exist or has been renamed."
+        >
+          <NoPermissionView
+            kind="not_found"
+            actor={actor as any}
+            attemptedPath={`/${slug}`}
+            reason="The feature you are looking for does not exist or has been renamed."
+          />
+        </PageLayout>
+      </>
     );
   }
 
@@ -75,43 +78,49 @@ export async function SlugTile({ slug, actor }: Props) {
   const access = await evaluateTile(tile, actor);
   if (access.state === 'locked') {
     return (
-      <PageLayout
-        breadcrumbs={buildCrumbs({ group: tile.group, tile, record: { label: 'LOCKED' } })}
-        title={tile.display_name}
-        subtitle="Access restricted"
-      >
-        <NoPermissionView
-          kind="locked"
-          actor={actor as any}
-          tile={tile as any}
-          access={access as any}
-          attemptedPath={`/${slug}`}
-        />
-      </PageLayout>
+      <>
+        <BreadcrumbSetter crumbs={buildCrumbs({ group: tile.group, tile, record: { label: 'LOCKED' } })} />
+        <PageLayout
+          title={tile.display_name}
+          subtitle="Access restricted"
+        >
+          <NoPermissionView
+            kind="locked"
+            actor={actor as any}
+            tile={tile as any}
+            access={access as any}
+            attemptedPath={`/${slug}`}
+          />
+        </PageLayout>
+      </>
     );
   }
 
   if (slug === 'org-chart') {
     return (
-      <PageLayout
-        breadcrumbs={buildCrumbs({ group: tile.group, tile })}
-        title={tile.display_name}
-        subtitle={tile.subtitle}
-      >
-        <OrgChartHR currentUser={actor as any} view="people" />
-      </PageLayout>
+      <>
+        <BreadcrumbSetter crumbs={buildCrumbs({ group: tile.group, tile })} />
+        <PageLayout
+          title={tile.display_name}
+          subtitle={tile.subtitle}
+        >
+          <OrgChartHR currentUser={actor as any} view="people" />
+        </PageLayout>
+      </>
     );
   }
 
   if (slug === 'permissions') {
     return (
-      <PageLayout
-        breadcrumbs={buildCrumbs({ group: tile.group, tile })}
-        title={tile.display_name}
-        subtitle={tile.subtitle}
-      >
-        <OrgChartHR currentUser={actor as any} view="permissions" scopeTilesOnly />
-      </PageLayout>
+      <>
+        <BreadcrumbSetter crumbs={buildCrumbs({ group: tile.group, tile })} />
+        <PageLayout
+          title={tile.display_name}
+          subtitle={tile.subtitle}
+        >
+          <OrgChartHR currentUser={actor as any} view="permissions" scopeTilesOnly />
+        </PageLayout>
+      </>
     );
   }
 

@@ -70,7 +70,7 @@ export const Tile: React.FC<TileProps> = ({
         </div>
       )}
 
-      <div className={`absolute -right-2 -bottom-3 text-[80px] leading-none select-none pointer-events-none ${locked ? 'opacity-[0.03]' : 'opacity-[0.06]'}`}>
+      <div className={`absolute -right-2 -bottom-3 text-[96px] leading-none select-none pointer-events-none ${locked ? 'opacity-[0.03]' : 'opacity-[0.06]'}`}>
         {tile.icon}
       </div>
 
@@ -87,10 +87,10 @@ export const Tile: React.FC<TileProps> = ({
 
       <div className="relative z-10 flex flex-col h-full">
         <div className="flex items-start justify-between gap-2">
-          <span className={`text-[36px] drop-shadow-lg leading-none ${locked ? 'grayscale opacity-60' : ''}`}>{tile.icon}</span>
+          <span className={`text-[44px] drop-shadow-lg leading-none ${locked ? 'grayscale opacity-60' : ''}`}>{tile.icon}</span>
           {tile.count !== undefined && (
             <div className={`flex flex-col items-end ${live && !locked ? '' : 'opacity-70'}`}>
-              <span className={`font-black font-mono leading-none ${locked ? 'text-slate-500' : c.text} text-2xl`}>
+              <span className={`font-black font-mono leading-none ${locked ? 'text-slate-500' : c.text} text-3xl`}>
                 {typeof tile.count === 'number' && live ? tile.count.toLocaleString() : tile.count}
               </span>
               {tile.countLabel && (
@@ -103,11 +103,11 @@ export const Tile: React.FC<TileProps> = ({
         </div>
 
         <div className="mt-auto pt-2">
-          <h3 className={`font-black leading-tight text-[13px] ${locked ? 'text-slate-400' : 'text-white'}`}>
+          <h3 className={`font-black leading-tight text-[14px] ${locked ? 'text-slate-400' : 'text-white'}`}>
             {tile.display_name}
           </h3>
           {tile.subtitle && (
-            <p className={`mt-0.5 font-sans leading-snug text-[10px] line-clamp-1 ${locked ? 'text-slate-600' : 'text-slate-400'}`}>
+            <p className={`mt-0.5 font-sans leading-snug text-[11px] line-clamp-1 ${locked ? 'text-slate-600' : 'text-slate-400'}`}>
               {tile.subtitle}
             </p>
           )}
@@ -148,7 +148,7 @@ export const Tile: React.FC<TileProps> = ({
     'group relative rounded-2xl overflow-hidden text-left block w-full',
     'bg-gradient-to-br',
     c.bg,
-    'h-[180px] p-4',
+    'h-[210px] p-5',
     locked
       ? `opacity-50 grayscale saturate-50 ring-1 ring-slate-800/60 border border-slate-800/80 cursor-not-allowed`
       : active

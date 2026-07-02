@@ -7,6 +7,7 @@ import { TileHub } from '@/components/TileHub';
 import { HubHero } from '@/components/HubHero';
 import { AccessDenied } from '@/components/AccessDenied';
 import { PageLayout } from '@/components/PageLayout';
+import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
 import { GROUP_LABEL, type TileDef, type TileGroup, tileHref, tileFromRow } from '@/components/tile-config';
 import { evaluateTileOptimistic } from '@/components/tileAccess';
 import { ROOT_CRUMB, groupCrumb } from '@/components/breadcrumbs';
@@ -21,7 +22,7 @@ interface HomeClientProps {
   canViewHub: boolean;
 }
 
-export function HomeClient({ users, currentUser, expenses: _expenses, policies: _policies, prs: _prs, execReport: _execReport, canViewHub }: HomeClientProps) {
+export function HomeClient({ users, currentUser, expenses: _expenses, policies: _policies, prs, execReport: _execReport, canViewHub }: HomeClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const groupParam = searchParams.get('group');
@@ -57,7 +58,6 @@ export function HomeClient({ users, currentUser, expenses: _expenses, policies: 
   const homeSubtitle = activeGroup
     ? `${visibleTiles.length} tile${visibleTiles.length === 1 ? '' : 's'} in ${GROUP_LABEL[activeGroup].label}`
     : (currentUser ? `${tiles.length} tiles in catalog — visibility filtered by RBAC` : 'Sign in to view your tiles');
-  const homeCrumbs = activeGroup ? [ROOT_CRUMB, groupCrumb(activeGroup)] : [ROOT_CRUMB];
 
   const handleSelectTile = (t: any) => {
     const access = evaluateTileOptimistic(t, currentUser);
@@ -66,24 +66,23 @@ export function HomeClient({ users, currentUser, expenses: _expenses, policies: 
 
   const handleOpenCommand = () => setOpenCommand(true);
 
-  const handleHeroOpenTile = (t: any) => {
-    handleSelectTile(t);
-  };
-
   if (currentUser && !canViewHub) {
     return (
-      <PageLayout
-        breadcrumbs={[ROOT_CRUMB]}
-        title="Hub"
-        subtitle="Restricted"
-      >
-        <AccessDenied roleName={currentUser.role_name} requiredAccess="Hub" />
-      </PageLayout>
+      <>
+        <BreadcrumbSetter crumbs={[ROOT_CRUMB]} />
+        <PageLayout
+          title="Hub"
+          subtitle="Restricted"
+        >
+          <AccessDenied roleName={currentUser.role_name} requiredAccess="Hub" />
+        </PageLayout>
+      </>
     );
   }
 
   return (
     <>
+      <BreadcrumbSetter crumbs={activeGroup ? [ROOT_CRUMB, groupCrumb(activeGroup)] : [ROOT_CRUMB]} />
       <CommandPalette
         role={currentUser?.role_name as any}
         onNavigate={(href) => router.push(href)}
@@ -95,7 +94,6 @@ export function HomeClient({ users, currentUser, expenses: _expenses, policies: 
       />
 
       <PageLayout
-        breadcrumbs={homeCrumbs}
         title={homeTitle}
         subtitle={homeSubtitle}
       >
@@ -104,8 +102,8 @@ export function HomeClient({ users, currentUser, expenses: _expenses, policies: 
             <HubHero
               actor={currentUser}
               tiles={visibleTiles as any}
+              pendingPrs={prs as any[]}
               isLocked={(t) => evaluateTileOptimistic(t, currentUser).state === 'locked'}
-              onOpenTile={handleHeroOpenTile}
               onOpenCommand={handleOpenCommand}
             />
           </div>
