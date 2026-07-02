@@ -87,12 +87,65 @@
   to { transform: scaleX(1); }
 }
 
+/* Slow floating blobs for hero ambient layer */
+@keyframes float-slow {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(20px, -28px, 0) scale(1.06); }
+}
+
+@keyframes float-slower {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-26px, 18px, 0) scale(1.04); }
+}
+
+.animate-float-slow {
+  animation: float-slow 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-slower {
+  animation: float-slower 24s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Diagonal shine sweep on tile hover */
+@keyframes shine-sweep {
+  0%   { transform: translateX(-120%) skewX(-12deg); }
+  100% { transform: translateX(220%) skewX(-12deg); }
+}
+
+/* Staggered rise for tile grid */
+@keyframes tile-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.animate-tile-rise {
+  opacity: 0;
+  animation: tile-rise 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Spotlight scanline on hero */
+@keyframes hero-scan {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  20%  { opacity: 0.6; }
+  100% { transform: translateX(100%);  opacity: 0; }
+}
+
+.animate-hero-scan {
+  animation: hero-scan 2.6s ease-out 0.2s 1 forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
   .animate-fade-scale,
   .animate-slide-in-left,
   .animate-glow-border,
-  .animate-pulse {
+  .animate-pulse,
+  .animate-float-slow,
+  .animate-float-slower,
+  .animate-tile-rise,
+  .animate-hero-scan {
     animation: none !important;
     transition: none !important;
   }

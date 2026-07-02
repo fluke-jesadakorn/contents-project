@@ -27,6 +27,12 @@ export const NotificationBellClient: React.FC<NotificationBellClientProps> = ({
   );
 
   useEffect(() => {
+    function onExternal() { setOpen(true); }
+    window.addEventListener('world-erp:open-notifications', onExternal);
+    return () => window.removeEventListener('world-erp:open-notifications', onExternal);
+  }, []);
+
+  useEffect(() => {
     if (hideButton) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;

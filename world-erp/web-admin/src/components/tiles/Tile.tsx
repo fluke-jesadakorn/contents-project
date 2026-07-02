@@ -59,18 +59,18 @@ export const Tile: React.FC<TileProps> = ({
       />
 
       {active && !locked && (
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
           <span className={`w-1.5 h-1.5 rounded-full ${c.bar} shadow-[0_0_8px_currentColor] animate-pulse`} />
         </div>
       )}
 
       {locked && (
-        <div className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-slate-900/80 border border-slate-700/80 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-slate-300">
+        <div className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-slate-900/80 border border-slate-700/80 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-slate-300 z-20">
           🔒 <span>Locked</span>
         </div>
       )}
 
-      <div className={`absolute -right-2 -bottom-3 text-[72px] leading-none select-none pointer-events-none ${locked ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}>
+      <div className={`absolute -right-2 -bottom-3 text-[80px] leading-none select-none pointer-events-none ${locked ? 'opacity-[0.03]' : 'opacity-[0.06]'}`}>
         {tile.icon}
       </div>
 
@@ -78,9 +78,16 @@ export const Tile: React.FC<TileProps> = ({
         <div className={`absolute inset-0 rounded-2xl pointer-events-none ${c.bg}`} />
       )}
 
+      {!locked && (
+        <div
+          aria-hidden
+          className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 group-hover:animate-shine-sweep"
+        />
+      )}
+
       <div className="relative z-10 flex flex-col h-full">
         <div className="flex items-start justify-between gap-2">
-          <span className={`text-3xl drop-shadow-lg leading-none ${locked ? 'grayscale opacity-60' : ''}`}>{tile.icon}</span>
+          <span className={`text-[36px] drop-shadow-lg leading-none ${locked ? 'grayscale opacity-60' : ''}`}>{tile.icon}</span>
           {tile.count !== undefined && (
             <div className={`flex flex-col items-end ${live && !locked ? '' : 'opacity-70'}`}>
               <span className={`font-black font-mono leading-none ${locked ? 'text-slate-500' : c.text} text-2xl`}>
@@ -141,12 +148,12 @@ export const Tile: React.FC<TileProps> = ({
     'group relative rounded-2xl overflow-hidden text-left block w-full',
     'bg-gradient-to-br',
     c.bg,
-    'h-[170px] p-4',
+    'h-[180px] p-4',
     locked
       ? `opacity-50 grayscale saturate-50 ring-1 ring-slate-800/60 border border-slate-800/80 cursor-not-allowed`
       : active
-        ? `ring-1 ${c.ring} shadow-xl ${c.glow} scale-[1.01]`
-        : 'ring-1 ring-slate-800/60 hover:ring-slate-700 hover:scale-[1.015] hover:shadow-lg hover:shadow-black/40 border border-slate-800/80',
+        ? `ring-2 ${c.ring} shadow-xl ${c.glow} scale-[1.015]`
+        : 'ring-1 ring-slate-800/60 hover:ring-slate-600 hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/50 border border-slate-800/80',
     'transition-all duration-200',
   ].join(' ');
 

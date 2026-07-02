@@ -122,17 +122,22 @@ export const SortableTileGrid: React.FC<SortableTileGridProps> = ({
   return (
     <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={ids} strategy={rectSortingStrategy}>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 grid-rows-[170px] auto-rows-[170px]">
-          {list.map(({ tile, access }) => (
-            <SortableTile
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 grid-rows-[180px] auto-rows-[180px]">
+          {list.map(({ tile, access }, idx) => (
+            <div
               key={tile.id}
-              tile={tile}
-              access={access}
-              active={activeTileId === tile.id}
-              onSelect={onSelectTile}
-              actorId={actorId}
-              targetLabel={targetLabel}
-            />
+              className="animate-tile-rise"
+              style={{ animationDelay: `${Math.min(idx, 8) * 40}ms` }}
+            >
+              <SortableTile
+                tile={tile}
+                access={access}
+                active={activeTileId === tile.id}
+                onSelect={onSelectTile}
+                actorId={actorId}
+                targetLabel={targetLabel}
+              />
+            </div>
           ))}
         </div>
       </SortableContext>

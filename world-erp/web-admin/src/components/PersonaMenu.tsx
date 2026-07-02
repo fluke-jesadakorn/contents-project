@@ -107,6 +107,12 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
   }, [open]);
 
   useEffect(() => {
+    function onExternal() { setOpen(true); }
+    window.addEventListener('world-erp:open-persona', onExternal);
+    return () => window.removeEventListener('world-erp:open-persona', onExternal);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {

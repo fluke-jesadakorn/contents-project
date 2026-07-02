@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CommandPalette } from '@/components/CommandPalette';
 import { TileHub } from '@/components/TileHub';
+import { HubHero } from '@/components/HubHero';
 import { AccessDenied } from '@/components/AccessDenied';
 import { PageLayout } from '@/components/PageLayout';
 import { GROUP_LABEL, type TileDef, type TileGroup, tileHref, tileFromRow } from '@/components/tile-config';
@@ -63,6 +64,12 @@ export function HomeClient({ users, currentUser, expenses: _expenses, policies: 
     if (access.state === 'open' || access.state === 'checking') router.push(tileHref(t.id));
   };
 
+  const handleOpenCommand = () => setOpenCommand(true);
+
+  const handleHeroOpenTile = (t: any) => {
+    handleSelectTile(t);
+  };
+
   if (currentUser && !canViewHub) {
     return (
       <PageLayout
@@ -92,6 +99,18 @@ export function HomeClient({ users, currentUser, expenses: _expenses, policies: 
         title={homeTitle}
         subtitle={homeSubtitle}
       >
+        {currentUser && tilesLoaded && visibleTiles.length > 0 && (
+          <div className="mb-8">
+            <HubHero
+              actor={currentUser}
+              tiles={visibleTiles as any}
+              isLocked={(t) => evaluateTileOptimistic(t, currentUser).state === 'locked'}
+              onOpenTile={handleHeroOpenTile}
+              onOpenCommand={handleOpenCommand}
+            />
+          </div>
+        )}
+
         {!currentUser && (
           <div className="flex justify-center items-center py-10 glass-panel rounded-2xl border-indigo-500/20">
             <span className="ml-3 text-xs font-mono text-slate-300">
