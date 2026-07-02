@@ -1,0 +1,19 @@
+import { NextResponse } from 'next/server';
+import { query } from '@/lib/db';
+import { loadActor } from '@/lib/server/guard';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  const actor = await loadActor();
+  if (!actor) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const r = await query(
+    `SELECT id, display_name, subtitle, icon, accent, group_name, sub_view,
+            href, module_id, request_target, sort_order, is_system,
+            owner_group_id, default_perm::text AS default_perm
+       FROM rbac.tiles
+       ORDER BY sort_order ASC, id ASC`,
+  );
+  return NextResponse.json({ tiles: r.rows });
+}

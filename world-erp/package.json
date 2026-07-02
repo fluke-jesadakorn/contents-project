@@ -1,0 +1,27 @@
+{
+  "name": "world-erp",
+  "version": "1.0.0",
+  "description": "World ERP — AI Financial System. Single Next.js process on 3003 (the AI/RBAC logic lives in world-erp/lib/ as @erp-lib/* modules).",
+  "main": "index.js",
+  "workspaces": ["web-admin", "lib"],
+  "scripts": {
+    "embed": "node db/embed_coa.js",
+    "audit": "node db/audit_ai_coverage.js",
+    "dev": "cd web-admin && bun run dev",
+    "lint": "cd web-admin && bun run lint",
+    "typecheck": "cd web-admin && bunx tsc --noEmit"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/minio": "^7.1.1",
+    "@types/node": "^26.1.0",
+    "@types/pg": "^8.20.0",
+    "minio": "^8.0.7"
+  },
+  "trustedDependencies": [
+    "unrs-resolver"
+  ]
+}

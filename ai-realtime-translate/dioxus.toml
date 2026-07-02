@@ -1,0 +1,17 @@
+[bundle]
+name = "Foundry"
+identifier = "com.thefactorygroup.foundry"
+publisher = "The Factory Group"
+category = "DeveloperTool"
+short_description = "Realtime voice intelligence"
+long_description = "Foundry captures system audio (microphone, BlackHole, or ScreenCaptureKit like OBS), transcribes with Whisper, and translates with local MLX-LM models."
+icon = ["assets/icon.png"]
+
+[bundle.macos]
+minimum_system_version = "13.0"
+frameworks = ["CoreAudio", "AudioToolbox", "AVFoundation", "ScreenCaptureKit", "CoreMedia", "VideoToolbox"]
+entitlements = "entitlements.plist"
+info_plist_path = "Info.plist"
+
+[macos]
+minimum_version = "13.0"

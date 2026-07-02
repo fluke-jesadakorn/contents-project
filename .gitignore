@@ -38,6 +38,10 @@ Video/
 *.mkv
 *.mp4
 
+# Rust build artifacts
+**/target/
+/target/
+
 # IDEs and Editors
 .vscode/
 .idea/

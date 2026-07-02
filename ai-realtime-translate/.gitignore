@@ -1,0 +1,15 @@
+.venv/
+.venv-py39.bak/
+__pycache__/
+*.pyc
+.DS_Store
+.antigravitycli/
+temp_live_chunk.wav
+test_capture.wav
+
+# Rust / Dioxus build artifacts
+target/
+desktop/target/
+
+# Bundled app (regenerated via `dx bundle`)
+dist/

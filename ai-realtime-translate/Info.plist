@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>foundry</string>
+    <key>CFBundleIconFile</key>
+    <string>icon</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.thefactorygroup.foundry</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>Foundry</string>
+    <key>CFBundleDisplayName</key>
+    <string>Foundry</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>0.1.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <!-- Required for cpal/microphone capture (BlackHole etc.) without an extra TCC prompt. -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Foundry captures audio from a microphone or a virtual audio device (e.g. BlackHole 2ch) for live transcription and translation.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Foundry captures system audio for live transcription and translation. Two paths: a virtual audio device (BlackHole 2ch) or ScreenCaptureKit (system-wide).</string>
+    <!-- Shown when the user invokes ScreenCaptureKit-based system audio capture.
+         The first capture triggers a one-time Screen Recording permission prompt. -->
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Foundry uses ScreenCaptureKit to capture the audio playing on your Mac (same engine OBS uses on macOS 13+). The first time you enable System Audio you will be asked to grant Screen Recording permission in System Settings → Privacy &amp; Security.</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.developer-tools</string>
+</dict>
+</plist>
