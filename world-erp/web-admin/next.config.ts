@@ -8,16 +8,20 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  serverExternalPackages: ["@erp-lib/native/vision-ocr"],
-  webpack: (config) => {
-    config.resolve = config.resolve ?? {};
-    config.resolve.alias = {
-      ...(config.resolve.alias as Record<string, string> | undefined),
-      '@erp-lib': LIB_DIR,
-      '@erp-lib/native/vision-ocr': path.resolve(LIB_DIR, 'native/vision-ocr'),
-    };
-    return config;
+  async redirects() {
+    return [
+      { source: '/submit-expense',  destination: '/expense',                   permanent: true },
+      { source: '/expense-claim',   destination: '/expense',                   permanent: true },
+      { source: '/approve-expense', destination: '/expense?tab=approve',       permanent: true },
+      { source: '/all-approvals',   destination: '/my-waybills?scope=all',     permanent: true },
+      { source: '/my-prs',          destination: '/my-waybills?scope=mine',    permanent: true },
+      { source: '/po',              destination: '/my-waybills?scope=all',     permanent: true },
+      { source: '/expense/:id',     destination: '/waybill/by-expense/:id',    permanent: true },
+      { source: '/pr/:id',          destination: '/waybill/by-pr/:id',         permanent: true },
+      { source: '/po/:id',          destination: '/waybill/by-po/:id',         permanent: true },
+    ];
   },
+  serverExternalPackages: ["@erp-lib/native/vision-ocr"],
   turbopack: {
     resolveAlias: {
       '@erp-lib': LIB_DIR,
