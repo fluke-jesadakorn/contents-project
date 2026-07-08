@@ -15,5 +15,5 @@ export default async function ExpenseLanding({ searchParams }: PageProps) {
   if (tab === 'approve' || tab === 'settle') {
     redirect('/my-waybills?scope=queue');
   }
-  redirect('/expense-claim');
+  redirect('/my-waybills?scope=mine');
 }
