@@ -4,6 +4,9 @@ import type { WaybillDomain, WaybillStagePip } from '@erp-lib/waybill/derive';
 import { findPip, pipIndex, bucketLabel } from '@erp-lib/waybill/derive';
 import type { WaybillEventRow } from '@erp-lib/waybill/events';
 import { stageLabel } from '@erp-lib/waybill/labels';
+import type { WaybillAttachmentRow } from '@erp-lib/waybill/attachments';
+import { AttachmentRow } from './AttachmentRow';
+import { AttachmentUpload } from './AttachmentUpload';
 
 interface Props {
   waybillId: string;
@@ -12,6 +15,7 @@ interface Props {
   currentStage: string;
   lang?: 'en' | 'th';
   events: WaybillEventRow[];
+  attachments: WaybillAttachmentRow[];
   amountTHB?: number | null;
 }
 
@@ -22,6 +26,7 @@ export function WaybillDetailDrawer({
   currentStage,
   lang = 'en',
   events,
+  attachments,
   amountTHB,
 }: Props) {
   const pip = findPip(domain, pipKey);
@@ -38,6 +43,8 @@ export function WaybillDetailDrawer({
   const state = computeState(pip, idx, curIdx, currentStage);
 
   const passedEvents = events.filter((e) => e.stage_to === pipKey).slice(-3);
+  const pipAttachments = attachments.filter((a) => a.stage_key === pipKey);
+  const isCurrentStage = currentStage === pipKey;
 
   const bucketKind = bucketLabel(pip.bucket, lang);
 
@@ -85,6 +92,26 @@ export function WaybillDetailDrawer({
                 </li>
               ))}
             </ol>
+          )}
+        </div>
+
+        <div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+            Attachments at this pip ({pipAttachments.length})
+          </div>
+          {pipAttachments.length === 0 ? (
+            <p className="mt-1 text-xs italic text-slate-500">No documents at this pip.</p>
+          ) : (
+            <div className="mt-2 space-y-2">
+              {pipAttachments.map((a) => (
+                <AttachmentRow key={a.id} waybillId={waybillId} attachment={a} />
+              ))}
+            </div>
+          )}
+          {isCurrentStage && (
+            <div className="mt-3">
+              <AttachmentUpload waybillId={waybillId} stage={pipKey} />
+            </div>
           )}
         </div>
 

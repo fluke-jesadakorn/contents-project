@@ -16,6 +16,7 @@ export type WaybillEventKind =
   | 'settled'
   | 'posted-to-gl'
   | 'slip-attached'
+  | 'attached'
   | 'signed-off'
   | 'reversed'
   | 'authorization-overridden'

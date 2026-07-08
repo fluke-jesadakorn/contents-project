@@ -5,6 +5,11 @@ import { cache } from 'react';
 import { query } from '@erp-lib/db';
 import { listEvents, type WaybillEventRow } from '@erp-lib/waybill/events';
 import {
+  listAttachments,
+  attachmentsAndEventsMerged,
+  type WaybillAttachmentRow,
+} from '@erp-lib/waybill/attachments';
+import {
   pipsForDomain,
   type WaybillDomain,
 } from '@erp-lib/waybill/derive';
@@ -124,6 +129,18 @@ export async function loadWaybillEvents(waybillId: string): Promise<WaybillEvent
   return listEvents(waybillId);
 }
 
+export const loadAttachmentsForWaybill = cache(
+  async (waybillId: string): Promise<WaybillAttachmentRow[]> => {
+    return listAttachments(waybillId);
+  },
+);
+
+export async function loadUnifiedTimeline(
+  waybillId: string,
+): Promise<Awaited<ReturnType<typeof attachmentsAndEventsMerged>>> {
+  return attachmentsAndEventsMerged(waybillId);
+}
+
 export function domainOf(wb: WaybillRow): WaybillDomain {
   return wb.origin === 'expense' ? 'expense' : 'procurement';
 }
@@ -132,6 +149,7 @@ export interface WaybillRailContext {
   waybill: WaybillRow;
   domain: WaybillDomain;
   events: WaybillEventRow[];
+  attachments: WaybillAttachmentRow[];
   pips: ReturnType<typeof pipsForDomain>;
   activePipIndex: number;
   activeActorName: string | null;
@@ -141,6 +159,7 @@ export async function loadWaybillRailContext(waybillId: string): Promise<Waybill
   const wb = await loadWaybill(waybillId);
   if (!wb) return null;
   const events = await listEvents(waybillId);
+  const attachments = await listAttachments(waybillId);
   const domain = domainOf(wb);
   const pips = pipsForDomain(domain);
   const activePipIndex = pips.findIndex((p) => p.key === wb.current_stage);
@@ -158,6 +177,7 @@ export async function loadWaybillRailContext(waybillId: string): Promise<Waybill
     waybill: wb,
     domain,
     events,
+    attachments,
     pips,
     activePipIndex,
     activeActorName,

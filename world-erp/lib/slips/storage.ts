@@ -9,8 +9,8 @@ import { randomUUID } from 'node:crypto';
 import { config } from '../config';
 
 const minioClient = new MinioClient({
-  endPoint: config.storage.minio.endPoint,
-  port: config.storage.minio.port,
+  endPoint: config.storage.minio.publicHost || config.storage.minio.endPoint,
+  port: config.storage.minio.publicPort > 0 ? config.storage.minio.publicPort : config.storage.minio.port,
   useSSL: config.storage.minio.useSSL,
   accessKey: config.storage.minio.accessKey,
   secretKey: config.storage.minio.secretKey,
@@ -59,9 +59,28 @@ export function getStream(key: string): Readable {
 
 export async function presignedGetUrl(key: string, expirySeconds = 600): Promise<string> {
   await ensureBucket();
-  return await (minioClient.presignedGetObject as (b: string, k: string, e: number) => Promise<string>)(
+  const signed = await (minioClient.presignedGetObject as (b: string, k: string, e: number) => Promise<string>)(
     config.storage.minio.bucket, key, expirySeconds,
   );
+  return rewritePublicHost(signed);
+}
+
+export async function presignedPutUrl(key: string, expirySeconds = 600): Promise<string> {
+  await ensureBucket();
+  const signed = await (minioClient.presignedPutObject as (b: string, k: string, e: number) => Promise<string>)(
+    config.storage.minio.bucket, key, expirySeconds,
+  );
+  return rewritePublicHost(signed);
+}
+
+function rewritePublicHost(signedUrl: string): string {
+  const { publicHost, publicPort } = config.storage.minio;
+  if (!publicHost) return signedUrl;
+  const u = new URL(signedUrl);
+  u.hostname = publicHost;
+  if (publicPort > 0) u.port = String(publicPort);
+  else u.port = '';
+  return u.toString();
 }
 
 export function makeKey(originalName: string): string {

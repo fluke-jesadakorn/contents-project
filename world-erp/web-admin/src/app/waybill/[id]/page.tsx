@@ -1,10 +1,13 @@
 import React from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { loadWaybillRailContext } from '@/lib/server/waybill';
+import { loadWaybillRailContext, loadUnifiedTimeline } from '@/lib/server/waybill';
 import { loadActor } from '@/lib/server/guard';
-import type { WaybillEventRow } from '@erp-lib/waybill/events';
+import { canActorAttachAt, isTerminalStage } from '@erp-lib/waybill/permissions';
 import { WaybillRail } from '@/components/waybill/WaybillRail';
 import { WaybillDetailDrawer } from '@/components/waybill/WaybillDetailDrawer';
+import { AttachmentList } from '@/components/waybill/AttachmentList';
+import { UnifiedTimeline } from '@/components/waybill/UnifiedTimeline';
+import { ExportPdfButton } from '@/components/waybill/ExportPdfButton';
 import { PageLayout } from '@/components/PageLayout';
 import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
 import {
@@ -81,6 +84,13 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
     wb.current_stage === 'awaiting_disbursement' &&
     wb.status === 'open';
 
+  // Attach gate: acting role at current_stage AND not terminal
+  const canAttach =
+    !isTerminalStage(wb.current_stage) &&
+    canActorAttachAt(actor.role_name ?? '', wb.current_stage);
+
+  const merged = await loadUnifiedTimeline(wb.id);
+
   return (
     <>
       <BreadcrumbSetter
@@ -93,6 +103,13 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
       <PageLayout
         title={`Waybill ${wb.id}`}
         subtitle={`${originLabel} · ${wb.vendor_name ?? '—'} · ${fmtAmount(wb.total_amount, wb.currency)}`}
+        actions={
+          <ExportPdfButton
+            waybillId={wb.id}
+            attachments={ctx.attachments}
+            defaultSections={{ cover: true, rail: true, audit: true, attachments: true }}
+          />
+        }
       >
         <section className="space-y-4 font-sans">
           <header className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
@@ -161,6 +178,14 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
             }
             amountTHB={wb.total_amount ? parseFloat(wb.total_amount) : null}
             onPipHref={(pipKey) => `/waybill/${wb.id}?pip=${pipKey}`}
+          />
+
+          <AttachmentList
+            waybillId={wb.id}
+            domain={ctx.domain}
+            currentStage={wb.current_stage}
+            attachments={ctx.attachments}
+            canAttach={canAttach}
           />
 
           {!integrity.ok && (
@@ -298,7 +323,7 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
             </div>
           )}
 
-          <EventTimeline events={ctx.events} />
+          <UnifiedTimeline waybillId={wb.id} merged={merged} />
         </section>
       </PageLayout>
 
@@ -309,40 +334,10 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
           pipKey={asString(sp.pip)!}
           currentStage={wb.current_stage}
           events={ctx.events}
+          attachments={ctx.attachments}
           amountTHB={wb.total_amount ? parseFloat(wb.total_amount) : null}
         />
       )}
     </>
-  );
-}
-
-function EventTimeline({ events }: { events: WaybillEventRow[] }) {
-  if (events.length === 0) {
-    return <p className="text-xs text-slate-500">No events recorded yet.</p>;
-  }
-  return (
-    <ol className="space-y-1.5 border-l-2 border-slate-800 pl-4">
-      {events.map((e) => (
-        <li key={e.id} className="text-xs">
-          <span className="font-mono text-cyan-300">#{e.sequence}</span>{' '}
-          <span className="font-mono text-slate-400">{e.kind}</span>{' '}
-          {e.stage_from && e.stage_to && (
-            <span className="font-mono text-slate-500">
-              {e.stage_from} → {e.stage_to}
-            </span>
-          )}
-          <span className="ml-2 text-slate-500">
-            {e.occurred_at instanceof Date
-              ? e.occurred_at.toLocaleString()
-              : new Date(e.occurred_at).toLocaleString()}
-          </span>
-          {e.payload && (
-            <pre className="mt-1 overflow-auto rounded bg-slate-950 p-2 text-[10px] text-slate-300">
-              {JSON.stringify(e.payload, null, 2)}
-            </pre>
-          )}
-        </li>
-      ))}
-    </ol>
   );
 }
