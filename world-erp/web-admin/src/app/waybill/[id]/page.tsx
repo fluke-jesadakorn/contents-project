@@ -4,12 +4,14 @@ import { loadWaybillRailContext } from '@/lib/server/waybill';
 import { loadActor } from '@/lib/server/guard';
 import type { WaybillEventRow } from '@erp-lib/waybill/events';
 import { WaybillRail } from '@/components/waybill/WaybillRail';
+import { WaybillDetailDrawer } from '@/components/waybill/WaybillDetailDrawer';
 import { PageLayout } from '@/components/PageLayout';
 import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
 import {
   approveWaybillAction,
   rejectWaybillAction,
   resubmitWaybillAction,
+  settleWaybillAction,
 } from './_actions';
 import { verifyEventChain } from '@erp-lib/waybill/events';
 
@@ -73,11 +75,11 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
     ['cfo', 'ceo', 'admin'].includes(actorRole);
   const canAct = actorAtStage && !isRejected && wb.status === 'open';
 
-  // settle link (only for expense claims awaiting_disbursement)
-  const settleHref =
-    wb.origin === 'expense' && wb.current_stage === 'awaiting_disbursement'
-      ? '/expense?tab=settle'
-      : null;
+  // settle available only for expense claims at awaiting_disbursement
+  const canSettle =
+    wb.origin === 'expense' &&
+    wb.current_stage === 'awaiting_disbursement' &&
+    wb.status === 'open';
 
   return (
     <>
@@ -158,6 +160,7 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
                 : null
             }
             amountTHB={wb.total_amount ? parseFloat(wb.total_amount) : null}
+            onPipHref={(pipKey) => `/waybill/${wb.id}?pip=${pipKey}`}
           />
 
           {!integrity.ok && (
@@ -257,15 +260,36 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
               >
                 ✗ Reject
               </a>
-              {settleHref && (
-                <a
-                  href={settleHref}
-                  className="rounded-lg bg-cyan-500/20 px-3 py-1.5 text-xs font-mono text-cyan-200 hover:bg-cyan-500/30"
-                >
-                  💸 Settle
-                </a>
-              )}
             </div>
+          )}
+
+          {canSettle && !isRejected && (
+            <form
+              action={settleWaybillAction}
+              className="rounded-2xl border border-cyan-500/40 bg-cyan-950/30 p-4"
+            >
+              <input type="hidden" name="waybillId" value={wb.id} />
+              <p className="text-xs text-cyan-100">
+                Settle this expense: mark as <span className="font-mono">disbursed</span> and post a mock payment.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <select
+                  name="paymentMethod"
+                  defaultValue="transfer"
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-white"
+                >
+                  <option value="transfer">Bank transfer</option>
+                  <option value="cash">Cash</option>
+                  <option value="credit_card">Credit card</option>
+                </select>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-cyan-400 px-4 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-300"
+                >
+                  💸 Confirm settlement
+                </button>
+              </div>
+            </form>
           )}
 
           {!canAct && !isRejected && !action && (
@@ -277,6 +301,17 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
           <EventTimeline events={ctx.events} />
         </section>
       </PageLayout>
+
+      {asString(sp.pip) && (
+        <WaybillDetailDrawer
+          waybillId={wb.id}
+          domain={ctx.domain}
+          pipKey={asString(sp.pip)!}
+          currentStage={wb.current_stage}
+          events={ctx.events}
+          amountTHB={wb.total_amount ? parseFloat(wb.total_amount) : null}
+        />
+      )}
     </>
   );
 }

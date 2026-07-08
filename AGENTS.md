@@ -35,6 +35,27 @@ For verification use static checks only — **never** `build` / `start` / `cargo
 
 Forbidden: `next build`, `npm run dev`, `cargo build`, `cargo run`, anything else that opens a port for the purpose of *verifying* a change.
 
+### Post-task dev server (Next.js) — always start
+
+After **every** task that touched a Next.js project, start `bun run dev` in the background so it's ready when the user opens the page. This is the final step of the task — same priority as lint/typecheck, not optional.
+
+Ports & logs:
+
+| Project | Path | Port | Log |
+|---|---|---|---|
+| `hr-line-agent` | `hr-line-agent/web-admin` | 3002 | `/tmp/hr-line-agent.dev.log` |
+| `world-erp` | `world-erp/web-admin` | 3003 | `/tmp/world-erp.dev.log` |
+
+Steps per affected project:
+
+1. Check if already up: `lsof -ti:<port>`. If a PID returns, skip — don't restart.
+2. If not running, clean cache: `rm -rf <project>/web-admin/.next`.
+3. Start in background: `cd <project>/web-admin && bun run dev > /tmp/<project>.dev.log 2>&1 &`
+4. Confirm boot: `tail -n 50 /tmp/<project>.dev.log` — look for "Ready in" and no stack traces.
+5. Report the local URL to the user (e.g. `http://localhost:3002`).
+
+Skip only if no Next.js code was touched in the task.
+
 ## Law-digitalize-PoC
 
 LINE bot PoC: รับสัญญา (PDF/DOCX) จาก LINE → chunk + embed → เก็บใน Postgres+pgvector → RAG Q&A + admin CRUD UI. Orchestration ทั้งหมดอยู่ใน n8n (host-native, ไม่ใช้ docker แล้ว); embedding ผ่าน Ollama bge-m3; chat agent ผ่าน Ollama qwen3.6:35b-a3b-q4_K_M (OpenRouter เก็บไว้ใน env สำหรับ archived flows เท่านั้น).
@@ -173,9 +194,10 @@ LINE OA bot: พนักงานขอลาหยุด / เช็คสิ�
 ### `web-admin/` (Next.js 16)
 
 - Bun: `bun install` (lockfile = `bun.lock`)
-- Verify: `bun run lint` + `bunx tsc --noEmit` — **no `next build`, no `next dev`** (server down)
+- Verify: `bun run lint` + `bunx tsc --noEmit` — **no `next build`**
+- **Post-task dev server**: see Workspace rules → "Post-task dev server (Next.js) — always start". Port `3002`. Always clean `.next/` and start `bun run dev` after finishing work on this project.
 - **This is NOT the Next.js you know** — Next 16 has breaking changes vs training data. APIs, conventions, file structure may all differ. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-- Port: `3000` (dev: `next dev -p 3002` per package.json — but do not start)
+- Port: `3000` (dev: `next dev -p 3002` per package.json)
 
 ## world-erp
 
@@ -186,6 +208,8 @@ AI Financial System. Single Next.js process + consolidated server library:
 - `world-erp/web-admin/` — Next.js 16 admin dashboard. **NOT the Next.js you know** — same warning as hr-line-agent. Port 3003. UI + server actions + Next.js route handlers under `src/app/api/*` that call `@erp-lib/*` functions directly (no HTTP hop).
 
 Verify with `bun run lint` + `bunx tsc --noEmit` (run from `world-erp/web-admin/`).
+
+**Post-task dev server**: see Workspace rules → "Post-task dev server (Next.js) — always start". Port `3003`. Always clean `.next/` and start `bun run dev` after finishing work on this project.
 
 ### Architecture
 
@@ -218,6 +242,55 @@ cd world-erp/web-admin && bun install && bun run dev
 ```
 
 That's it — one process. The native vision-ocr binding only loads at runtime via `createRequire`; the `bun run install:vision-ocr` script from the old ai-svc is no longer needed at runtime but the compiled `.node` binary in `lib/native/vision-ocr/build/Release/` is still required for OCR Pass 3.
+
+### Waybill system (consolidated expense/PR/PO)
+
+**All expense, PR and PO flows now share a single Waybill object**. One DB row in `waybills` (keyed `WB-YYYY-NNNNNN`), one audit log in `waybill_events` (linked-list, HMAC-SHA256 signed), one detail page (`/waybill/[id]`), one inbox (`/my-waybills`), one Rail component (`<WaybillRail>`).
+
+**DB tables** (migrations `db/2026-07-09-A-…` and `db/2026-07-09-B-…`):
+
+- `waybills` — `(id text PK, origin text, origin_id int, current_stage text, total_amount_thb numeric, fiscal_year int, created_at, updated_at)`; CHECK on `origin IN ('expense','pr','po')`
+- `waybill_events` — append-only; `(id bigserial PK, waybill_id text, sequence int, kind text, from_stage text, to_stage text, actor int, payload jsonb, previous_event_id bigint, signature text, occurred_at)`; UNIQUE(waybill_id, sequence); `previous_event_id` IS NULL only for `sequence=1`; HMAC-SHA256 signature over `(sequence|kind|from_stage|to_stage|actor|previous_event_id|waybill_id)` keyed by `SESSION_SECRET`; **UPDATE/DELETE revoked** for `contract` + `n8n_user` roles
+- `next_waybill_number(fiscal_year)` SQL function — per-fiscal-year sequences starting at 1
+- All legacy tables (`expenses`, `purchase_requisitions`, `purchase_orders`, `approval_transitions`) now enforce **finance-standard status keys** via CHECK constraints: `submission`, `dept_verification`, `dept_authorization`, `accounting_verification`, `accounting_supervision`, `accounting_authorization`, `disbursement_authorization`, `cfo_authorization`, `ceo_authorization`, `awaiting_disbursement`, `disbursed`, `rejected`. **Snake_case keys (`pending_approval`, `po_cfo`, etc.) are rejected at INSERT.**
+- `perm.tiles` — `expense-claim` → `expense`, `my-prs` → `pr`, `all-approvals` → `my-waybills`, `approve-expense` deleted. `perm.roles` + `perm.role_permissions` rewritten via nested REPLACE.
+
+**lib modules** (all in `world-erp/lib/waybill/`):
+
+- `labels.ts` — `EXPENSE_STAGES` (12 pips, EN+TH bilingual, bucket classification), `PROCUREMENT_STAGES` (5 pips), `stageLabel()` with fallbacks
+- `number.ts` — `parseWaybillId()`, `generateWaybillId(fiscalYear)`, `currentFiscalYear()`
+- `derive.ts` — `pipsForDomain()`, `nextStageOf()` (respects 200k CEO threshold), `inferActionStage()`, `bucketLabel()`
+- `events.ts` — `recordEvent({client, waybillId, kind, fromStage, toStage, actor, payload, previousEventId})`, `listEvents()`, `verifyEventChain()`
+- `append.ts` — `appendWaybillEvent({client, origin, originId, kind, fromStage, toStage, actor, payload})` — best-effort audit in own tx; resolves Waybill by `(origin, origin_id)`; creates placeholder if missing
+
+**lib/perm/* backward-compat**: `STAGE_TO_ROLE`, `STAGE_TO_PERM`, `normalizeStage()` accept both legacy snake_case AND new finance-standard keys via `LEGACY_TO_NEW` alias map.
+
+**Routes**:
+
+- `/waybill/[id]` — RSC detail with `<WaybillRail>`, integrity banner, native form-action approve/reject/resubmit (URL-driven via `?action=…`)
+- `/waybill/by-expense/[id]`, `/waybill/by-pr/[id]`, `/waybill/by-po/[id]` — origin-lookup helpers (308 → `/waybill/WB-…`)
+- `/my-waybills?scope={mine,queue,all}` — RSC inbox
+- `/expense`, `/pr`, `/po` — thin landings (each 308 → `/my-waybills?scope=…`)
+- Legacy URLs (`/expense-claim`, `/approve-expense`, `/all-approvals`, `/my-prs`, `/po`) — 308 redirects in `next.config.ts`
+
+**Server actions wired** (in `web-admin/src/app/actions.ts`): every state mutation calls `appendWayliftEvent()` — `submitExpenseFromSlip`, `submitPurchaseRequisition`, `advanceApproval`, `advancePurchaseRequisition`, `advancePurchaseOrder`, `attachDisbursementPayslip`, `settleExpenseMock`. Actions on `/waybill/[id]` live in `web-admin/src/app/waybill/[id]/_actions.ts`.
+
+**CEO escalation**: 200,000 THB threshold. `nextStageOf()` and `<WaybillRail>` auto-dim the `ceo_authorization` pip when `total_amount_thb < 200_000`.
+
+**Bilingual**: `localStorage.worderp.lang` ∈ `{en, th}`. `LangGate` (in `app/layout.tsx`) shows first-visit modal. `LangPickerTrigger` toggles via header pill. `<html lang>` hydrates from inline script in layout to avoid FOUC.
+
+**Verification commands**:
+
+```bash
+cd world-erp/web-admin
+bun run lint && bunx tsc --noEmit
+curl -s http://localhost:3003/my-waybills
+curl -s http://localhost:3003/waybill/WB-2026-000001
+
+PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
+  SELECT id, origin, current_stage, total_amount_thb
+  FROM waybills ORDER BY created_at;"
+```
 
 ## finance-line-agent
 

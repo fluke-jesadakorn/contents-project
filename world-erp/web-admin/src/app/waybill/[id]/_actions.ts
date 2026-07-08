@@ -8,6 +8,7 @@ import { loadActor } from '@/lib/server/guard';
 void _query;
 import { recordEvent } from '@erp-lib/waybill/events';
 import { loadWaybill } from '@/lib/server/waybill';
+import { settleExpenseMock } from '@/app/actions';
 
 const ApproveForm = z.object({
   waybillId: z.string().regex(/^WB-\d{4}-\d{6}$/),
@@ -198,6 +199,60 @@ export async function resubmitWaybillAction(formData: FormData): Promise<void> {
       actorRole: 'staff',
       client: q as never,
       payload: { origin: wb.origin, origin_id: wb.origin_id },
+    });
+  });
+
+  revalidatePath(`/waybill/${wb.id}`);
+  redirect(`/waybill/${wb.id}`);
+}
+
+const SettleForm = z.object({
+  waybillId: z.string().regex(/^WB-\d{4}-\d{6}$/),
+  paymentMethod: z.enum(['cash', 'credit_card', 'transfer']),
+});
+
+export async function settleWaybillAction(formData: FormData): Promise<void> {
+  const parsed = SettleForm.parse({
+    waybillId: String(formData.get('waybillId') ?? ''),
+    paymentMethod: String(formData.get('paymentMethod') ?? 'transfer'),
+  });
+
+  const actor = await loadActor();
+  if (!actor) throw new Error('Unauthenticated');
+
+  const wb = await loadWaybill(parsed.waybillId);
+  if (!wb) throw new Error('Waybill not found');
+  if (wb.origin !== 'expense') {
+    throw new Error(`Settle only supported for expense origin (got ${wb.origin})`);
+  }
+  if (wb.current_stage !== 'awaiting_disbursement') {
+    throw new Error(`Expense must be awaiting_disbursement (current: ${wb.current_stage})`);
+  }
+
+  const res = await settleExpenseMock({
+    expenseId: wb.origin_id,
+    actorId: actor.id,
+    paymentMethod: parsed.paymentMethod,
+  });
+  if (!res.success) throw new Error(res.error ?? 'settle failed');
+
+  await withTransaction(async (q) => {
+    await q(
+      `UPDATE waybills SET current_stage = 'disbursed',
+                          status = 'completed',
+                          updated_at = now()
+        WHERE id = $1`,
+      [wb.id],
+    );
+    await recordEvent({
+      waybillId: wb.id,
+      kind: 'settled',
+      stageFrom: 'awaiting_disbursement',
+      stageTo: 'disbursed',
+      actorId: actor.id,
+      actorRole: actor.role_name ?? 'staff',
+      client: q as never,
+      payload: { paymentMethod: parsed.paymentMethod },
     });
   });
 
