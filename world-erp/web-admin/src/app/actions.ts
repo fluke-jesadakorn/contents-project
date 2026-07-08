@@ -4,20 +4,110 @@ import { revalidatePath } from 'next/cache';
 import { query } from '@/lib/db';
 import { requireActionFor } from '@/lib/server/requireActionFor';
 import { loadActor } from '@/lib/server/guard';
-import { canPerformAction } from '@/lib/permissions';
-import { isAccessAllowed } from '@/lib/access/api.server';
-import { evaluateStage } from '@/lib/rbac/stage';
-import { getActorScope, assertInScope } from '@/lib/rbac/scope';
-import { STAGE_TO_ROLE, APPROVER_TO_STAGE } from '@/lib/rbac/stage-types';
+import { hasPermission, PERM, STAGE_TO_ROLE } from '@erp-lib/perm';
+import type { StageName, ActorCtx, ResolverCtx } from '@erp-lib/perm';
+import { resolveApprovalChain, canActOnStage, getApprovedStages } from '@erp-lib/perm';
 import { postExpenseToGL } from '@/lib/finance/postExpenseToGL';
+import { recordTransition } from '@erp-lib/approval/recordTransition';
+import { appendWaybillEvent } from '@erp-lib/waybill/append';
+import { recordOverride } from '@erp-lib/approval/recordOverride';
+import { remove as removeFromStorage } from '@erp-lib/slips/storage';
 
 async function requireActorOrNull() {
   return loadActor();
 }
 import { aiInvoke } from '@/lib/ai/router';
-import { resolveDynamicChain } from '@/lib/policy/engine';
-import { resolvePolicyForContext } from '@/lib/policy/resolver';
 import { publish as publishEvent } from '@/lib/events';
+
+async function fetchActorCtx(userId: number): Promise<ActorCtx> {
+  const r = await query<{
+    role_id: string | null;
+    dept_group_id: string | null;
+    level: number;
+  }>(
+    `SELECT u.dept_group_id,
+            (SELECT pr.id FROM perm.user_roles ur
+              JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+             WHERE ur.user_id = u.id
+             ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id,
+            COALESCE(
+              (SELECT MIN(pr.level) FROM perm.user_roles ur
+                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+               WHERE ur.user_id = u.id),
+              5
+            )::int AS level
+       FROM users u
+      WHERE u.id = $1`,
+    [userId],
+  );
+  const row = r.rows[0];
+  return {
+    userId,
+    roleId: row?.role_id ?? '',
+    deptGroupId: row?.dept_group_id ?? null,
+    level: row?.level ?? 5,
+  };
+}
+
+async function fetchSubmitterCtx(expenseId: number): Promise<ResolverCtx> {
+  const r = await query<{
+    submitter_id: number;
+    dept_group_id: string | null;
+    role_id: string | null;
+    level: number;
+  }>(
+    `SELECT e.submitter_id, u.dept_group_id,
+            (SELECT pr.id FROM perm.user_roles ur
+              JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+             WHERE ur.user_id = u.id
+             ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id,
+            COALESCE((SELECT MIN(pr.level) FROM perm.user_roles ur
+                       JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+                      WHERE ur.user_id = u.id), 5)::int AS level
+FROM expenses e
+       JOIN users u ON u.id = e.submitter_id
+       WHERE e.id = $1`,
+    [expenseId],
+  );
+  const row = r.rows[0];
+  return {
+    submitterUserId: row?.submitter_id ?? 0,
+    submitterDeptId: row?.dept_group_id ?? null,
+    submitterRoleId: row?.role_id ?? '',
+    submitterLevel: row?.level ?? 5,
+    alreadyApproved: new Set<StageName>(),
+  };
+}
+
+async function fetchPrSubmitterCtx(prId: number): Promise<ResolverCtx> {
+  const r = await query<{
+    requester_id: number;
+    dept_group_id: string | null;
+    role_id: string | null;
+    level: number;
+  }>(
+    `SELECT pr.requester_id, pr.dept_group_id,
+            (SELECT pr2.id FROM perm.user_roles ur
+              JOIN perm.roles pr2 ON pr2.id = ur.role_id AND pr2.kind = 'persona'
+             WHERE ur.user_id = u.id
+             ORDER BY pr2.level ASC NULLS LAST LIMIT 1) AS role_id,
+            COALESCE((SELECT MIN(pr2.level) FROM perm.user_roles ur
+                       JOIN perm.roles pr2 ON pr2.id = ur.role_id AND pr2.kind = 'persona'
+                      WHERE ur.user_id = u.id), 5)::int AS level
+       FROM purchase_requisitions pr
+       JOIN users u ON u.id = pr.requester_id
+      WHERE pr.id = $1`,
+    [prId],
+  );
+  const row = r.rows[0];
+  return {
+    submitterUserId: row?.requester_id ?? 0,
+    submitterDeptId: row?.dept_group_id ?? null,
+    submitterRoleId: row?.role_id ?? '',
+    submitterLevel: row?.level ?? 5,
+    alreadyApproved: new Set<StageName>(),
+  };
+}
 
 async function semanticCoaMatch(description: string): Promise<{ code: string | null; score: number }> {
   if (!description || !description.trim()) return { code: null, score: 0 };
@@ -38,10 +128,9 @@ export async function getSemanticSuggestions(description: string) {
   // Anyone authenticated with read access to expenses may search COA.
   const actor = await requireActorOrNull();
   if (!actor) return { success: false, error: 'unauthorized' } as const;
-  const hasRead = actor.rbac_role_id
-    ? await isAccessAllowed(actor.rbac_role_id, 'tile-search-coa', 'read')
-    : canPerformAction(actor.role_name as any, 'view_all_expenses');
-  if (!hasRead) return { success: false, error: 'forbidden' } as const;
+  if (!hasPermission(actor, PERM.tile.search_coa.view)) {
+    return { success: false, error: 'forbidden' } as const;
+  }
 
   if (!description || description.trim() === '') {
     return { success: true, suggestions: [] };
@@ -94,7 +183,7 @@ export async function reviewAndCorrectExpense(
   }
 ) {
   try {
-    await requireActionFor(actorId, 'review_expense', { rbacSection: 'core-operations', rbacAction: 'update' });
+    await requireActionFor(actorId, 'review_expense', { perm: 'finance:expense:review' });
     await query('BEGIN');
 
     await query(`
@@ -117,10 +206,14 @@ export async function reviewAndCorrectExpense(
       `, [item.description, item.amount, item.code, item.id, expenseId]);
     }
 
-    await query(`
-      INSERT INTO approval_logs (expense_id, actor_id, previous_status, new_status, comments)
-      VALUES ($1, $2, 'ocr_extracted', 'accountant_reviewed', 'Accountant corrected values and confirmed accounts')
-    `, [expenseId, actorId]);
+    await recordTransition({
+      entityType: 'expense',
+      entityId: expenseId,
+      actorId,
+      previousStatus: 'submission',
+      newStatus: 'accountant_reviewed',
+      comments: 'Accountant corrected values and confirmed accounts',
+    });
 
     await query('COMMIT');
     revalidatePath('/');
@@ -142,9 +235,9 @@ export async function changeExpenseStatus(
 ) {
   try {
     if (newStatus === 'approved' || newStatus === 'rejected') {
-      await requireActionFor(actorId, 'approve_expense', { rbacSection: 'core-operations', rbacAction: 'update' });
+      await requireActionFor(actorId, 'approve_expense', { perm: 'finance:expense:approve:all' });
     } else if (newStatus === 'paid') {
-      await requireActionFor(actorId, 'settle_payment', { rbacSection: 'core-operations', rbacAction: 'update' });
+      await requireActionFor(actorId, 'settle_payment', { perm: 'finance:expense:settle' });
     }
 
     if (newStatus === 'rejected') {
@@ -162,16 +255,20 @@ export async function changeExpenseStatus(
     // unless they're a CEO/admin who may override (audit row written by requireActionFor).
     if (newStatus === 'approved' || newStatus === 'rejected') {
       const stageRes = await requireActionFor(actorId, 'approve_expense', {
-        rbacSection: 'core-operations',
-        rbacAction: 'update',
+        perm: 'finance:expense:approve:all',
         stage: previousStatus,
+        entityCtx: { entityType: 'expense', entityId: expenseId },
       });
       if (stageRes.override) {
-        await query(
-          `INSERT INTO approval_logs (expense_id, actor_id, previous_status, new_status, comments)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [expenseId, actorId, previousStatus, newStatus, `[stage_override] ${comments || ''}`.trim()],
-        );
+        await recordTransition({
+          entityType: 'expense',
+          entityId: expenseId,
+          actorId,
+          previousStatus,
+          newStatus,
+          comments: `[stage_override] ${comments || ''}`.trim(),
+          stage: previousStatus,
+        });
       }
     }
 
@@ -188,10 +285,14 @@ export async function changeExpenseStatus(
       `, [newStatus, expenseId]);
     }
 
-    await query(`
-      INSERT INTO approval_logs (expense_id, actor_id, previous_status, new_status, comments)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [expenseId, actorId, previousStatus, newStatus, comments || `Status changed to ${newStatus}`]);
+    await recordTransition({
+      entityType: 'expense',
+      entityId: expenseId,
+      actorId,
+      previousStatus,
+      newStatus,
+      comments: comments || `Status changed to ${newStatus}`,
+    });
 
     if (newStatus === 'paid') {
       const expRes = await query('SELECT total_amount, vat_amount, vendor_name FROM expenses WHERE id = $1', [expenseId]);
@@ -223,15 +324,49 @@ export async function submitExpenseFromSlip(args: {
     vendorName?: string;
     transactionDate?: string;
     paymentMethod?: string;
+    bookBankSlipId?: number;
+    bookBankFields?: {
+      bankName?: string;
+      bankBranch?: string;
+      accountNumber?: string;
+      accountName?: string;
+    };
   };
 }) {
   try {
-    await requireActionFor(args.actorId, 'submit_expense', { rbacSection: 'core-operations', rbacAction: 'create' });
+    await requireActionFor(args.actorId, 'submit_expense', { perm: 'finance:expense:create' });
 
     const slipRes = await query(`SELECT * FROM slips WHERE id = $1`, [args.slipId]);
     if (slipRes.rows.length === 0) throw new Error('Slip not found');
     const slip = slipRes.rows[0];
+    if (slip.kind === 'book_bank') {
+      throw new Error('Book bank slips are confirmed together with a receipt slip');
+    }
     const parsed = slip.ocr_raw_json || {};
+
+    const bookBankSlipId = args.overrides?.bookBankSlipId;
+    const bookBankFields = args.overrides?.bookBankFields;
+    let bookBankSlip: any = null;
+    if (bookBankSlipId) {
+      if (!bookBankFields || !bookBankFields.bankName || !bookBankFields.accountNumber || !bookBankFields.accountName) {
+        throw new Error('Transfer expenses require bank name, account number, and account name');
+      }
+      if (String(args.overrides?.paymentMethod ?? parsed.paymentMethod ?? 'cash') !== 'transfer') {
+        throw new Error('Book bank slip is only valid with payment_method=transfer');
+      }
+      const bbRes = await query(`SELECT * FROM slips WHERE id = $1`, [bookBankSlipId]);
+      if (bbRes.rows.length === 0) throw new Error('Book bank slip not found');
+      bookBankSlip = bbRes.rows[0];
+      if (bookBankSlip.kind !== 'book_bank') {
+        throw new Error('Slip is not a book bank slip');
+      }
+      if (bookBankSlip.uploaded_by !== args.actorId) {
+        throw new Error('Only the uploader can attach a book bank slip');
+      }
+      if (bookBankSlip.status !== 'pending' || bookBankSlip.expense_id != null) {
+        throw new Error('Book bank slip is already attached to another expense');
+      }
+    }
 
     const vendor = args.overrides?.vendorName || parsed.vendorName || 'Unknown Vendor';
     const txnDate = args.overrides?.transactionDate || parsed.transactionDate || new Date().toISOString().split('T')[0];
@@ -241,25 +376,77 @@ export async function submitExpenseFromSlip(args: {
     const paymentMethod = args.overrides?.paymentMethod || parsed.paymentMethod || 'cash';
     const isCorrupted = !!parsed.isCorrupted;
     const correctionNotes = parsed.correctionNotes || '';
+    const preExistingExpenseId = slip.expense_id ?? null;
 
     await query('BEGIN');
 
-    const headerRes = await query(
-      `INSERT INTO expenses (
-         submitter_id, vendor_name, transaction_date, subtotal, vat_amount, total_amount,
-         payment_method, status, is_corrupted, correction_notes, ocr_raw_json, document_url
-       )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'ocr_extracted',$8,$9,$10,$11)
-       RETURNING id`,
-      [
-        args.actorId, vendor, txnDate, subtotal, vatAmount, totalAmount, paymentMethod,
-        isCorrupted, correctionNotes, JSON.stringify(parsed),
-        `/api/slips/file?key=${encodeURIComponent(slip.file_path)}`,
-      ]
-    );
-    const expenseId = headerRes.rows[0].id;
+    let expenseId: number;
+    let previousStatus: string | null = null;
+    if (preExistingExpenseId) {
+      expenseId = preExistingExpenseId;
+      const cur = await query(`SELECT status FROM expenses WHERE id = $1`, [expenseId]);
+      previousStatus = cur.rows[0]?.status ?? null;
+      await query(
+        `UPDATE expenses
+            SET vendor_name = $1, transaction_date = $2, subtotal = $3, vat_amount = $4, total_amount = $5,
+                payment_method = $6, is_corrupted = $7, correction_notes = $8, ocr_raw_json = $9,
+                document_url = $10, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $11`,
+        [
+          vendor, txnDate, subtotal, vatAmount, totalAmount, paymentMethod,
+          isCorrupted, correctionNotes, JSON.stringify(parsed),
+          `/api/slips/file?key=${encodeURIComponent(slip.file_path)}`,
+          expenseId,
+        ],
+      );
+      await query(`DELETE FROM expense_items WHERE expense_id = $1`, [expenseId]);
+    } else {
+      const headerRes = await query(
+        `INSERT INTO expenses (
+           submitter_id, vendor_name, transaction_date, subtotal, vat_amount, total_amount,
+           payment_method, status, is_corrupted, correction_notes, ocr_raw_json, document_url
+         )
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'submission',$8,$9,$10,$11)
+         RETURNING id`,
+        [
+          args.actorId, vendor, txnDate, subtotal, vatAmount, totalAmount, paymentMethod,
+          isCorrupted, correctionNotes, JSON.stringify(parsed),
+          `/api/slips/file?key=${encodeURIComponent(slip.file_path)}`,
+        ]
+      );
+      expenseId = headerRes.rows[0].id;
 
-    await query(`UPDATE slips SET expense_id = $1 WHERE id = $2`, [expenseId, args.slipId]);
+      await query(
+        `UPDATE slips
+            SET expense_id = $1, status = 'confirmed', confirmed_at = CURRENT_TIMESTAMP
+          WHERE id = $2`,
+        [expenseId, args.slipId],
+      );
+    }
+
+    if (bookBankSlip) {
+      const accountNumber = bookBankFields!.accountNumber!.replace(/[^\d]/g, '');
+      const bankBranch = bookBankFields!.bankBranch?.trim() || null;
+      await query(
+        `UPDATE slips
+            SET expense_id      = $1,
+                status          = 'confirmed',
+                confirmed_at    = CURRENT_TIMESTAMP,
+                bank_name       = $2,
+                bank_branch     = $3,
+                account_number  = $4,
+                account_name    = $5
+          WHERE id = $6`,
+        [
+          expenseId,
+          bookBankFields!.bankName,
+          bankBranch,
+          accountNumber,
+          bookBankFields!.accountName,
+          bookBankSlip.id,
+        ],
+      );
+    }
 
     const items = Array.isArray(parsed.items) ? parsed.items : [];
     for (const item of items) {
@@ -277,44 +464,65 @@ export async function submitExpenseFromSlip(args: {
     }
 
     const submitterRes = await query(
-      `SELECT u.department, u.dept_group_id, g.name AS dept_group_name, r.name AS role_name
+      `SELECT u.dept_group_id,
+              (SELECT pr.id FROM perm.user_roles ur
+                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+               WHERE ur.user_id = u.id
+               ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id,
+              COALESCE((SELECT MIN(pr.level) FROM perm.user_roles ur
+                         JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+                        WHERE ur.user_id = u.id), 5)::int AS level
        FROM users u
-       JOIN roles r ON u.role_id = r.id
-       LEFT JOIN rbac.groups g ON g.id = u.dept_group_id
        WHERE u.id = $1`,
       [args.actorId]
     );
     const submitter = submitterRes.rows[0];
-    const matched = await resolvePolicyForContext({
-      targetType: 'expense',
-      totalAmount,
-      department: submitter?.department || null,
-      submitterRole: submitter?.role_name || null,
-      isRecurring: false,
-    });
 
-    let initialStatus = 'ocr_extracted';
+    let initialStatus: string;
+    if (preExistingExpenseId) {
+      initialStatus = previousStatus || 'submission';
+    } else {
+      initialStatus = 'submission';
+    }
     const chainIndex = 0;
-    if (matched && matched.action.auto_approve) {
-      initialStatus = 'approved';
-    } else if (matched && matched.action.approver_chain.length > 0) {
-      const first = matched.action.approver_chain[0];
-      initialStatus = APPROVER_TO_STAGE[first] || 'head_review';
+
+    if (!preExistingExpenseId) {
+      const submitterCtx: ResolverCtx = {
+        submitterUserId: args.actorId,
+        submitterDeptId: submitter?.dept_group_id ?? null,
+        submitterRoleId: submitter?.role_id ?? '',
+        submitterLevel: submitter?.level ?? 5,
+        alreadyApproved: new Set<StageName>(),
+      };
+      const resolution = await resolveApprovalChain(submitterCtx, totalAmount);
+      if (resolution.nextStage) initialStatus = resolution.nextStage;
     }
 
-    await query(`UPDATE expenses SET status = $1 WHERE id = $2`, [initialStatus, expenseId]);
-    await query(
-      `INSERT INTO approval_logs (expense_id, actor_id, previous_status, new_status, comments, stage, chain_index)
-       VALUES ($1, $2, NULL, $3, $4, $5, $6)`,
-      [
-        expenseId, args.actorId, initialStatus,
-        matched ? `Matched policy #${matched.id} ${matched.name}` : 'No active policy matched (default chain)',
-        initialStatus, chainIndex,
-      ]
-    );
+    if (!preExistingExpenseId || initialStatus !== previousStatus) {
+      await query(`UPDATE expenses SET status = $1 WHERE id = $2`, [initialStatus, expenseId]);
+      await recordTransition({
+        entityType: 'expense',
+        entityId: expenseId,
+        actorId: args.actorId,
+        previousStatus,
+        newStatus: initialStatus,
+        comments: 'Submitted → initial stage',
+        stage: initialStatus,
+        chainIndex,
+      });
+    }
 
     await query('COMMIT');
-    await publishEvent('expense.submitted', { expenseId, status: initialStatus, policyId: matched?.id }, {
+    await appendWaybillEvent({
+      origin: 'expense',
+      originId: expenseId,
+      kind: 'submitted',
+      stageFrom: null,
+      stageTo: initialStatus,
+      actorId: args.actorId,
+      payload: { vendor, totalAmount, vatAmount },
+    });
+    await publishEvent('expense.submitted', { expenseId, status: initialStatus }, {
       actorId: args.actorId, refType: 'expense', refId: Number(expenseId),
       severity: 'info',
       message: `Submitted expense #EXP-${expenseId} initial status ${initialStatus}`,
@@ -322,12 +530,136 @@ export async function submitExpenseFromSlip(args: {
     revalidatePath('/');
     revalidatePath('/dashboard');
     revalidatePath('/');
-    return { success: true, expenseId, status: initialStatus, policy: matched || null };
+    return { success: true, expenseId, status: initialStatus, policy: null, slipStatus: 'confirmed' };
   } catch (error: any) {
     await query('ROLLBACK');
     console.error('submitExpenseFromSlip failed:', error);
     return { success: false, error: error.message };
   }
+}
+
+export async function discardSlip(args: { slipId: number; actorId: number }) {
+  try {
+    const slipRes = await query(
+      `SELECT id, uploaded_by, status, expense_id, pr_id, po_id, file_path
+         FROM slips WHERE id = $1`,
+      [args.slipId],
+    );
+    if (slipRes.rows.length === 0) {
+      return { success: false, error: 'Slip not found' };
+    }
+    const slip = slipRes.rows[0];
+
+    if (slip.uploaded_by !== args.actorId) {
+      return { success: false, error: 'Only the uploader can remove this slip' };
+    }
+
+    let lockedExpenseId: number | null = null;
+    if (slip.expense_id) {
+      const lockedRes = await query(
+        `SELECT 1
+           FROM approval_transitions
+          WHERE target_type = 'expense'
+            AND target_id   = $1
+            AND new_status IN ('approved', 'rejected')
+          LIMIT 1`,
+        [slip.expense_id],
+      );
+      if (lockedRes.rows.length > 0) {
+        return {
+          success: false,
+          error: 'Slip is locked — the linked expense has already been approved or rejected.',
+        };
+      }
+      lockedExpenseId = slip.expense_id;
+    }
+
+    await query('BEGIN');
+    try {
+      if (lockedExpenseId) {
+        await query(`DELETE FROM expense_items WHERE expense_id = $1`, [lockedExpenseId]);
+        await query(`DELETE FROM expenses WHERE id = $1`, [lockedExpenseId]);
+      }
+
+      await query(
+        `UPDATE slips
+            SET expense_id = NULL, pr_id = NULL, po_id = NULL,
+                status = 'pending', discarded_at = CURRENT_TIMESTAMP,
+                discarded_by = $2
+          WHERE id = $1`,
+        [args.slipId, args.actorId],
+      );
+      await query(`DELETE FROM slips WHERE id = $1`, [args.slipId]);
+      await query('COMMIT');
+    } catch (e) {
+      await query('ROLLBACK');
+      throw e;
+    }
+
+    try {
+      await removeFromStorage(slip.file_path);
+    } catch (e) {
+      console.error('discardSlip: storage cleanup failed (file may already be missing):', e);
+    }
+
+    revalidatePath('/');
+    revalidatePath('/dashboard');
+    return { success: true, removedExpenseId: lockedExpenseId };
+  } catch (error: any) {
+    console.error('discardSlip failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getSlipLockState(args: { slipId: number; actorId: number }): Promise<{
+  exists: boolean;
+  status: string | null;
+  isUploader: boolean;
+  approvedOrRejected: boolean;
+  locked: boolean;
+  reason: string | null;
+}> {
+  const empty = {
+    exists: false,
+    status: null,
+    isUploader: false,
+    approvedOrRejected: false,
+    locked: false,
+    reason: null,
+  };
+  const slipRes = await query(
+    `SELECT id, uploaded_by, status, expense_id
+       FROM slips WHERE id = $1`,
+    [args.slipId],
+  );
+  if (slipRes.rows.length === 0) return empty;
+  const slip = slipRes.rows[0];
+  const isUploader = slip.uploaded_by === args.actorId;
+
+  let approvedOrRejected = false;
+  if (slip.expense_id) {
+    const r = await query(
+      `SELECT 1 FROM approval_transitions
+        WHERE target_type = 'expense' AND target_id = $1
+          AND new_status IN ('approved', 'rejected') LIMIT 1`,
+      [slip.expense_id],
+    );
+    approvedOrRejected = r.rows.length > 0;
+  }
+
+  const locked = !isUploader || approvedOrRejected;
+  return {
+    exists: true,
+    status: slip.status,
+    isUploader,
+    approvedOrRejected,
+    locked,
+    reason: !isUploader
+      ? 'Only the uploader can remove this slip'
+      : approvedOrRejected
+        ? 'Linked expense has already been approved or rejected'
+        : null,
+  };
 }
 
 export async function advanceApproval(args: {
@@ -337,63 +669,29 @@ export async function advanceApproval(args: {
   comment?: string;
 }) {
   try {
-    await requireActionFor(args.actorId, 'approve_expense', { rbacSection: 'core-operations', rbacAction: 'update' });
+    const { actor: actorSession } = await requireActionFor(args.actorId, 'approve_expense', { perm: 'finance:expense:approve:all' });
+    const actorPerms = new Set(actorSession.permissions);
 
-    const expRes = await query(
-      `SELECT e.*, u.department AS submitter_dept, u.department_id AS submitter_dept_id,
-              u.dept_group_id AS submitter_dept_group_id,
-              dg.name AS submitter_dept_group_name,
-              r.name AS submitter_role
+const expRes = await query(
+      `SELECT e.*
        FROM expenses e
-       JOIN users u ON e.submitter_id = u.id
-       JOIN roles r ON u.role_id = r.id
-       LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
        WHERE e.id = $1`,
       [args.expenseId]
     );
     if (expRes.rows.length === 0) throw new Error('Expense not found');
     const exp = expRes.rows[0];
 
-    const actorRes = await query(
-      `SELECT u.id, u.department, u.department_id, u.dept_group_id, dg.name AS dept_group_name, r.name AS role_name
+    const actorRes = await query<{ id: number; role_id: string | null }>(
+      `SELECT u.id,
+              (SELECT pr.id FROM perm.user_roles ur
+                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+               WHERE ur.user_id = u.id
+               ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id
        FROM users u
-       JOIN roles r ON u.role_id = r.id
-       LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
        WHERE u.id = $1`,
       [args.actorId]
     );
     const actor = actorRes.rows[0];
-
-    {
-      const scope = await getActorScope(actor.rbac_role_id ?? null, actor.id);
-      await assertInScope(scope, exp.submitter_id);
-    }
-
-    const policy = await resolvePolicyForContext({
-      targetType: 'expense',
-      totalAmount: Number(exp.total_amount),
-      department: exp.submitter_dept,
-      submitterRole: exp.submitter_role,
-      isRecurring: false,
-    });
-
-    const rawChain = (policy?.action?.approver_chain && policy.action.approver_chain.length > 0)
-      ? policy.action.approver_chain
-      : ['head_of_department', 'accounting_manager'];
-
-    const existingRoleRes = await query(
-      `SELECT DISTINCT r.name FROM roles r JOIN users u ON u.role_id=r.id WHERE u.is_active=TRUE`
-    );
-    const existingRoles = new Set<string>(existingRoleRes.rows.map((r: any) => r.name));
-    const mgrRes = await query(
-      `SELECT r.name AS mgr_role FROM users u LEFT JOIN users m ON u.reports_to_user_id=m.id LEFT JOIN roles r ON m.role_id=r.id WHERE u.id=$1`,
-      [exp.submitter_id]
-    );
-    const submitterManagerRole = mgrRes.rows[0]?.mgr_role || null;
-    const { chain } = resolveDynamicChain({
-      chain: rawChain, existingRoles,
-      submitterRole: exp.submitter_role, submitterManagerRole,
-    });
 
     const currentStage = exp.status;
 
@@ -408,12 +706,25 @@ export async function advanceApproval(args: {
          WHERE id = $1`,
         [args.expenseId, t, args.actorId]
       );
-      await query(
-        `INSERT INTO approval_logs (expense_id, actor_id, previous_status, new_status, comments, stage)
-         VALUES ($1, $2, $3, 'rejected', $4, $5)`,
-        [args.expenseId, args.actorId, currentStage, t, currentStage]
-      );
+      await recordTransition({
+        entityType: 'expense',
+        entityId: args.expenseId,
+        actorId: args.actorId,
+        previousStatus: currentStage,
+        newStatus: 'rejected',
+        comments: t,
+        stage: currentStage,
+      });
       await query('COMMIT');
+      await appendWaybillEvent({
+        origin: 'expense',
+        originId: args.expenseId,
+        kind: 'rejected',
+        stageFrom: currentStage,
+        stageTo: 'rejected',
+        actorId: args.actorId,
+        payload: { reason: t },
+      });
       await publishEvent('expense.rejected', { expenseId: args.expenseId, reason: t }, {
         actorId: args.actorId, refType: 'expense', refId: Number(args.expenseId),
         severity: 'warning',
@@ -425,47 +736,53 @@ export async function advanceApproval(args: {
       return { success: true, newStatus: 'rejected', rejectionReason: t };
     }
 
-    const STAGE_TO_CHAIN_ROLE: Record<string, string | null> = STAGE_TO_ROLE;
+    const submitterCtx = await fetchSubmitterCtx(args.expenseId);
+    const alreadyApproved = await getApprovedStages('expense', args.expenseId);
+    submitterCtx.alreadyApproved = alreadyApproved;
 
-    let nextIndex: number;
-    let nextRole: string | null = null;
-    if (currentStage in STAGE_TO_CHAIN_ROLE) {
-      const stageRole = STAGE_TO_CHAIN_ROLE[currentStage];
-      const idxInChain = chain.indexOf(stageRole as string);
-      if (idxInChain < 0) {
-        nextIndex = 0;
-        nextRole = chain[0];
-      } else {
-        const stageAccess = await evaluateStage(actor.rbac_role_id, currentStage);
-        if (!stageAccess.allow) {
-          throw new Error(`Current stage "${currentStage}" requires role "${stageRole}", but actor is "${actor.role_name}"`);
-        }
-        nextIndex = idxInChain + 1;
-        nextRole = chain[nextIndex] || null;
-      }
-    } else {
-      nextIndex = 0;
-      nextRole = chain[0] || null;
+    const actorCtx = await fetchActorCtx(args.actorId);
+
+    const stageToAct: StageName = (currentStage in STAGE_TO_ROLE ? currentStage : submitterCtx.submitterRoleId === ''
+      ? 'manager_review'
+      : currentStage) as StageName;
+
+    const allowCheck = await canActOnStage(actorCtx, submitterCtx, stageToAct, alreadyApproved, actorPerms);
+    if (!allowCheck.allow) {
+      throw new Error(allowCheck.reason);
     }
 
-    const final = nextIndex >= chain.length;
-    let newStatus: string;
-    if (final) newStatus = 'approved';
-    else if (nextRole && APPROVER_TO_STAGE[nextRole]) newStatus = APPROVER_TO_STAGE[nextRole] as string;
-    else newStatus = 'approved';
+    const totalAmount = Number(exp.total_amount || 0);
+    const resolution = await resolveApprovalChain(submitterCtx, totalAmount);
+
+    const newStatus: string = resolution.nextStage ?? 'approved';
+    const final = resolution.completed;
 
     await query('BEGIN');
     await query(`UPDATE expenses SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, [newStatus, args.expenseId]);
-    await query(
-      `INSERT INTO approval_logs (expense_id, actor_id, previous_status, new_status, comments, stage, chain_index)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        args.expenseId, args.actorId, currentStage, newStatus,
-        args.comment || `Approved by ${actor.role_name}`,
-        currentStage, nextIndex,
-      ]
-    );
+    await recordTransition({
+      entityType: 'expense',
+      entityId: args.expenseId,
+      actorId: args.actorId,
+      previousStatus: currentStage,
+      newStatus,
+      comments: args.comment || `Approved by ${actor?.role_id ?? actorCtx.roleId} (${stageToAct})`,
+      stage: stageToAct,
+    });
+
+    if (stageToAct === 'accounting_authorization' && newStatus === 'cfo_authorization') {
+      await ensurePoForExpense(args.expenseId, args.actorId);
+    }
     await query('COMMIT');
+
+    await appendWaybillEvent({
+      origin: 'expense',
+      originId: args.expenseId,
+      kind: 'advanced',
+      stageFrom: currentStage,
+      stageTo: newStatus,
+      actorId: args.actorId,
+      payload: { decision: 'approve', stage: stageToAct },
+    });
 
     await publishEvent('expense.advanced', { expenseId: args.expenseId, newStatus, final }, {
       actorId: args.actorId, refType: 'expense', refId: Number(args.expenseId),
@@ -479,8 +796,7 @@ export async function advanceApproval(args: {
     return {
       success: true,
       newStatus,
-      policy: policy ? { id: policy.id, name: policy.name } : null,
-      chainIndex: nextIndex,
+      chainIndex: resolution.chain.findIndex(c => c.stage === newStatus),
       final,
     };
   } catch (error: any) {
@@ -498,7 +814,7 @@ export async function ceoForceDecision(args: {
   reason: string;
 }) {
   try {
-    await requireActionFor(args.actorId, 'ceo_override', { rbacSection: 'core-operations', rbacAction: 'update' });
+    await requireActionFor(args.actorId, 'ceo_override', { perm: 'finance:expense:override' });
     if (!args.reason || args.reason.trim().length < 5) {
       throw new Error('Override reason is required (min 5 chars)');
     }
@@ -531,24 +847,22 @@ export async function ceoForceDecision(args: {
     } else {
       await query(`UPDATE ${table} SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, [args.newStatus, args.targetId]);
     }
-    await query(
-      `INSERT INTO ceo_overrides (target_type, target_id, actor_id, reason)
-       VALUES ($1, $2, $3, $4)`,
-      [args.targetType, args.targetId, args.actorId, reasonTrim]
-    );
-    if (args.targetType === 'expense') {
-      await query(
-        `INSERT INTO approval_logs (expense_id, actor_id, previous_status, new_status, comments, stage)
-         VALUES ($1, $2, $3, $4, $5, 'ceo_override')`,
-        [args.targetId, args.actorId, previousStatus, args.newStatus, `CEO OVERRIDE: ${reasonTrim}`]
-      );
-    } else if (args.targetType === 'pr') {
-      await query(
-        `INSERT INTO pr_approval_logs (pr_id, actor_id, previous_status, new_status, comments, stage)
-         VALUES ($1, $2, $3, $4, $5, 'ceo_override')`,
-        [args.targetId, args.actorId, previousStatus, args.newStatus, `CEO OVERRIDE: ${reasonTrim}`, 'ceo_override']
-      );
-    }
+    await recordOverride({
+      entityType: args.targetType,
+      entityId: args.targetId,
+      actorId: args.actorId,
+      kind: 'granted',
+      reason: reasonTrim,
+    });
+    await recordTransition({
+      entityType: args.targetType,
+      entityId: args.targetId,
+      actorId: args.actorId,
+      previousStatus,
+      newStatus: args.newStatus,
+      comments: `CEO OVERRIDE: ${reasonTrim}`,
+      stage: 'ceo_override',
+    });
     await query('COMMIT');
     await publishEvent('ceo.override', { targetType: args.targetType, targetId: args.targetId, newStatus: args.newStatus }, {
       actorId: args.actorId, refType: args.targetType, refId: Number(args.targetId),
@@ -566,7 +880,7 @@ export async function ceoForceDecision(args: {
   }
 }
 
-export async function upsertApprovalPolicy(args: {
+export async function upsertApprovalPolicy(_args: {
   id?: number;
   name: string;
   priority: number;
@@ -576,67 +890,17 @@ export async function upsertApprovalPolicy(args: {
   action_json: any;
   actorId: number;
 }) {
-  try {
-    await requireActionFor(args.actorId, 'edit_policy');
-    if (!args.name || args.name.trim().length < 3) {
-      throw new Error('Policy name is required (≥ 3 chars)');
-    }
-    const before = args.id
-      ? (await query('SELECT * FROM approval_policies WHERE id = $1', [args.id])).rows[0]
-      : null;
-    let row;
-    if (args.id) {
-      const r = await query(
-        `UPDATE approval_policies
-         SET name=$1, priority=$2, is_active=$3, target_type=$4,
-             conditions_json=$5, action_json=$6, updated_at=CURRENT_TIMESTAMP
-         WHERE id=$7 RETURNING *`,
-        [args.name, args.priority, args.is_active, args.target_type,
-         JSON.stringify(args.conditions_json), JSON.stringify(args.action_json), args.id]
-      );
-      row = r.rows[0];
-    } else {
-      const r = await query(
-        `INSERT INTO approval_policies
-         (name, priority, is_active, target_type, conditions_json, action_json, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-        [args.name, args.priority, args.is_active, args.target_type,
-         JSON.stringify(args.conditions_json), JSON.stringify(args.action_json), args.actorId]
-      );
-      row = r.rows[0];
-    }
-    await query(
-      `INSERT INTO policy_audit (policy_id, actor_id, before_json, after_json)
-       VALUES ($1,$2,$3,$4)`,
-      [row.id, args.actorId, JSON.stringify(before || {}), JSON.stringify(row)]
-    );
-    revalidatePath('/');
-    revalidatePath('/');
-    return { success: true, policy: row };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  return { success: false as const, error: 'approval_policies deprecated; manage stage grants via /policy' };
 }
 
-export async function deleteApprovalPolicy(args: { id: number; actorId: number }) {
-  try {
-    await requireActionFor(args.actorId, 'edit_policy');
-    await query(
-      `UPDATE approval_policies SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-      [args.id]
-    );
-    revalidatePath('/');
-    revalidatePath('/');
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+export async function deleteApprovalPolicy(_args: { id: number; actorId: number }) {
+  return { success: false as const, error: 'approval_policies deprecated' };
 }
 
 export async function submitPurchaseRequisition(args: {
   requesterId: number;
   vendorName: string;
-  departmentId: number;
+  deptGroupId: string;
   needByDate?: string;
   totalEstimate: number;
   currency?: string;
@@ -645,36 +909,41 @@ export async function submitPurchaseRequisition(args: {
   items: Array<{ description: string; qty: number; unit_price: number; mapped_account_code?: string }>;
 }) {
   try {
-    await requireActionFor(args.requesterId, 'submit_pr', { rbacSection: 'core-operations', rbacAction: 'create' });
+    await requireActionFor(args.requesterId, 'submit_pr', { perm: 'finance:pr:create' });
 
-    const deptRes = await query(`SELECT name FROM departments WHERE id = $1`, [args.departmentId]);
-    const departmentName = deptRes.rows[0]?.name || null;
-
-    const matched = await resolvePolicyForContext({
-      targetType: 'pr',
-      totalAmount: Number(args.totalEstimate) || 0,
-      department: departmentName,
-      submitterRole: 'staff',
-      isRecurring: !!args.isRecurring,
-    });
-
-    let initialStatus = 'draft';
-    if (matched && matched.action.auto_approve) {
-      initialStatus = 'approved';
-    } else if (matched && matched.action.approver_chain.length > 0) {
-      const first = matched.action.approver_chain[0];
-      initialStatus = APPROVER_TO_STAGE[first] || 'head_review';
-    }
+const submitterRes = await query<{ dept_group_id: string | null; role_id: string | null; level: number }>(
+      `SELECT u.dept_group_id,
+              (SELECT pr.id FROM perm.user_roles ur
+                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+               WHERE ur.user_id = u.id
+               ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id,
+              COALESCE((SELECT MIN(pr.level) FROM perm.user_roles ur
+                         JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+                        WHERE ur.user_id = u.id), 5)::int AS level
+       FROM users u
+      WHERE u.id = $1`,
+      [args.requesterId],
+    );
+    const submitter = submitterRes.rows[0];
+    const submitterCtx: ResolverCtx = {
+      submitterUserId: args.requesterId,
+      submitterDeptId: submitter?.dept_group_id ?? args.deptGroupId ?? null,
+      submitterRoleId: submitter?.role_id ?? '',
+      submitterLevel: submitter?.level ?? 5,
+      alreadyApproved: new Set<StageName>(),
+    };
+    const resolution = await resolveApprovalChain(submitterCtx);
+    const initialStatus = resolution.nextStage ?? 'manager_review';
 
     await query('BEGIN');
     const r = await query(
       `INSERT INTO purchase_requisitions
-       (requester_id, department_id, vendor_name, need_by_date, status,
-        total_estimate, currency, justification, is_recurring, matched_policy_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-      [args.requesterId, args.departmentId, args.vendorName, args.needByDate || null,
+       (requester_id, dept_group_id, vendor_name, need_by_date, status,
+        total_estimate, currency, justification, is_recurring)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [args.requesterId, args.deptGroupId, args.vendorName, args.needByDate || null,
        initialStatus, Number(args.totalEstimate) || 0, args.currency || 'THB',
-       args.justification, !!args.isRecurring, matched?.id || null]
+       args.justification, !!args.isRecurring]
     );
     const prId = r.rows[0].id;
     for (const item of args.items) {
@@ -686,6 +955,15 @@ export async function submitPurchaseRequisition(args: {
       );
     }
     await query('COMMIT');
+    await appendWaybillEvent({
+      origin: 'pr',
+      originId: prId,
+      kind: 'submitted',
+      stageFrom: null,
+      stageTo: initialStatus,
+      actorId: args.requesterId,
+      payload: { vendor: args.vendorName, totalAmount: Number(args.totalEstimate) || 0 },
+    });
     await publishEvent('pr.submitted', { prId, status: initialStatus }, {
       actorId: args.requesterId, refType: 'pr', refId: Number(prId),
       severity: 'info',
@@ -693,7 +971,7 @@ export async function submitPurchaseRequisition(args: {
     });
     revalidatePath('/');
     revalidatePath('/');
-    return { success: true, prId, status: initialStatus, policy: matched || null };
+    return { success: true, prId, status: initialStatus, policy: null };
   } catch (error: any) {
     await query('ROLLBACK');
     return { success: false, error: error.message };
@@ -707,62 +985,17 @@ export async function advancePurchaseRequisition(args: {
   comment?: string;
 }) {
   try {
-    await requireActionFor(args.actorId, 'approve_pr', { rbacSection: 'core-operations', rbacAction: 'update' });
+    const { actor: actorSession } = await requireActionFor(args.actorId, 'approve_pr', { perm: 'finance:pr:approve:all' });
+    const actorPerms = new Set(actorSession.permissions);
     const prRes = await query(
-      `SELECT pr.*, d.name AS dept_name, dg.id AS dept_group_id, dg.name AS dept_group_name
+      `SELECT pr.*, dg.display_name AS dept_name, dg.id AS dept_group_id, dg.id AS dept_group_code
          FROM purchase_requisitions pr
-         LEFT JOIN departments d ON pr.department_id = d.id
-         LEFT JOIN rbac.groups dg ON dg.kind = 'department' AND dg.name = d.name
+         LEFT JOIN perm.roles dg ON dg.id = pr.dept_group_id AND dg.kind = 'department' AND dg.kind = 'department'
         WHERE pr.id = $1`,
       [args.prId]
     );
     if (prRes.rows.length === 0) throw new Error('PR not found');
     const pr = prRes.rows[0];
-
-    const actorRes = await query(
-      `SELECT u.id, u.department, u.department_id, u.dept_group_id, dg.name AS dept_group_name, r.name AS role_name
-       FROM users u
-       JOIN roles r ON u.role_id = r.id
-       LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
-       WHERE u.id = $1`,
-      [args.actorId]
-    );
-    const actor = actorRes.rows[0];
-
-    {
-      const scope = await getActorScope(actor.rbac_role_id ?? null, actor.id);
-      await assertInScope(scope, pr.requester_id);
-    }
-
-    const policy = await resolvePolicyForContext({
-      targetType: 'pr',
-      totalAmount: Number(pr.total_estimate),
-      department: pr.dept_name,
-      submitterRole: 'staff',
-      isRecurring: !!pr.is_recurring,
-    });
-    const rawChain = (policy?.action?.approver_chain && policy.action.approver_chain.length > 0)
-      ? policy.action.approver_chain
-      : ['head_of_department', 'accounting_manager'];
-
-    const existingRoleRes = await query(
-      `SELECT DISTINCT r.name FROM roles r JOIN users u ON u.role_id=r.id WHERE u.is_active=TRUE`
-    );
-    const existingRoles = new Set<string>(existingRoleRes.rows.map((r: any) => r.name));
-    const mgrRes = await query(
-      `SELECT r.name AS mgr_role FROM users u LEFT JOIN users m ON u.reports_to_user_id=m.id LEFT JOIN roles r ON m.role_id=r.id WHERE u.id=$1`,
-      [pr.requester_id]
-    );
-    const submitterManagerRole = mgrRes.rows[0]?.mgr_role || null;
-    const submitterRoleRes = await query(
-      `SELECT r.name AS s_role FROM users u JOIN roles r ON u.role_id=r.id WHERE u.id=$1`,
-      [pr.requester_id]
-    );
-    const { chain } = resolveDynamicChain({
-      chain: rawChain, existingRoles,
-      submitterRole: submitterRoleRes.rows[0]?.s_role || 'staff',
-      submitterManagerRole,
-    });
 
     if (args.decision === 'reject') {
       const t = (args.comment || '').trim();
@@ -775,12 +1008,25 @@ export async function advancePurchaseRequisition(args: {
          WHERE id=$1`,
         [args.prId, t, args.actorId]
       );
-      await query(
-        `INSERT INTO pr_approval_logs (pr_id, actor_id, previous_status, new_status, comments, stage)
-         VALUES ($1, $2, $3, 'rejected', $4, 'pr_review')`,
-        [args.prId, args.actorId, pr.status, t]
-      );
+      await recordTransition({
+        entityType: 'pr',
+        entityId: args.prId,
+        actorId: args.actorId,
+        previousStatus: pr.status,
+        newStatus: 'rejected',
+        comments: t,
+        stage: pr.status,
+      });
       await query('COMMIT');
+      await appendWaybillEvent({
+        origin: 'pr',
+        originId: args.prId,
+        kind: 'rejected',
+        stageFrom: pr.status,
+        stageTo: 'rejected',
+        actorId: args.actorId,
+        payload: { reason: t },
+      });
       await publishEvent('pr.rejected', { prId: args.prId, reason: t }, {
         actorId: args.actorId, refType: 'pr', refId: Number(args.prId),
         severity: 'warning',
@@ -791,40 +1037,41 @@ export async function advancePurchaseRequisition(args: {
       return { success: true, newStatus: 'rejected', rejectionReason: t };
     }
 
-    const STAGE_INDEX: Record<string, number> = {
-      supervisor_review: 0,
-      head_review: 0,
-      account_officer_review: 0,
-      account_supervisor_review: 0,
-      accounting_review: 1,
-      cfo_review: 2,
-      draft: 0,
-    };
-    const _idx = STAGE_INDEX[pr.status] ?? 0;
-    let newStatus = 'approved';
-    if (pr.status in STAGE_TO_ROLE) {
-      const stageRole = STAGE_TO_ROLE[pr.status] as string | null;
-      const prStageAccess = await evaluateStage(actor.rbac_role_id, pr.status);
-      if (!prStageAccess.allow) {
-        throw new Error(`Current stage "${pr.status}" requires role "${stageRole}", but actor is "${actor.role_name}"`);
-      }
-      const idxInChain = chain.indexOf(stageRole as string);
-      const final =
-        idxInChain < 0 ? chain.length === 0 : idxInChain + 1 >= chain.length;
-      if (final) {
-        newStatus = 'approved';
-      } else {
-        const nextIdx = idxInChain + 1;
-        const nextRole = chain[nextIdx];
-        newStatus = APPROVER_TO_STAGE[nextRole] || 'head_review';
-      }
-    } else {
-      newStatus = APPROVER_TO_STAGE[chain[0]] || 'head_review';
-    }
-    const final = newStatus === 'approved';
+    const submitterCtx = await fetchPrSubmitterCtx(args.prId);
+    const alreadyApproved = await getApprovedStages('pr', args.prId);
+    submitterCtx.alreadyApproved = alreadyApproved;
+
+    const actorCtx = await fetchActorCtx(args.actorId);
+
+    const stageToAct: StageName = (pr.status in STAGE_TO_ROLE ? pr.status : 'manager_review') as StageName;
+    const allowCheck = await canActOnStage(actorCtx, submitterCtx, stageToAct, alreadyApproved, actorPerms);
+    if (!allowCheck.allow) throw new Error(allowCheck.reason);
+
+    const resolution = await resolveApprovalChain(submitterCtx);
+    const newStatus: string = resolution.nextStage ?? 'approved';
+    const final = resolution.completed;
+
     await query('BEGIN');
     await query(`UPDATE purchase_requisitions SET status=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2`, [newStatus, args.prId]);
+    await recordTransition({
+      entityType: 'pr',
+      entityId: args.prId,
+      actorId: args.actorId,
+      previousStatus: pr.status,
+      newStatus,
+      comments: args.comment || `Approved by ${actorCtx.roleId} (${stageToAct})`,
+      stage: stageToAct,
+    });
     await query('COMMIT');
+    await appendWaybillEvent({
+      origin: 'pr',
+      originId: args.prId,
+      kind: 'advanced',
+      stageFrom: pr.status,
+      stageTo: newStatus,
+      actorId: args.actorId,
+      payload: { decision: 'approve', stage: stageToAct },
+    });
     await publishEvent('pr.advanced', { prId: args.prId, newStatus, final }, {
       actorId: args.actorId, refType: 'pr', refId: Number(args.prId),
       severity: newStatus === 'rejected' ? 'warning' : 'success',
@@ -854,13 +1101,12 @@ export async function createPurchaseOrderFromPr(args: {
   actorId: number;
 }) {
   try {
-    await requireActionFor(args.actorId, 'approve_pr', { rbacSection: 'core-operations', rbacAction: 'create' });
+    await requireActionFor(args.actorId, 'approve_pr', { perm: 'finance:pr:create' });
 
     const prRes = await query(
-      `SELECT pr.*, d.name AS dept_name, dg.id AS dept_group_id, dg.name AS dept_group_name
+      `SELECT pr.*, dg.display_name AS dept_name, dg.id AS dept_group_id, dg.id AS dept_group_code
          FROM purchase_requisitions pr
-         LEFT JOIN departments d ON pr.department_id = d.id
-         LEFT JOIN rbac.groups dg ON dg.kind = 'department' AND dg.name = d.name
+         LEFT JOIN perm.roles dg ON dg.id = pr.dept_group_id AND dg.kind = 'department' AND dg.kind = 'department'
         WHERE pr.id = $1`,
       [args.prId]
     );
@@ -880,17 +1126,7 @@ export async function createPurchaseOrderFromPr(args: {
       [args.prId]
     );
 
-    const policy = await resolvePolicyForContext({
-      targetType: 'po',
-      totalAmount: Number(pr.total_estimate) || 0,
-      department: pr.dept_name,
-      submitterRole: 'staff',
-      isRecurring: !!pr.is_recurring,
-    });
-
-    const chain = policy?.action?.approver_chain?.length
-      ? policy.action.approver_chain
-      : ['accounting_manager'];
+    const chain: string[] = ['accounting_manager', 'cfo'];
 
     await query('BEGIN');
     const year = new Date().getFullYear();
@@ -905,9 +1141,9 @@ export async function createPurchaseOrderFromPr(args: {
         pr.vendor_name,
         Number(pr.total_estimate) || 0,
         pr.currency || 'THB',
-        chain[0] === 'cfo' ? 'po_cfo' : 'pending_approval',
-        policy?.id || pr.matched_policy_id || null,
-        args.actorId,
+chain[0] === 'cfo' ? 'po_cfo' : 'pending_approval',
+         pr.matched_policy_id || null,
+         args.actorId,
       ]
     );
     const poId = poRes.rows[0].id;
@@ -919,11 +1155,16 @@ export async function createPurchaseOrderFromPr(args: {
         [poId, it.description, it.qty, it.unit_price, it.mapped_account_code]
       );
     }
-    await query(
-      `INSERT INTO po_approval_logs (po_id, actor_id, previous_status, new_status, comments, stage, chain_index)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [poId, args.actorId, 'draft', 'pending_approval', 'Auto-created from PR', 'po_pending', 0]
-    );
+    await recordTransition({
+      entityType: 'po',
+      entityId: poId,
+      actorId: args.actorId,
+      previousStatus: 'draft',
+      newStatus: 'pending_approval',
+      comments: 'Auto-created from PR',
+      stage: 'po_pending',
+      chainIndex: 0,
+    });
     await query('COMMIT');
 
     await publishEvent('po.created', { poId, prId: args.prId, chain }, {
@@ -949,42 +1190,33 @@ export async function advancePurchaseOrder(args: {
   comment?: string;
 }) {
   try {
-    await requireActionFor(args.actorId, 'approve_po', { rbacSection: 'core-operations', rbacAction: 'update' });
+    await requireActionFor(args.actorId, 'approve_po', { perm: 'finance:po:approve:all' });
 
     const poRes = await query(
-      `SELECT po.*, pr.department_id, d.name AS dept_name,
-              dg.id AS dept_group_id, dg.name AS dept_group_name, pr.is_recurring
+      `SELECT po.*, dg.display_name AS dept_name,
+              dg.id AS dept_group_id, dg.id AS dept_group_code, pr.is_recurring
        FROM purchase_orders po
        JOIN purchase_requisitions pr ON po.pr_id = pr.id
-       LEFT JOIN departments d ON pr.department_id = d.id
-       LEFT JOIN rbac.groups dg ON dg.kind = 'department' AND dg.name = d.name
+       LEFT JOIN perm.roles dg ON dg.id = pr.dept_group_id AND dg.kind = 'department' AND dg.kind = 'department'
        WHERE po.id = $1`,
       [args.poId]
     );
     if (poRes.rows.length === 0) throw new Error('PO not found');
     const po = poRes.rows[0];
 
-    const actorRes = await query(
-      `SELECT u.id, u.department, u.department_id, u.dept_group_id, dg.name AS dept_group_name,
-              r.name AS role_name, u.rbac_role_id
+    const actorRes = await query<{ id: number; role_id: string | null }>(
+      `SELECT u.id,
+              (SELECT pr.id FROM perm.user_roles ur
+                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+               WHERE ur.user_id = u.id
+               ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id
        FROM users u
-       JOIN roles r ON u.role_id = r.id
-       LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
        WHERE u.id = $1`,
       [args.actorId]
     );
     const actor = actorRes.rows[0];
 
-    const policy = await resolvePolicyForContext({
-      targetType: 'po',
-      totalAmount: Number(po.total_amount) || 0,
-      department: po.dept_name,
-      submitterRole: 'staff',
-      isRecurring: !!po.is_recurring,
-    });
-    const chain = policy?.action?.approver_chain?.length
-      ? policy.action.approver_chain
-      : ['accounting_manager'];
+    const chain: string[] = ['accounting_manager', 'cfo'];
 
     if (args.decision === 'reject') {
       const t = (args.comment || '').trim();
@@ -997,12 +1229,25 @@ export async function advancePurchaseOrder(args: {
          WHERE id=$1`,
         [args.poId, t, args.actorId]
       );
-      await query(
-        `INSERT INTO po_approval_logs (po_id, actor_id, previous_status, new_status, comments, stage)
-         VALUES ($1, $2, $3, 'rejected', $4, 'po_reject')`,
-        [args.poId, args.actorId, po.status, t]
-      );
+      await recordTransition({
+        entityType: 'po',
+        entityId: args.poId,
+        actorId: args.actorId,
+        previousStatus: po.status,
+        newStatus: 'rejected',
+        comments: t,
+        stage: 'po_reject',
+      });
       await query('COMMIT');
+      await appendWaybillEvent({
+        origin: 'po',
+        originId: args.poId,
+        kind: 'rejected',
+        stageFrom: po.status,
+        stageTo: 'rejected',
+        actorId: args.actorId,
+        payload: { reason: t },
+      });
       await publishEvent('po.rejected', { poId: args.poId, reason: t }, {
         actorId: args.actorId, refType: 'po', refId: Number(args.poId),
         severity: 'warning',
@@ -1019,14 +1264,14 @@ export async function advancePurchaseOrder(args: {
       po_cfo: 1,
       approved: chain.length,
     };
-    const PO_STAGE_MODULE: Record<string, string | null> = {
-      po_pending: 'stage-po-pending',
-      po_cfo:     'stage-po-cfo',
+    const PO_STAGE_REQUIRED_ROLE: Record<string, string> = {
+      po_pending: 'accounting_manager',
+      po_cfo:     'cfo',
     };
-    if (po.status in PO_STAGE_MODULE) {
-      const stageAccess = await evaluateStage(actor.rbac_role_id, po.status);
-      if (!stageAccess.allow) {
-        throw new Error(`Current PO stage "${po.status}" is not allowed for role "${actor.role_name}"`);
+    if (po.status in PO_STAGE_REQUIRED_ROLE) {
+      const requiredRole = PO_STAGE_REQUIRED_ROLE[po.status];
+      if (actor?.role_id !== requiredRole && actor?.role_id !== 'cfo' && actor?.role_id !== 'ceo' && actor?.role_id !== 'admin') {
+        throw new Error(`Current PO stage "${po.status}" requires role "${requiredRole}", actor has "${actor?.role_id}"`);
       }
     }
     const idx = PO_STAGE_INDEX[po.status] ?? 0;
@@ -1044,13 +1289,27 @@ export async function advancePurchaseOrder(args: {
       `UPDATE purchase_orders SET status=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2`,
       [newStatus, args.poId]
     );
-    await query(
-      `INSERT INTO po_approval_logs (po_id, actor_id, previous_status, new_status, comments, stage, chain_index)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [args.poId, args.actorId, po.status, newStatus,
-       args.comment || `Approved by ${actor.role_name}`, newStatus, nextIdx]
-    );
+    await recordTransition({
+      entityType: 'po',
+      entityId: args.poId,
+      actorId: args.actorId,
+      previousStatus: po.status,
+      newStatus,
+      comments: args.comment || `Approved by ${actor?.role_id ?? 'system'}`,
+      stage: newStatus,
+      chainIndex: nextIdx,
+    });
     await query('COMMIT');
+
+    await appendWaybillEvent({
+      origin: 'po',
+      originId: args.poId,
+      kind: 'advanced',
+      stageFrom: po.status,
+      stageTo: newStatus,
+      actorId: args.actorId,
+      payload: { decision: 'approve' },
+    });
 
     await publishEvent('po.advanced', { poId: args.poId, newStatus, final }, {
       actorId: args.actorId, refType: 'po', refId: Number(args.poId),
@@ -1074,7 +1333,7 @@ export async function attachDisbursementPayslip(args: {
   slipId: number;
 }) {
   try {
-    await requireActionFor(args.actorId, 'attach_po_payslip', { rbacSection: 'core-operations', rbacAction: 'update' });
+    await requireActionFor(args.actorId, 'attach_po_payslip', { perm: 'finance:po:attach_payslip' });
 
     const poRes = await query(`SELECT * FROM purchase_orders WHERE id = $1`, [args.poId]);
     if (poRes.rows.length === 0) throw new Error('PO not found');
@@ -1098,12 +1357,26 @@ export async function attachDisbursementPayslip(args: {
        WHERE id=$1`,
       [args.poId, args.actorId, args.slipId]
     );
-    await query(
-      `INSERT INTO po_approval_logs (po_id, actor_id, previous_status, new_status, comments, stage)
-       VALUES ($1, $2, 'approved', 'settled', $3, 'po_settled')`,
-      [args.poId, args.actorId, `Payslip slipId=${args.slipId} attached`]
-    );
+    await recordTransition({
+      entityType: 'po',
+      entityId: args.poId,
+      actorId: args.actorId,
+      previousStatus: 'approved',
+      newStatus: 'settled',
+      comments: `Payslip slipId=${args.slipId} attached`,
+      stage: 'po_settled',
+    });
     await query('COMMIT');
+
+    await appendWaybillEvent({
+      origin: 'po',
+      originId: args.poId,
+      kind: 'settled',
+      stageFrom: 'approved',
+      stageTo: 'settled',
+      actorId: args.actorId,
+      payload: { slipId: args.slipId },
+    });
 
     await publishEvent('po.settled', { poId: args.poId, slipId: args.slipId }, {
       actorId: args.actorId, refType: 'po', refId: Number(args.poId),
@@ -1119,4 +1392,187 @@ export async function attachDisbursementPayslip(args: {
     console.error('attachDisbursementPayslip failed:', error);
     return { success: false, error: error.message };
   }
+}
+
+export async function ensurePoForExpense(
+  expenseId: number,
+  actorId: number,
+): Promise<{ poId: number; poNumber: string; reused: boolean } | null> {
+  const existing = await query<{ id: number; po_number: string }>(
+    `SELECT id, po_number
+       FROM purchase_orders
+      WHERE vendor_name = (SELECT vendor_name FROM expenses WHERE id = $1)
+        AND total_amount = (SELECT total_amount FROM expenses WHERE id = $1)
+        AND status NOT IN ('rejected')
+      ORDER BY id DESC
+      LIMIT 1`,
+    [expenseId],
+  );
+  if (existing.rows.length > 0) {
+    return { poId: existing.rows[0].id, poNumber: existing.rows[0].po_number, reused: true };
+  }
+
+  const expRes = await query<{ vendor_name: string; total_amount: number; currency: string }>(
+    `SELECT vendor_name, total_amount, COALESCE(currency,'THB') AS currency
+       FROM expenses WHERE id = $1`,
+    [expenseId],
+  );
+  if (expRes.rows.length === 0) return null;
+  const exp = expRes.rows[0];
+
+  const year = new Date().getFullYear();
+  const poNumber = `PO-${year}-EXP-${expenseId}`;
+
+  const ins = await query<{ id: number }>(
+    `INSERT INTO purchase_orders
+       (pr_id, po_number, vendor_name, total_amount, currency, status, issued_by)
+     VALUES (
+       (SELECT COALESCE(MIN(id), 1) FROM purchase_requisitions WHERE status='approved' LIMIT 1),
+       $1, $2, $3, $4, 'pending_disbursement', $5
+     )
+     RETURNING id`,
+    [poNumber, exp.vendor_name || 'Unknown Vendor', Number(exp.total_amount) || 0, exp.currency, actorId],
+  );
+  const poId = ins.rows[0].id;
+
+  await recordTransition({
+    entityType: 'po',
+    entityId: poId,
+    actorId,
+    previousStatus: 'draft',
+    newStatus: 'pending_disbursement',
+    comments: `Auto-set by Accounting Manager for EXP-${expenseId}`,
+    stage: 'po_pending',
+    chainIndex: 0,
+  });
+
+  return { poId, poNumber, reused: false };
+}
+
+export async function settleExpenseMock(args: {
+  expenseId: number;
+  actorId: number;
+  paymentMethod: 'cash' | 'credit_card' | 'transfer';
+}) {
+  try {
+    await requireActionFor(args.actorId, 'settle_expense', { perm: 'finance:expense:settle' });
+
+    const expRes = await query(
+      `SELECT id, status, vendor_name, total_amount, vat_amount, submitter_id
+         FROM expenses WHERE id = $1`,
+      [args.expenseId],
+    );
+    if (expRes.rows.length === 0) throw new Error('Expense not found');
+    const exp = expRes.rows[0];
+    if (exp.status !== 'approved' && exp.status !== 'finance_review') {
+      throw new Error(`Expense must be 'approved' or 'finance_review' (current: ${exp.status})`);
+    }
+
+    const po = await ensurePoForExpense(args.expenseId, args.actorId);
+    const poNumber = po?.poNumber ?? null;
+
+    await query('BEGIN');
+    await query(
+      `UPDATE expenses
+          SET status='paid',
+              updated_at=CURRENT_TIMESTAMP,
+              payment_method=$1
+        WHERE id=$2`,
+      [args.paymentMethod, args.expenseId],
+    );
+    await recordTransition({
+      entityType: 'expense',
+      entityId: args.expenseId,
+      actorId: args.actorId,
+      previousStatus: exp.status,
+      newStatus: 'paid',
+      comments: `Mock payment slip generated · PO=${poNumber ?? 'n/a'} · method=${args.paymentMethod}`,
+      stage: 'finance_review',
+    });
+    if (po) {
+      await query(
+        `UPDATE purchase_orders
+            SET status='settled',
+                settled_at=CURRENT_TIMESTAMP,
+                settled_by=$1
+          WHERE id=$2`,
+        [args.actorId, po.poId],
+      );
+      await recordTransition({
+        entityType: 'po',
+        entityId: po.poId,
+        actorId: args.actorId,
+        previousStatus: 'pending_disbursement',
+        newStatus: 'settled',
+        comments: `Mock disbursement for EXP-${args.expenseId}`,
+        stage: 'po_settled',
+      });
+    }
+
+    await postExpenseToGL({
+      expenseId: args.expenseId,
+      vendorName: exp.vendor_name,
+      totalAmount: exp.total_amount,
+      vatAmount: exp.vat_amount,
+    }).catch((e) => console.error('GL post failed (non-fatal):', e?.message));
+
+    await query('COMMIT');
+
+    await appendWaybillEvent({
+      origin: 'expense',
+      originId: args.expenseId,
+      kind: 'settled',
+      stageFrom: exp.status,
+      stageTo: 'disbursed',
+      actorId: args.actorId,
+      payload: { paymentMethod: args.paymentMethod, poNumber },
+    });
+    if (po) {
+      await appendWaybillEvent({
+        origin: 'po',
+        originId: po.poId,
+        kind: 'settled',
+        stageFrom: 'pending_disbursement',
+        stageTo: 'settled',
+        actorId: args.actorId,
+        payload: { expenseId: args.expenseId },
+      });
+    }
+
+    await publishEvent('expense.paid', {
+      expenseId: args.expenseId,
+      poNumber,
+      paymentMethod: args.paymentMethod,
+    }, {
+      actorId: args.actorId, refType: 'expense', refId: Number(args.expenseId),
+      severity: 'success',
+      message: `EXP-${args.expenseId} settled via mock slip · PO=${poNumber ?? 'n/a'}`,
+    });
+
+    revalidatePath('/');
+    revalidatePath('/dashboard');
+    revalidatePath('/expense-claim');
+    return { success: true, poNumber, paidAt: new Date().toISOString() };
+  } catch (error: any) {
+    await query('ROLLBACK');
+    console.error('settleExpenseMock failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getExpenseLifecycle(expenseId: number) {
+  const r = await query(
+    `SELECT at.id, at.previous_status, at.new_status, at.stage,
+            at.comments, at.created_at,
+            u.id AS actor_id, u.fullname AS actor_name,
+            pr.id AS actor_role_id, pr.display_name AS actor_role_name
+       FROM approval_transitions at
+       LEFT JOIN users u ON u.id = at.actor_id
+       LEFT JOIN perm.user_roles ur ON ur.user_id = u.id
+       LEFT JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+      WHERE at.target_type = 'expense' AND at.target_id = $1
+      ORDER BY at.created_at ASC, at.id ASC`,
+    [expenseId],
+  );
+  return r.rows;
 }
