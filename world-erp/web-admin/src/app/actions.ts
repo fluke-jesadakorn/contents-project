@@ -10,6 +10,7 @@ import { resolveApprovalChain, canActOnStage, getApprovedStages } from '@erp-lib
 import { postExpenseToGL } from '@/lib/finance/postExpenseToGL';
 import { recordTransition } from '@erp-lib/approval/recordTransition';
 import { appendWaybillEvent } from '@erp-lib/waybill/append';
+import { recordAttachment } from '@erp-lib/waybill/attachments';
 import { recordOverride } from '@erp-lib/approval/recordOverride';
 import { remove as removeFromStorage } from '@erp-lib/slips/storage';
 
@@ -28,12 +29,11 @@ async function fetchActorCtx(userId: number): Promise<ActorCtx> {
     `SELECT u.dept_group_id,
             (SELECT pr.id FROM perm.user_roles ur
               JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+              JOIN perm.role_effective_level prel ON prel.role_id = pr.id
              WHERE ur.user_id = u.id
-             ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id,
+             ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
             COALESCE(
-              (SELECT MIN(pr.level) FROM perm.user_roles ur
-                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-               WHERE ur.user_id = u.id),
+              (SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id),
               5
             )::int AS level
        FROM users u
@@ -59,11 +59,10 @@ async function fetchSubmitterCtx(expenseId: number): Promise<ResolverCtx> {
     `SELECT e.submitter_id, u.dept_group_id,
             (SELECT pr.id FROM perm.user_roles ur
               JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+              JOIN perm.role_effective_level prel ON prel.role_id = pr.id
              WHERE ur.user_id = u.id
-             ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id,
-            COALESCE((SELECT MIN(pr.level) FROM perm.user_roles ur
-                       JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-                      WHERE ur.user_id = u.id), 5)::int AS level
+             ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
+            COALESCE((SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id), 5)::int AS level
 FROM expenses e
        JOIN users u ON u.id = e.submitter_id
        WHERE e.id = $1`,
@@ -89,11 +88,10 @@ async function fetchPrSubmitterCtx(prId: number): Promise<ResolverCtx> {
     `SELECT pr.requester_id, pr.dept_group_id,
             (SELECT pr2.id FROM perm.user_roles ur
               JOIN perm.roles pr2 ON pr2.id = ur.role_id AND pr2.kind = 'persona'
+              JOIN perm.role_effective_level prel ON prel.role_id = pr2.id
              WHERE ur.user_id = u.id
-             ORDER BY pr2.level ASC NULLS LAST LIMIT 1) AS role_id,
-            COALESCE((SELECT MIN(pr2.level) FROM perm.user_roles ur
-                       JOIN perm.roles pr2 ON pr2.id = ur.role_id AND pr2.kind = 'persona'
-                      WHERE ur.user_id = u.id), 5)::int AS level
+             ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
+            COALESCE((SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id), 5)::int AS level
        FROM purchase_requisitions pr
        JOIN users u ON u.id = pr.requester_id
       WHERE pr.id = $1`,
@@ -217,7 +215,7 @@ export async function reviewAndCorrectExpense(
 
     await query('COMMIT');
     revalidatePath('/');
-    revalidatePath('/dashboard');
+    revalidatePath('/');
     revalidatePath('/');
     return { success: true };
   } catch (error: any) {
@@ -307,7 +305,7 @@ export async function changeExpenseStatus(
 
     await query('COMMIT');
     revalidatePath('/');
-    revalidatePath('/dashboard');
+    revalidatePath('/');
     revalidatePath('/');
     return { success: true };
   } catch (error: any) {
@@ -320,6 +318,7 @@ export async function changeExpenseStatus(
 export async function submitExpenseFromSlip(args: {
   slipId: number;
   actorId: number;
+  draftWaybillId?: string;
   overrides?: {
     vendorName?: string;
     transactionDate?: string;
@@ -343,6 +342,20 @@ export async function submitExpenseFromSlip(args: {
       throw new Error('Book bank slips are confirmed together with a receipt slip');
     }
     const parsed = slip.ocr_raw_json || {};
+
+    let draftContext: { waybillId: string; expenseId: number } | null = null;
+    if (args.draftWaybillId) {
+      const wbRes = await query<{ id: string; submitter_id: number; origin_id: number; current_stage: string }>(
+        `SELECT id, submitter_id, origin_id, current_stage
+           FROM waybills WHERE id = $1`,
+        [args.draftWaybillId],
+      );
+      const wb = wbRes.rows[0];
+      if (!wb) throw new Error('Draft waybill not found');
+      if (wb.submitter_id !== args.actorId) throw new Error('Not your draft');
+      if (wb.current_stage !== 'draft') throw new Error('Draft already finalized');
+      draftContext = { waybillId: wb.id, expenseId: wb.origin_id };
+    }
 
     const bookBankSlipId = args.overrides?.bookBankSlipId;
     const bookBankFields = args.overrides?.bookBankFields;
@@ -376,13 +389,43 @@ export async function submitExpenseFromSlip(args: {
     const paymentMethod = args.overrides?.paymentMethod || parsed.paymentMethod || 'cash';
     const isCorrupted = !!parsed.isCorrupted;
     const correctionNotes = parsed.correctionNotes || '';
-    const preExistingExpenseId = slip.expense_id ?? null;
+    const preExistingExpenseId = draftContext ? null : (slip.expense_id ?? null);
 
     await query('BEGIN');
 
     let expenseId: number;
     let previousStatus: string | null = null;
-    if (preExistingExpenseId) {
+    if (draftContext) {
+      expenseId = draftContext.expenseId;
+      previousStatus = 'draft';
+      await query(
+        `UPDATE expenses
+            SET vendor_name = $1, transaction_date = $2, subtotal = $3, vat_amount = $4, total_amount = $5,
+                payment_method = $6, is_corrupted = $7, correction_notes = $8, ocr_raw_json = $9,
+                document_url = $10, status = 'submission', updated_at = CURRENT_TIMESTAMP
+          WHERE id = $11`,
+        [
+          vendor, txnDate, subtotal, vatAmount, totalAmount, paymentMethod,
+          isCorrupted, correctionNotes, JSON.stringify(parsed),
+          `/api/slips/file?key=${encodeURIComponent(slip.file_path)}`,
+          expenseId,
+        ],
+      );
+      await query(`DELETE FROM expense_items WHERE expense_id = $1`, [expenseId]);
+      await query(
+        `UPDATE slips
+            SET expense_id = $1, status = 'confirmed', confirmed_at = CURRENT_TIMESTAMP
+          WHERE id = $2`,
+        [expenseId, args.slipId],
+      );
+      await query(
+        `UPDATE waybills
+            SET vendor_name = $1, total_amount = $2, current_stage = 'submission',
+                currency = 'THB', updated_at = now()
+          WHERE id = $3`,
+        [vendor, totalAmount, draftContext.waybillId],
+      );
+    } else if (preExistingExpenseId) {
       expenseId = preExistingExpenseId;
       const cur = await query(`SELECT status FROM expenses WHERE id = $1`, [expenseId]);
       previousStatus = cur.rows[0]?.status ?? null;
@@ -467,11 +510,10 @@ export async function submitExpenseFromSlip(args: {
       `SELECT u.dept_group_id,
               (SELECT pr.id FROM perm.user_roles ur
                 JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+                JOIN perm.role_effective_level prel ON prel.role_id = pr.id
                WHERE ur.user_id = u.id
-               ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id,
-              COALESCE((SELECT MIN(pr.level) FROM perm.user_roles ur
-                         JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-                        WHERE ur.user_id = u.id), 5)::int AS level
+               ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
+              COALESCE((SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id), 5)::int AS level
        FROM users u
        WHERE u.id = $1`,
       [args.actorId]
@@ -513,24 +555,39 @@ export async function submitExpenseFromSlip(args: {
     }
 
     await query('COMMIT');
-    await appendWaybillEvent({
+    const waybillId = await appendWaybillEvent({
       origin: 'expense',
       originId: expenseId,
       kind: 'submitted',
-      stageFrom: null,
+      stageFrom: draftContext ? 'draft' : null,
       stageTo: initialStatus,
       actorId: args.actorId,
       payload: { vendor, totalAmount, vatAmount },
     });
+    if (waybillId && bookBankSlip) {
+      const caption = bookBankFields!.bankName
+        ? `Book bank · ${bookBankFields!.bankName}${bookBankFields!.accountNumber ? ' · ' + bookBankFields!.accountNumber : ''}`
+        : 'Book bank slip';
+      await recordAttachment({
+        waybillId,
+        stageKey: 'submission',
+        kind: 'slip',
+        storageKey: bookBankSlip.file_path,
+        filename: bookBankSlip.file_path.split('/').pop() || 'book-bank',
+        contentType: bookBankSlip.mime_type || 'application/octet-stream',
+        byteSize: bookBankSlip.file_size || 0,
+        actorId: bookBankSlip.uploaded_by,
+        actorRole: 'staff',
+        caption,
+      });
+    }
     await publishEvent('expense.submitted', { expenseId, status: initialStatus }, {
       actorId: args.actorId, refType: 'expense', refId: Number(expenseId),
       severity: 'info',
       message: `Submitted expense #EXP-${expenseId} initial status ${initialStatus}`,
     });
     revalidatePath('/');
-    revalidatePath('/dashboard');
-    revalidatePath('/');
-    return { success: true, expenseId, status: initialStatus, policy: null, slipStatus: 'confirmed' };
+    return { success: true, expenseId, waybillId, status: initialStatus, policy: null, slipStatus: 'confirmed' };
   } catch (error: any) {
     await query('ROLLBACK');
     console.error('submitExpenseFromSlip failed:', error);
@@ -603,7 +660,7 @@ export async function discardSlip(args: { slipId: number; actorId: number }) {
     }
 
     revalidatePath('/');
-    revalidatePath('/dashboard');
+    revalidatePath('/');
     return { success: true, removedExpenseId: lockedExpenseId };
   } catch (error: any) {
     console.error('discardSlip failed:', error);
@@ -685,8 +742,9 @@ const expRes = await query(
       `SELECT u.id,
               (SELECT pr.id FROM perm.user_roles ur
                 JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+                JOIN perm.role_effective_level prel ON prel.role_id = pr.id
                WHERE ur.user_id = u.id
-               ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id
+               ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id
        FROM users u
        WHERE u.id = $1`,
       [args.actorId]
@@ -731,7 +789,7 @@ const expRes = await query(
         message: `Item #EXP-${args.expenseId} rejected: ${t}`,
       });
       revalidatePath('/');
-      revalidatePath('/dashboard');
+      revalidatePath('/');
       revalidatePath('/');
       return { success: true, newStatus: 'rejected', rejectionReason: t };
     }
@@ -791,7 +849,7 @@ const expRes = await query(
     });
 
     revalidatePath('/');
-    revalidatePath('/dashboard');
+    revalidatePath('/');
     revalidatePath('/');
     return {
       success: true,
@@ -870,7 +928,7 @@ export async function ceoForceDecision(args: {
       message: `CEO Override: ${args.targetType.toUpperCase()} #${args.targetId} → ${args.newStatus}`,
     });
     revalidatePath('/');
-    revalidatePath('/dashboard');
+    revalidatePath('/');
     revalidatePath('/');
     return { success: true, newStatus: args.newStatus, rejectionReason: args.newStatus === 'rejected' ? reasonTrim : undefined };
   } catch (error: any) {
@@ -915,11 +973,10 @@ const submitterRes = await query<{ dept_group_id: string | null; role_id: string
       `SELECT u.dept_group_id,
               (SELECT pr.id FROM perm.user_roles ur
                 JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+                JOIN perm.role_effective_level prel ON prel.role_id = pr.id
                WHERE ur.user_id = u.id
-               ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id,
-              COALESCE((SELECT MIN(pr.level) FROM perm.user_roles ur
-                         JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-                        WHERE ur.user_id = u.id), 5)::int AS level
+               ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
+              COALESCE((SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id), 5)::int AS level
        FROM users u
       WHERE u.id = $1`,
       [args.requesterId],
@@ -1208,8 +1265,9 @@ export async function advancePurchaseOrder(args: {
       `SELECT u.id,
               (SELECT pr.id FROM perm.user_roles ur
                 JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+                JOIN perm.role_effective_level prel ON prel.role_id = pr.id
                WHERE ur.user_id = u.id
-               ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_id
+               ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id
        FROM users u
        WHERE u.id = $1`,
       [args.actorId]
@@ -1550,7 +1608,7 @@ export async function settleExpenseMock(args: {
     });
 
     revalidatePath('/');
-    revalidatePath('/dashboard');
+    revalidatePath('/');
     revalidatePath('/expense-claim');
     return { success: true, poNumber, paidAt: new Date().toISOString() };
   } catch (error: any) {
@@ -1575,4 +1633,255 @@ export async function getExpenseLifecycle(expenseId: number) {
     [expenseId],
   );
   return r.rows;
+}
+
+export interface DraftPayload {
+  vendorName?: string;
+  transactionDate?: string;
+  subtotal?: number;
+  vatAmount?: number;
+  totalAmount?: number;
+  paymentMethod?: string;
+  notes?: string;
+}
+
+export interface StartDraftResult {
+  ok: boolean;
+  waybillId?: string;
+  expenseId?: number;
+  error?: string;
+}
+
+export async function startExpenseDraft(actorId: number): Promise<StartDraftResult> {
+  try {
+    const existing = await query<{ id: string; origin_id: number }>(
+      `SELECT id, origin_id
+         FROM waybills
+        WHERE submitter_id = $1
+          AND origin = 'expense'
+          AND current_stage = 'draft'
+          AND status = 'open'
+     ORDER BY created_at DESC
+        LIMIT 1`,
+      [actorId],
+    );
+    if (existing.rows[0]) {
+      return { ok: true, waybillId: existing.rows[0].id, expenseId: existing.rows[0].origin_id };
+    }
+
+    const fiscalYear = new Date().getFullYear();
+    const seqRes = await query<{ id: string }>(
+      `SELECT next_waybill_number($1::smallint) AS id`,
+      [fiscalYear],
+    );
+    const waybillId = seqRes.rows[0]?.id;
+    if (!waybillId) return { ok: false, error: 'Failed to reserve waybill number' };
+
+    const expRes = await query<{ id: number }>(
+      `INSERT INTO expenses (submitter_id, status, payment_method)
+       VALUES ($1, 'draft', 'cash')
+       RETURNING id`,
+      [actorId],
+    );
+    const expenseId = expRes.rows[0]?.id;
+    if (!expenseId) return { ok: false, error: 'Failed to create expense draft' };
+
+    await query(
+      `INSERT INTO waybills
+         (id, origin, origin_id, fiscal_year, waybill_kind,
+          submitter_id, current_stage, status, created_at, updated_at)
+       VALUES ($1, 'expense', $2, $3, 'reimbursement',
+               $4, 'draft', 'open', now(), now())`,
+      [waybillId, expenseId, fiscalYear, actorId],
+    );
+
+    await query(
+      `INSERT INTO waybill_events
+         (waybill_id, sequence, previous_event_id, kind, stage_from, stage_to,
+          actor_id, actor_role, actor_signature, payload)
+       VALUES (
+         $1, 1, NULL, 'created', NULL, 'draft',
+         $2, NULL, $3,
+         $4::jsonb
+       )`,
+      [
+        waybillId,
+        actorId,
+        Buffer.alloc(0),
+        JSON.stringify({ reason: 'draft-created' }),
+      ],
+    );
+
+    return { ok: true, waybillId, expenseId };
+  } catch (e: any) {
+    console.error('startExpenseDraft failed:', e);
+    return { ok: false, error: e?.message ?? 'startExpenseDraft failed' };
+  }
+}
+
+export async function saveDraftExpense(args: {
+  waybillId: string;
+  payload: DraftPayload;
+  actorId: number;
+}): Promise<{ ok: boolean; savedAt?: string; error?: string }> {
+  try {
+    const wbRes = await query<{ submitter_id: number; origin_id: number; current_stage: string }>(
+      `SELECT submitter_id, origin_id, current_stage
+         FROM waybills WHERE id = $1`,
+      [args.waybillId],
+    );
+    const wb = wbRes.rows[0];
+    if (!wb) return { ok: false, error: 'Waybill not found' };
+    if (wb.submitter_id !== args.actorId) return { ok: false, error: 'Not your draft' };
+    if (wb.current_stage !== 'draft') return { ok: false, error: 'Draft already finalized' };
+
+    const p = args.payload ?? {};
+    await query(
+      `UPDATE expenses SET
+         vendor_name       = COALESCE(NULLIF($1, ''), vendor_name),
+         transaction_date  = COALESCE(NULLIF($2, '')::date, transaction_date),
+         subtotal          = COALESCE($3::numeric, subtotal),
+         vat_amount        = COALESCE($4::numeric, vat_amount),
+         total_amount      = COALESCE($5::numeric, total_amount),
+         payment_method    = COALESCE(NULLIF($6, ''), payment_method),
+         correction_notes  = COALESCE(NULLIF($7, ''), correction_notes),
+         draft_updated_at  = now(),
+         updated_at        = CURRENT_TIMESTAMP
+       WHERE id = $8`,
+      [
+        p.vendorName ?? null,
+        p.transactionDate ?? null,
+        p.subtotal ?? null,
+        p.vatAmount ?? null,
+        p.totalAmount ?? null,
+        p.paymentMethod ?? null,
+        p.notes ?? null,
+        wb.origin_id,
+      ],
+    );
+
+    await query(
+      `UPDATE waybills SET
+         vendor_name   = COALESCE(NULLIF($1, ''), vendor_name),
+         total_amount  = COALESCE($2::numeric, total_amount),
+         updated_at    = now()
+       WHERE id = $3`,
+      [p.vendorName ?? null, p.totalAmount ?? null, args.waybillId],
+    );
+
+    return { ok: true, savedAt: new Date().toISOString() };
+  } catch (e: any) {
+    console.error('saveDraftExpense failed:', e);
+    return { ok: false, error: e?.message ?? 'saveDraftExpense failed' };
+  }
+}
+
+export async function submitManualExpense(args: {
+  waybillId: string;
+  actorId: number;
+  vendorName: string;
+  transactionDate: string;
+  paymentMethod: string;
+  subtotal: number;
+  vatAmount: number;
+  totalAmount: number;
+}): Promise<{ ok: boolean; error?: string; waybillId?: string }> {
+  try {
+    await requireActionFor(args.actorId, 'submit_expense', { perm: 'finance:expense:create' });
+
+    const wbRes = await query<{ submitter_id: number; origin_id: number; current_stage: string }>(
+      `SELECT submitter_id, origin_id, current_stage
+         FROM waybills WHERE id = $1`,
+      [args.waybillId],
+    );
+    const wb = wbRes.rows[0];
+    if (!wb) return { ok: false, error: 'Waybill not found' };
+    if (wb.submitter_id !== args.actorId) return { ok: false, error: 'Not your draft' };
+    if (wb.current_stage !== 'draft') return { ok: false, error: 'Draft already finalized' };
+
+    const total = args.totalAmount;
+    const vendor = args.vendorName.trim() || 'Unknown Vendor';
+
+    await query('BEGIN');
+    try {
+      await query(
+        `UPDATE expenses
+            SET vendor_name = $1, transaction_date = $2, subtotal = $3,
+                vat_amount = $4, total_amount = $5, payment_method = $6,
+                status = 'submission', updated_at = CURRENT_TIMESTAMP
+          WHERE id = $7`,
+        [vendor, args.transactionDate, args.subtotal, args.vatAmount, total, args.paymentMethod, wb.origin_id],
+      );
+
+      await query(
+        `UPDATE waybills
+            SET vendor_name = $1, total_amount = $2,
+                current_stage = 'submission', currency = 'THB', updated_at = now()
+          WHERE id = $3`,
+        [vendor, total, args.waybillId],
+      );
+
+      await query(
+        `INSERT INTO waybill_events
+           (waybill_id, sequence, previous_event_id, kind, stage_from, stage_to,
+            actor_id, actor_role, actor_signature, payload)
+         VALUES (
+           $1, (SELECT COALESCE(MAX(sequence), 0) + 1 FROM waybill_events WHERE waybill_id = $1),
+           (SELECT id FROM waybill_events WHERE waybill_id = $1 ORDER BY sequence DESC LIMIT 1),
+           'submitted', 'draft', 'submission',
+           $2, NULL, $3, $4::jsonb
+         )`,
+        [args.waybillId, args.actorId, Buffer.alloc(0), JSON.stringify({ vendor, totalAmount: total })],
+      );
+
+      await query('COMMIT');
+    } catch (e) {
+      await query('ROLLBACK');
+      throw e;
+    }
+
+    revalidatePath('/expense');
+    revalidatePath(`/waybill/${args.waybillId}`);
+    return { ok: true, waybillId: args.waybillId };
+  } catch (e: any) {
+    console.error('submitManualExpense failed:', e);
+    return { ok: false, error: e?.message ?? 'submitManualExpense failed' };
+  }
+}
+
+export async function discardDraftExpense(args: {
+  waybillId: string;
+  actorId: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const wbRes = await query<{ submitter_id: number; origin_id: number; current_stage: string }>(
+      `SELECT submitter_id, origin_id, current_stage
+         FROM waybills WHERE id = $1`,
+      [args.waybillId],
+    );
+    const wb = wbRes.rows[0];
+    if (!wb) return { ok: false, error: 'Waybill not found' };
+    if (wb.submitter_id !== args.actorId) return { ok: false, error: 'Not your draft' };
+    if (wb.current_stage !== 'draft') return { ok: false, error: 'Draft already finalized' };
+
+    await query('BEGIN');
+    try {
+      await query(`DELETE FROM waybill_events WHERE waybill_id = $1`, [args.waybillId]);
+      await query(`DELETE FROM waybill_attachments WHERE waybill_id = $1`, [args.waybillId]);
+      await query(`DELETE FROM slips WHERE expense_id = $1 AND status = 'pending'`, [wb.origin_id]);
+      await query(`DELETE FROM expense_items WHERE expense_id = $1`, [wb.origin_id]);
+      await query(`DELETE FROM expenses WHERE id = $1 AND status = 'draft'`, [wb.origin_id]);
+      await query(`DELETE FROM waybills WHERE id = $1 AND current_stage = 'draft'`, [args.waybillId]);
+      await query('COMMIT');
+    } catch (e) {
+      await query('ROLLBACK');
+      throw e;
+    }
+
+    revalidatePath('/expense');
+    return { ok: true };
+  } catch (e: any) {
+    console.error('discardDraftExpense failed:', e);
+    return { ok: false, error: e?.message ?? 'discardDraftExpense failed' };
+  }
 }
