@@ -13,10 +13,11 @@ import {
   pipsForDomain,
   type WaybillDomain,
 } from '@erp-lib/waybill/derive';
+import { STAGE_TO_ROLE } from '@erp-lib/perm';
 
 export interface WaybillRow {
   id: string;
-  origin: 'expense' | 'pr' | 'po';
+  origin: 'expense' | 'pr' | 'po' | 'so';
   origin_id: number;
   fiscal_year: number;
   waybill_kind: 'reimbursement' | 'procurement';
@@ -142,7 +143,16 @@ export async function loadUnifiedTimeline(
 }
 
 export function domainOf(wb: WaybillRow): WaybillDomain {
-  return wb.origin === 'expense' ? 'expense' : 'procurement';
+  if (wb.origin === 'expense') return 'expense';
+  if (wb.origin === 'so') return 'sales' as WaybillDomain;
+  return 'procurement';
+}
+
+export interface PipActorInfo {
+  name: string;
+  ts: Date;
+  kind: string;
+  actorId: number | null;
 }
 
 export interface WaybillRailContext {
@@ -153,6 +163,7 @@ export interface WaybillRailContext {
   pips: ReturnType<typeof pipsForDomain>;
   activePipIndex: number;
   activeActorName: string | null;
+  pipActors: Record<string, PipActorInfo>;
 }
 
 export async function loadWaybillRailContext(waybillId: string): Promise<WaybillRailContext | null> {
@@ -163,6 +174,25 @@ export async function loadWaybillRailContext(waybillId: string): Promise<Waybill
   const domain = domainOf(wb);
   const pips = pipsForDomain(domain);
   const activePipIndex = pips.findIndex((p) => p.key === wb.current_stage);
+
+  // Resolve actor names for every event in one batched lookup.
+  const actorIds = Array.from(new Set(events.map((e) => e.actor_id).filter((x): x is number => x != null)));
+  const nameById = new Map<number, string>();
+  if (actorIds.length) {
+    const u = await query<{ id: number; fullname: string }>(
+      `SELECT id, fullname FROM users WHERE id = ANY($1::int[])`,
+      [actorIds],
+    );
+    for (const row of u.rows) nameById.set(row.id, row.fullname);
+  }
+
+  // Last event touching each stage_to wins (most recent action at that stage).
+  const pipActors: Record<string, PipActorInfo> = {};
+  for (const e of events) {
+    if (!e.stage_to) continue;
+    const name = e.actor_id != null ? (nameById.get(e.actor_id) ?? `#${e.actor_id}`) : '—';
+    pipActors[e.stage_to] = { name, ts: e.occurred_at, kind: e.kind, actorId: e.actor_id };
+  }
 
   let activeActorName: string | null = null;
   if (wb.current_owner_user_id) {
@@ -181,5 +211,354 @@ export async function loadWaybillRailContext(waybillId: string): Promise<Waybill
     pips,
     activePipIndex,
     activeActorName,
+    pipActors,
   };
+}
+
+export function activeStageOf(stage: string): string {
+  return stage;
+}
+
+export interface WaybillSlip {
+  file_path: string;
+  mime_type: string;
+  file_size: number;
+  kind: string | null;
+  status: string | null;
+  bank_name: string | null;
+  bank_branch: string | null;
+  account_number: string | null;
+  account_name: string | null;
+}
+
+export interface ExpenseItemRow {
+  id: number;
+  description: string | null;
+  amount: string;
+  mapped_account_code: string | null;
+}
+
+export interface ExpenseFullPicture {
+  expense: {
+    id: number;
+    vendor_name: string | null;
+    transaction_date: Date | null;
+    subtotal: string | null;
+    vat_amount: string | null;
+    total_amount: string | null;
+    payment_method: string | null;
+    status: string;
+    submitter_id: number | null;
+    rejection_reason: string | null;
+    rejected_at: Date | null;
+  };
+  items: ExpenseItemRow[];
+  slips: WaybillSlip[];
+}
+
+export async function loadExpenseFullPicture(expenseId: number): Promise<ExpenseFullPicture | null> {
+  const e = await query<ExpenseFullPicture['expense']>(
+    `SELECT id, vendor_name, transaction_date, subtotal::text, vat_amount::text,
+            total_amount::text, payment_method, status, submitter_id,
+            rejection_reason, rejected_at
+       FROM expenses WHERE id = $1`,
+    [expenseId],
+  );
+  if (!e.rows.length) return null;
+  const [items, slips] = await Promise.all([
+    query<ExpenseItemRow>(
+      `SELECT id, description, amount::text, mapped_account_code
+         FROM expense_items WHERE expense_id = $1 ORDER BY id`,
+      [expenseId],
+    ),
+    query<WaybillSlip>(
+      `SELECT file_path, mime_type, file_size, kind, status,
+              bank_name, bank_branch, account_number, account_name
+         FROM slips WHERE expense_id = $1 ORDER BY id`,
+      [expenseId],
+    ),
+  ]);
+  return { expense: e.rows[0], items: items.rows, slips: slips.rows };
+}
+
+export async function loadSlipsForExpenses(
+  expenseIds: number[],
+): Promise<Map<number, WaybillSlip[]>> {
+  if (!expenseIds.length) return new Map();
+  const r = await query<WaybillSlip & { expense_id: number }>(
+    `SELECT expense_id, file_path, mime_type, file_size, kind, status,
+            bank_name, bank_branch, account_number, account_name
+       FROM slips WHERE expense_id = ANY($1::int[]) ORDER BY id`,
+    [expenseIds],
+  );
+  const m = new Map<number, WaybillSlip[]>();
+  for (const row of r.rows) {
+    const { expense_id, ...slip } = row;
+    const a = m.get(expense_id) ?? [];
+    a.push(slip);
+    m.set(expense_id, a);
+  }
+  return m;
+}
+
+export async function loadSlipsForExpense(
+  expenseId: number,
+): Promise<WaybillSlip[]> {
+  const m = await loadSlipsForExpenses([expenseId]);
+  return m.get(expenseId) ?? [];
+}
+
+export async function loadSlipsForWaybill(
+  waybillId: string,
+): Promise<{ receipt: WaybillSlip | null; bookBank: WaybillSlip[] }> {
+  const wb = await loadWaybill(waybillId);
+  if (!wb) return { receipt: null, bookBank: [] };
+  const slips = await loadSlipsForExpense(wb.origin_id);
+  return {
+    receipt: slips.find((s) => s.kind === 'receipt') ?? null,
+    bookBank: slips.filter((s) => s.kind === 'book-bank'),
+  };
+}
+
+export const loadDocsForWaybill = loadAttachmentsForWaybill;
+
+export interface ApproverRow {
+  user_id: number;
+  fullname: string;
+  role_id: string | null;
+  dept_group_id: string | null;
+  dept_group_name: string | null;
+  dept_group_name_th: string | null;
+  dept_group_name_de: string | null;
+  level: number;
+}
+
+export interface ActedUserEntry {
+  user_id: number;
+  fullname: string;
+  role_id: string | null;
+  role_name: string | null;
+  dept_group_id: string | null;
+  kind: string;
+  sequence: number;
+  occurred_at: Date;
+}
+
+export type ApproversByStage = Record<string, ApproverRow[]>;
+export type ActedUsersByStage = Record<string, ActedUserEntry[]>;
+
+// Stages whose approver pool is scoped to the submitter's own department.
+const DEPT_SCOPED_STAGES = new Set(['dept_verification', 'dept_authorization']);
+
+export async function loadApproversByStage(waybillId: string): Promise<ApproversByStage> {
+  const wb = await loadWaybill(waybillId);
+  if (!wb) return {};
+
+  const domain = domainOf(wb);
+  const pips = pipsForDomain(domain);
+  const out: ApproversByStage = {};
+  const roleToPips = new Map<string, string[]>();
+  for (const pip of pips) {
+    out[pip.key] = [];
+    const role = STAGE_TO_ROLE[pip.key];
+    if (!role) continue;
+    const list = roleToPips.get(role) ?? [];
+    list.push(pip.key);
+    roleToPips.set(role, list);
+  }
+  const roles = Array.from(roleToPips.keys());
+  if (roles.length === 0) return out;
+
+  let submitterDept: string | null = null;
+  if (wb.submitter_id != null) {
+    const s = await query<{ dept_group_id: string | null }>(
+      `SELECT dept_group_id FROM users WHERE id = $1`,
+      [wb.submitter_id],
+    );
+    submitterDept = s.rows[0]?.dept_group_id ?? null;
+  }
+
+  const r = await query<ApproverRow>(
+    `SELECT u.id AS user_id, u.fullname, ur.role_id,
+            u.dept_group_id,
+            dg.display_name     AS dept_group_name,
+            dg.display_name_th  AS dept_group_name_th,
+            dg.display_name_de  AS dept_group_name_de,
+            COALESCE(uel.effective_level, 10) AS level
+       FROM perm.user_roles ur
+       JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+       JOIN users u ON u.id = ur.user_id AND u.is_active
+  LEFT JOIN perm.roles dg ON dg.id = u.dept_group_id
+  LEFT JOIN perm.user_effective_level uel ON uel.user_id = u.id
+      WHERE ur.role_id = ANY($1::text[])
+   ORDER BY level ASC, u.fullname`,
+    [roles],
+  );
+
+  for (const row of r.rows) {
+    const keys = roleToPips.get(row.role_id ?? '') ?? [];
+    for (const key of keys) {
+      if (DEPT_SCOPED_STAGES.has(key) && submitterDept && row.dept_group_id !== submitterDept) continue;
+      out[key].push(row);
+    }
+  }
+  return out;
+}
+
+export async function loadActedUsersByStage(waybillId: string): Promise<ActedUsersByStage> {
+  const r = await query<{
+    stage_to: string | null;
+    stage_from: string | null;
+    sequence: number;
+    kind: string;
+    occurred_at: Date;
+    actor_id: number | null;
+    fullname: string | null;
+    role_id: string | null;
+  }>(
+    `SELECT we.stage_to, we.stage_from, we.sequence, we.kind, we.occurred_at,
+            we.actor_id, u.fullname,
+            (SELECT pr.id FROM perm.user_roles ur
+              JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+             WHERE ur.user_id = we.actor_id
+             ORDER BY (SELECT effective_level FROM perm.user_effective_level
+                        WHERE user_id = ur.user_id) ASC NULLS LAST
+             LIMIT 1) AS role_id
+       FROM waybill_events we
+  LEFT JOIN users u ON u.id = we.actor_id
+      WHERE we.waybill_id = $1 AND we.actor_id IS NOT NULL
+   ORDER BY we.sequence`,
+    [waybillId],
+  );
+  const out: ActedUsersByStage = {};
+  for (const row of r.rows) {
+    const bucket = row.stage_to ?? row.stage_from ?? 'submission';
+    (out[bucket] ??= []).push({
+      user_id: row.actor_id!,
+      fullname: row.fullname ?? `#${row.actor_id}`,
+      role_id: row.role_id,
+      role_name: row.role_id,
+      dept_group_id: null,
+      kind: row.kind,
+      sequence: row.sequence,
+      occurred_at: row.occurred_at,
+    });
+  }
+  return out;
+}
+
+export interface JournalLineRow {
+  account_code: string;
+  account_name: string | null;
+  account_name_th: string | null;
+  debit: number;
+  credit: number;
+  description: string | null;
+}
+
+export interface ExpenseArtifacts {
+  po: { id: number; po_number: string | null; status: string | null; issued_at: Date | null; issuer_name: string | null } | null;
+  gl: { id: number; finalized_at: Date | null; finalized_by_name: string | null; lines: JournalLineRow[] } | null;
+  paySlip: { method: string | null; paid_at: Date | null; paid_by_name: string | null } | null;
+}
+
+export interface ProcurementArtifacts {
+  pr: { id: number; pr_number: string | null; status: string | null; created_at: Date | null; requester_name: string | null } | null;
+  po: { id: number; po_number: string | null; status: string | null; issued_at: Date | null; issuer_name: string | null } | null;
+  glAccrual: { id: number; finalized_at: Date | null; finalized_by_name: string | null; lines: JournalLineRow[] } | null;
+  glSettlement: { id: number; finalized_at: Date | null; finalized_by_name: string | null; lines: JournalLineRow[] } | null;
+  paySlip: { method: string | null; paid_at: Date | null; paid_by_name: string | null } | null;
+}
+
+export interface ApproverSummary {
+  role: string;
+  role_label: string;
+  role_label_th: string | null;
+  names: string[];
+  count: number;
+  privacy: 'named' | 'team';
+}
+
+export async function loadApproverSummariesForRows(
+  _rows: WaybillInboxRow[],
+  _amountFn: (r: WaybillInboxRow) => number | null,
+): Promise<Map<string, ApproverSummary>> {
+  return new Map();
+}
+
+export interface ActiveDraft {
+  waybill_id: string;
+  expense_id: number;
+  draft_updated_at: Date | null;
+}
+
+export async function loadActiveDraftForSubmitter(userId: number): Promise<ActiveDraft | null> {
+  const r = await query<{ id: string; origin_id: number; updated_at: Date }>(
+    `SELECT w.id, w.origin_id, w.updated_at
+       FROM waybills w
+       JOIN expenses e ON e.id = w.origin_id
+      WHERE w.origin = 'expense' AND e.submitter_id = $1
+        AND w.status = 'open' AND w.current_stage = 'draft'
+      ORDER BY w.updated_at DESC LIMIT 1`,
+    [userId],
+  );
+  if (!r.rows.length) return null;
+  return { waybill_id: r.rows[0].id, expense_id: r.rows[0].origin_id, draft_updated_at: r.rows[0].updated_at };
+}
+
+export interface ActiveSalesDraft {
+  waybill_id: string;
+  so_number: string | null;
+  customer_name: string | null;
+  total_amount: string | null;
+  draft_updated_at: Date | null;
+}
+
+export async function loadActiveSalesDraftForRep(userId: number): Promise<ActiveSalesDraft | null> {
+  const r = await query<{ id: string; so_number: string | null; customer_name: string | null; total_amount: string | null; updated_at: Date }>(
+    `SELECT w.id, so.so_number, c.name AS customer_name, so.total_amount::text, w.updated_at
+       FROM waybills w
+       JOIN sales_orders so ON so.id = w.origin_id
+       LEFT JOIN customers c ON c.id = so.customer_id
+      WHERE w.origin = 'so' AND so.sales_rep_id = $1
+        AND w.status = 'open' AND w.current_stage = 'so_draft'
+      ORDER BY w.updated_at DESC LIMIT 1`,
+    [userId],
+  );
+  if (!r.rows.length) return null;
+  return {
+    waybill_id: r.rows[0].id,
+    so_number: r.rows[0].so_number,
+    customer_name: r.rows[0].customer_name,
+    total_amount: r.rows[0].total_amount,
+    draft_updated_at: r.rows[0].updated_at,
+  };
+}
+
+export interface SalesArtifacts {
+  customer: { id: number; code: string; name: string; name_th: string | null; name_de: string | null } | null;
+  items: Array<{ id: number; description: string; qty: number; unit_price: number; vat_amount: number; line_total: number }>;
+  totals: { subtotal: number; vat_total: number; total: number };
+  invoice: { number: string | null; issued_at: string | null } | null;
+  ar_receipt: { file_path: string; mime_type: string; uploaded_at: string } | null;
+}
+
+export async function loadSalesArtifacts(_wb: WaybillRow): Promise<SalesArtifacts | null> {
+  return null;
+}
+
+export type InboxScope = 'mine' | 'queue' | 'all';
+
+export async function loadInboxForUser(userId: number, scope: InboxScope): Promise<WaybillInboxRow[]> {
+  if (scope === 'all') return listAllOpenWaybills();
+  if (scope === 'queue') return listAwaitingForActor(userId, null);
+  return listMyWaybills(userId);
+}
+
+export interface JournalView {
+  kind: 'expense' | 'procurement' | 'sales';
+}
+
+export async function loadJournalForWaybill(_waybillId: string): Promise<JournalView | null> {
+  return null;
 }
