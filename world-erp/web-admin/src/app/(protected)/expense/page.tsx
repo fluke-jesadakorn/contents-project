@@ -359,22 +359,14 @@ export default async function ExpenseInboxPage({ searchParams }: PageProps) {
                       </div>
                     </div>
                     {row.origin === 'expense' && (
-                      <details className="group mt-2 w-full overflow-hidden rounded-xl border border-slate-800/50 bg-slate-950/30">
-                        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-slate-500 hover:text-slate-300 [&::-webkit-details-marker]:hidden">
-                          <span className="text-xs">📎</span>
-                          <span>Book bank & documents</span>
-                          <span className="ml-auto text-[9px] text-slate-600 group-open:hidden">▶</span>
-                          <span className="ml-auto hidden text-[9px] text-slate-600 group-open:inline">▼</span>
-                        </summary>
-                        <div className="space-y-2 border-t border-slate-800/40 px-3 py-2">
-                          <BookBankMini
-                            slips={slipMaps.get(row.origin_id) ?? []}
-                            waybillId={row.id}
-                            currentStage={row.current_stage}
-                          />
-                          <DocList waybillId={row.id} currentStage={row.current_stage} />
-                        </div>
-                      </details>
+                      <div className="mt-2 space-y-1">
+                        <BookBankMini
+                          slips={slipMaps.get(row.origin_id) ?? []}
+                          waybillId={row.id}
+                          currentStage={row.current_stage}
+                        />
+                        <DocList waybillId={row.id} currentStage={row.current_stage} />
+                      </div>
                     )}
                     <a
                       href={`/waybill/${row.id}`}
