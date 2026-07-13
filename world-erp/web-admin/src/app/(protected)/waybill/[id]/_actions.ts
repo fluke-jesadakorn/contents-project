@@ -15,6 +15,8 @@ import { allowedKindsFor, type WaybillAttachmentKind } from '@erp-lib/waybill/ki
 import { addWatcher, removeWatcher } from '@erp-lib/waybill/watchers';
 import { reCallWaybillAction } from '@erp-lib/waybill/recall';
 import { resolveNextStage } from '@erp-lib/perm/server';
+import { matchPerm } from '@erp-lib/perm';
+import { loadActor, type ActorWithScope } from '@/lib/server/guard';
 import {
   finalizeDraftJournal,
   setExpenseJournalEntry,
@@ -33,43 +35,123 @@ import {
 } from '@erp-lib/waybill/ensureArtifacts';
 import { ensurePoPdf } from '@erp-lib/finance/poPdf';
 import { pipsForDomain } from '@erp-lib/waybill/derive';
-import {
-  POL,
-  evalPolicy,
-  type PolicyContext,
-} from '@erp-lib/policy';
-import {
-  requirePolicy,
-  PolicyError,
-} from '@erp-lib/policy/server';
-import { buildPolicyContextFromCookieValue } from '@erp-lib/policy/context';
 
 void recordEvent;
 
-async function policyCtxForWaybill(wb: {
+interface WbForCheck {
+  id: string;
   current_stage: string;
   origin: 'expense' | 'pr' | 'po' | 'so';
   submitter_id: number | null;
-  total_amount: string | null;
   status: string;
-}): Promise<{ ctx: NonNullable<Awaited<ReturnType<typeof buildPolicyContextFromCookieValue>>>; policyCtx: PolicyContext }> {
-  const cookieValue = (await cookies()).get('erp_session')?.value ?? null;
-  const ctx = await buildPolicyContextFromCookieValue(cookieValue);
-  if (!ctx) throw new PolicyError(401, 'unauthenticated');
-  return {
-    ctx,
-    policyCtx: {
-      ...ctx,
-      resource: {
-        current_stage: wb.current_stage,
-        origin: wb.origin,
-        submitter_id: wb.submitter_id,
-        requester_id: wb.submitter_id,
-        total_amount_thb: wb.total_amount != null ? Number(wb.total_amount) : null,
-        status: wb.status,
-      },
-    },
-  };
+}
+
+async function actorForWaybill(): Promise<ActorWithScope> {
+  const actor = await loadActor();
+  if (!actor) throw new Error('unauthorized');
+  return actor;
+}
+
+function canActOnWaybillStage(actor: ActorWithScope, wb: WbForCheck): boolean {
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
+  const stage = wb.current_stage;
+  if (matchPerm(actor.permissions, `stage:${stage}:act::allow`)) return true;
+  if (matchPerm(actor.permissions, `stage:${stage}:act:all::allow`)) return true;
+  if (actor.role_name === 'cfo' || actor.role_name === 'ceo' || actor.role_name === 'admin') {
+    return true;
+  }
+  if (wb.origin === 'expense' || wb.origin === 'so') return false;
+  if (actor.id === wb.submitter_id && stage === 'submission' && matchPerm(actor.permissions, 'finance:expense:create::allow')) {
+    return true;
+  }
+  return false;
+}
+
+function canRecall(actor: ActorWithScope, wb: WbForCheck): boolean {
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
+  return ['cfo', 'ceo', 'finance', 'admin'].includes(actor.role_name) && !['disbursed', 'gl_confirmed', 'rejected'].includes(wb.current_stage);
+}
+
+function canRejectWaybill(actor: ActorWithScope, wb: WbForCheck): boolean {
+  if (['disbursed', 'gl_confirmed', 'rejected'].includes(wb.current_stage)) return false;
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
+  return ['cfo', 'ceo', 'admin', 'finance', 'account_officer', 'account_supervisor', 'accounting_manager'].includes(actor.role_name);
+}
+
+function canFinalApproveExpense(actor: ActorWithScope, wb: WbForCheck): boolean {
+  if (!['accounting_authorization', 'final_authorization'].includes(wb.current_stage)) return false;
+  if (matchPerm(actor.permissions, 'finance:expense:approve::allow')) return true;
+  if (matchPerm(actor.permissions, 'finance:expense:settle::allow')) {
+    return ['finance', 'account_officer', 'account_supervisor', 'accounting_manager'].includes(actor.role_name);
+  }
+  return false;
+}
+
+function canResubmit(actor: ActorWithScope, wb: WbForCheck): boolean {
+  return actor.id === wb.submitter_id
+    && wb.current_stage === 'rejected'
+    && matchPerm(actor.permissions, 'finance:expense:create::allow');
+}
+
+function canSettleExpense(actor: ActorWithScope, wb: WbForCheck): boolean {
+  return wb.current_stage === 'awaiting_disbursement'
+    && matchPerm(actor.permissions, 'finance:expense:settle::allow');
+}
+
+function canConfirmGl(actor: ActorWithScope, wb: WbForCheck): boolean {
+  return wb.current_stage === 'disbursed'
+    && matchPerm(actor.permissions, 'finance:gl:confirm::allow');
+}
+
+function canAttachAtStage(actor: ActorWithScope, wb: WbForCheck): boolean {
+  if (['disbursed', 'gl_confirmed', 'rejected'].includes(wb.current_stage)) return false;
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
+  if (matchPerm(actor.permissions, 'finance:waybill:attach::allow')) return true;
+  return actor.id === wb.submitter_id
+    && wb.current_stage === 'submission'
+    && matchPerm(actor.permissions, 'finance:expense:create::allow');
+}
+
+function canRemoveAttachment(actor: ActorWithScope): boolean {
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
+  return actor.role_name === 'cfo' || actor.role_name === 'ceo' || actor.role_name === 'admin';
+}
+
+function canSaveProcurementAccrual(actor: ActorWithScope): boolean {
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
+  if (matchPerm(actor.permissions, 'finance:pr:edit::allow')) return true;
+  return ['finance', 'account_officer', 'account_supervisor', 'accounting_manager'].includes(actor.role_name);
+}
+
+function canPostGlAccrual(actor: ActorWithScope, wb: WbForCheck): boolean {
+  return wb.current_stage === 'accounting_authorization'
+    && (matchPerm(actor.permissions, 'finance:gl:post::allow')
+      || (actor.role_name === 'accounting_manager'
+        && matchPerm(actor.permissions, 'finance:gl:post::allow')));
+}
+
+function canPostGlSettlement(actor: ActorWithScope, wb: WbForCheck): boolean {
+  return wb.current_stage === 'disbursed'
+    && matchPerm(actor.permissions, 'finance:gl:post::allow')
+    && ['finance', 'account_officer', 'account_supervisor', 'accounting_manager'].includes(actor.role_name);
+}
+
+function canPostSalesGlStep(actor: ActorWithScope, wb: WbForCheck, stage: string): boolean {
+  if (wb.current_stage !== stage) return false;
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
+  if (matchPerm(actor.permissions, 'finance:gl:post::allow')) {
+    return ['finance', 'account_officer', 'account_supervisor', 'accounting_manager'].includes(actor.role_name);
+  }
+  return false;
+}
+
+function canConfirmSalesGl(actor: ActorWithScope, wb: WbForCheck): boolean {
+  if (wb.origin !== 'so') return false;
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
+  if (matchPerm(actor.permissions, 'finance:gl:confirm::allow')) {
+    return ['finance', 'account_officer', 'account_supervisor', 'accounting_manager', 'cfo', 'ceo'].includes(actor.role_name);
+  }
+  return false;
 }
 
 const ApproveForm = z.object({
@@ -88,16 +170,15 @@ export async function approveWaybillAction(formData: FormData): Promise<void> {
   if (!wb) throw new Error('Waybill not found');
   if (wb.status !== 'open') throw new Error('Waybill is not open');
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
+  const actor = await actorForWaybill();
 
   if (parsed.stage && parsed.stage !== wb.current_stage) {
-    const rRecall = await evalPolicy(POL.recallWaybill, policyCtx);
-    if (rRecall.allow) {
+    if (canRecall(actor, wb)) {
       const r = await reCallWaybillAction({
         waybillId: parsed.waybillId,
         targetStage: parsed.stage,
-        actorId: ctx.actor.id,
-        actorRole: ctx.actor.roleName ?? '',
+        actorId: actor.id,
+        actorRole: actor.role_name,
         reason: 'cfo override',
       });
       if (!r.ok) throw new Error(r.error);
@@ -106,14 +187,16 @@ export async function approveWaybillAction(formData: FormData): Promise<void> {
     }
   }
 
-  await requirePolicy(POL.canActOnWaybill, policyCtx, { surface: 'action', target: 'approveWaybill' });
+  if (!canActOnWaybillStage(actor, wb)) {
+    throw new Error('cannot act at this stage');
+  }
 
   const currentStage = wb.current_stage as Parameters<typeof resolveNextStage>[0];
   const domain: 'expense' | 'procurement' | 'sales' =
     wb.origin === 'expense' ? 'expense'
       : wb.origin === 'so' ? 'sales'
         : 'procurement';
-  const next = resolveNextStage(currentStage, ctx.actor.roleName ?? '', undefined, domain);
+  const next = resolveNextStage(currentStage, actor.role_name, undefined, domain);
 
   await withTransaction(async (q) => {
     if (wb.origin === 'expense') {
@@ -179,7 +262,7 @@ export async function approveWaybillAction(formData: FormData): Promise<void> {
       });
     }
     if (wb.origin === 'expense' && next.stage === 'final_authorization') {
-      await ensureGlForExpense(q, wb.origin_id, ctx.actor.id);
+      await ensureGlForExpense(q, wb.origin_id, actor.id);
     }
     await q(
       `UPDATE waybills SET current_stage = $1, current_owner_role = $2, updated_at = now()
@@ -191,8 +274,8 @@ export async function approveWaybillAction(formData: FormData): Promise<void> {
       kind: 'advanced',
       stageFrom: wb.current_stage,
       stageTo: next.stage,
-      actorId: ctx.actor.id,
-      actorRole: ctx.actor.roleName ?? 'staff',
+      actorId: actor.id,
+      actorRole: actor.role_name,
       payload: { decision: 'approve' },
       client: q as never,
     });
@@ -202,10 +285,10 @@ export async function approveWaybillAction(formData: FormData): Promise<void> {
       next.stage === 'accounting_authorization' &&
       (wb.origin === 'expense' || wb.origin === 'po' || wb.origin === 'pr')
     ) {
-      const actorName = String(ctx.actor.roleName ?? 'system');
+      const actorName = String(actor.role_name ?? 'system');
       const { rows: actorRows } = await q<{ fullname: string }>(
         `SELECT fullname FROM users WHERE id = $1`,
-        [ctx.actor.id],
+        [actor.id],
       );
       const fullname = actorRows[0]?.fullname ?? actorName;
       await ensurePoPdf(wb.id, fullname);
@@ -230,8 +313,10 @@ export async function rejectWaybillAction(formData: FormData): Promise<void> {
   const wb = await loadWaybill(parsed.waybillId);
   if (!wb) throw new Error('Waybill not found');
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.rejectWaybill, policyCtx, { surface: 'action', target: 'rejectWaybill' });
+  const actor = await actorForWaybill();
+  if (!canRejectWaybill(actor, wb)) {
+    throw new Error('cannot reject at this stage');
+  }
 
   await withTransaction(async (q) => {
     if (wb.origin === 'expense') {
@@ -242,7 +327,7 @@ export async function rejectWaybillAction(formData: FormData): Promise<void> {
                             rejected_at = now(),
                             updated_at = now()
           WHERE id = $1`,
-        [wb.origin_id, parsed.reason, ctx.actor.id],
+        [wb.origin_id, parsed.reason, actor.id],
       );
       if (wb.current_stage === 'accounting_authorization') {
         await q(
@@ -253,7 +338,7 @@ export async function rejectWaybillAction(formData: FormData): Promise<void> {
                   rejected_at = now(),
                   updated_at = now()
             WHERE id = (SELECT po_id FROM expenses WHERE id = $1)`,
-          [wb.origin_id, parsed.reason, ctx.actor.id],
+          [wb.origin_id, parsed.reason, actor.id],
         );
       }
     } else if (wb.origin === 'pr') {
@@ -264,7 +349,7 @@ export async function rejectWaybillAction(formData: FormData): Promise<void> {
                                         rejected_at = now(),
                                         updated_at = now()
           WHERE id = $1`,
-        [wb.origin_id, parsed.reason, ctx.actor.id],
+        [wb.origin_id, parsed.reason, actor.id],
       );
     } else if (wb.origin === 'po') {
       await q(
@@ -274,7 +359,7 @@ export async function rejectWaybillAction(formData: FormData): Promise<void> {
                                   rejected_at = now(),
                                   updated_at = now()
           WHERE id = $1`,
-        [wb.origin_id, parsed.reason, ctx.actor.id],
+        [wb.origin_id, parsed.reason, actor.id],
       );
     }
     await q(
@@ -289,8 +374,8 @@ export async function rejectWaybillAction(formData: FormData): Promise<void> {
       kind: 'rejected',
       stageFrom: wb.current_stage,
       stageTo: 'rejected',
-      actorId: ctx.actor.id,
-      actorRole: 'staff',
+      actorId: actor.id,
+      actorRole: actor.role_name,
       payload: { reason: parsed.reason },
       client: q as never,
     });
@@ -315,8 +400,10 @@ export async function finalApproveWaybillAction(formData: FormData): Promise<voi
     throw new Error(`final approve currently limited to expense origin (got ${wb.origin})`);
   }
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.canFinalApproveExpense, policyCtx, { surface: 'action', target: 'finalApproveWaybill' });
+  const actor = await actorForWaybill();
+  if (!canFinalApproveExpense(actor, wb)) {
+    throw new Error('cannot final approve at this stage');
+  }
 
   const expRes = await _query<{ vendor_name: string; total_amount: string; vat_amount: string }>(
     `SELECT vendor_name, total_amount, vat_amount FROM expenses WHERE id = $1`,
@@ -342,15 +429,15 @@ export async function finalApproveWaybillAction(formData: FormData): Promise<voi
       kind: 'advanced',
       stageFrom: 'final_authorization',
       stageTo: 'awaiting_disbursement',
-      actorId: ctx.actor.id,
-      actorRole: ctx.actor.roleName ?? 'finance',
+      actorId: actor.id,
+      actorRole: actor.role_name ?? 'finance',
       payload: { decision: 'final-approve', gl_will_post: true },
       client: q as never,
     });
   });
 
   let journalId: number;
-  const draft = await finalizeDraftJournal({ expenseId: wb.origin_id, actorId: ctx.actor.id });
+  const draft = await finalizeDraftJournal({ expenseId: wb.origin_id, actorId: actor.id });
   if (draft) {
     journalId = draft.journalId;
   } else {
@@ -359,12 +446,12 @@ export async function finalApproveWaybillAction(formData: FormData): Promise<voi
       vendorName: exp.vendor_name,
     });
     journalId = upsert.journalId;
-    const fin = await finalizeDraftJournal({ expenseId: wb.origin_id, actorId: ctx.actor.id });
+    const fin = await finalizeDraftJournal({ expenseId: wb.origin_id, actorId: actor.id });
     if (!fin) throw new Error('failed to finalize draft journal');
     journalId = fin.journalId;
   }
   await withTransaction(async (q) => {
-    await setExpenseJournalEntry(q, wb.origin_id, journalId, ctx.actor.id);
+    await setExpenseJournalEntry(q, wb.origin_id, journalId, actor.id);
   });
 
   await recordEvent({
@@ -372,8 +459,8 @@ export async function finalApproveWaybillAction(formData: FormData): Promise<voi
     kind: 'posted-to-gl',
     stageFrom: 'final_authorization',
     stageTo: 'awaiting_disbursement',
-    actorId: ctx.actor.id,
-    actorRole: ctx.actor.roleName ?? 'finance',
+    actorId: actor.id,
+    actorRole: actor.role_name ?? 'finance',
     payload: { journalId, expenseId: wb.origin_id },
   });
 
@@ -399,8 +486,10 @@ export async function finalRejectWaybillAction(formData: FormData): Promise<void
     throw new Error(`final reject only at final_authorization (current: ${wb.current_stage})`);
   }
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.rejectWaybill, policyCtx, { surface: 'action', target: 'finalRejectWaybill' });
+  const actor = await actorForWaybill();
+  if (!canRejectWaybill(actor, wb)) {
+    throw new Error('cannot reject at this stage');
+  }
 
   await withTransaction(async (q) => {
     if (wb.origin === 'expense') {
@@ -411,7 +500,7 @@ export async function finalRejectWaybillAction(formData: FormData): Promise<void
                             rejected_at = now(),
                             updated_at = now()
           WHERE id = $1`,
-        [wb.origin_id, parsed.reason, ctx.actor.id],
+        [wb.origin_id, parsed.reason, actor.id],
       );
     } else if (wb.origin === 'pr') {
       await q(
@@ -421,7 +510,7 @@ export async function finalRejectWaybillAction(formData: FormData): Promise<void
                                         rejected_at = now(),
                                         updated_at = now()
           WHERE id = $1`,
-        [wb.origin_id, parsed.reason, ctx.actor.id],
+        [wb.origin_id, parsed.reason, actor.id],
       );
     } else if (wb.origin === 'po') {
       await q(
@@ -431,7 +520,7 @@ export async function finalRejectWaybillAction(formData: FormData): Promise<void
                                   rejected_at = now(),
                                   updated_at = now()
           WHERE id = $1`,
-        [wb.origin_id, parsed.reason, ctx.actor.id],
+        [wb.origin_id, parsed.reason, actor.id],
       );
     }
     await q(
@@ -446,8 +535,8 @@ export async function finalRejectWaybillAction(formData: FormData): Promise<void
       kind: 'rejected',
       stageFrom: 'final_authorization',
       stageTo: 'rejected',
-      actorId: ctx.actor.id,
-      actorRole: ctx.actor.roleName ?? 'finance',
+      actorId: actor.id,
+      actorRole: actor.role_name ?? 'finance',
       payload: { decision: 'final-reject', reason: parsed.reason, gl_posted: false },
       client: q as never,
     });
@@ -469,8 +558,10 @@ export async function resubmitWaybillAction(formData: FormData): Promise<void> {
   const wb = await loadWaybill(parsed.waybillId);
   if (!wb || wb.status !== 'rejected') throw new Error('Not in rejected state');
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.resubmitExpense, policyCtx, { surface: 'action', target: 'resubmitWaybill' });
+  const actor = await actorForWaybill();
+  if (!canResubmit(actor, wb)) {
+    throw new Error('cannot resubmit at this stage');
+  }
 
   await withTransaction(async (q) => {
     if (wb.origin === 'expense') {
@@ -507,8 +598,8 @@ export async function resubmitWaybillAction(formData: FormData): Promise<void> {
       kind: 'resubmitted',
       stageFrom: 'rejected',
       stageTo: 'submission',
-      actorId: ctx.actor.id,
-      actorRole: 'staff',
+      actorId: actor.id,
+      actorRole: actor.role_name,
       payload: { origin: wb.origin, origin_id: wb.origin_id },
       client: q as never,
     });
@@ -550,16 +641,10 @@ export async function attachPaymentSlipAction(formData: FormData): Promise<Attac
     return { ok: false, error: `expense must be awaiting_disbursement (current: ${wb.current_stage})` };
   }
 
-  let ctx: NonNullable<Awaited<ReturnType<typeof buildPolicyContextFromCookieValue>>>;
-  let policyCtx: PolicyContext;
-  try {
-    const r = await policyCtxForWaybill(wb);
-    ctx = r.ctx;
-    policyCtx = r.policyCtx;
-    await requirePolicy(POL.canSettleExpense, policyCtx, { surface: 'action', target: 'attachPaymentSlip' });
-  } catch (err) {
-    if (err instanceof PolicyError) return { ok: false, error: err.message };
-    throw err;
+  const actor = await loadActor();
+  if (!actor) return { ok: false, error: 'unauthorized' };
+  if (!canSettleExpense(actor, wb)) {
+    return { ok: false, error: 'cannot settle at this stage' };
   }
 
   const slipRes = await _query<{ id: number; uploaded_by: number; status: string; expense_id: number | null; ocr_raw_json: unknown }>(
@@ -593,7 +678,7 @@ export async function attachPaymentSlipAction(formData: FormData): Promise<Attac
       `SELECT id FROM users WHERE id = $1`,
       [wb.submitter_id],
     );
-    const submitterId = submitterRes.rows.length > 0 ? wb.submitter_id : ctx.actor.id;
+    const submitterId = submitterRes.rows.length > 0 ? wb.submitter_id : actor.id;
     await _query(
       `INSERT INTO expenses (id, submitter_id, vendor_name, transaction_date,
                               subtotal, vat_amount, total_amount,
@@ -637,7 +722,7 @@ export async function attachPaymentSlipAction(formData: FormData): Promise<Attac
                           disbursed_by = $2,
                           updated_at = now()
         WHERE id = $3`,
-      [parsed.data.paymentMethod, ctx.actor.id, parsed.data.expenseId],
+      [parsed.data.paymentMethod, actor.id, parsed.data.expenseId],
     );
     await q(
       `UPDATE waybills SET current_stage = 'disbursed',
@@ -651,8 +736,8 @@ export async function attachPaymentSlipAction(formData: FormData): Promise<Attac
       kind: 'settled',
       stageFrom: 'awaiting_disbursement',
       stageTo: 'disbursed',
-      actorId: ctx.actor.id,
-      actorRole: ctx.actor.roleName ?? 'finance',
+      actorId: actor.id,
+      actorRole: actor.role_name ?? 'finance',
       payload: {
         paymentMethod: parsed.data.paymentMethod,
         slipId: parsed.data.slipId,
@@ -664,7 +749,7 @@ export async function attachPaymentSlipAction(formData: FormData): Promise<Attac
   let journalId: number | undefined;
   const draft = await finalizeDraftJournal({
     expenseId: parsed.data.expenseId,
-    actorId: ctx.actor.id,
+    actorId: actor.id,
   });
   if (draft) {
     journalId = draft.journalId;
@@ -676,7 +761,7 @@ export async function attachPaymentSlipAction(formData: FormData): Promise<Attac
     journalId = upsert.journalId;
     const fin = await finalizeDraftJournal({
       expenseId: parsed.data.expenseId,
-      actorId: ctx.actor.id,
+      actorId: actor.id,
     });
     if (fin) journalId = fin.journalId;
   }
@@ -686,8 +771,8 @@ export async function attachPaymentSlipAction(formData: FormData): Promise<Attac
     kind: 'posted-to-gl',
     stageFrom: 'awaiting_disbursement',
     stageTo: 'disbursed',
-    actorId: ctx.actor.id,
-    actorRole: ctx.actor.roleName ?? 'finance',
+    actorId: actor.id,
+    actorRole: actor.role_name ?? 'finance',
     payload: {
       journalId,
       slipId: parsed.data.slipId,
@@ -721,8 +806,10 @@ export async function confirmGlRecordedAction(formData: FormData): Promise<void>
     );
   }
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.canConfirmGl, policyCtx, { surface: 'action', target: 'confirmGlRecorded' });
+  const actor = await actorForWaybill();
+  if (!canConfirmGl(actor, wb)) {
+    throw new Error('cannot confirm GL at this stage');
+  }
 
   const postedRes = await _query<{ exists: boolean }>(
     `SELECT EXISTS (
@@ -750,15 +837,15 @@ export async function confirmGlRecordedAction(formData: FormData): Promise<void>
                            gl_confirmed_by = $1,
                            updated_at = now()
         WHERE id = $2`,
-      [ctx.actor.id, parsed.expenseId],
+      [actor.id, parsed.expenseId],
     );
     await recordEvent({
       waybillId: wb.id,
       kind: 'gl-confirmed',
       stageFrom: 'disbursed',
       stageTo: 'disbursed',
-      actorId: ctx.actor.id,
-      actorRole: ctx.actor.roleName ?? 'finance',
+      actorId: actor.id,
+      actorRole: actor.role_name ?? 'finance',
       payload: { expenseId: parsed.expenseId },
       client: q as never,
     });
@@ -804,14 +891,10 @@ export async function attachWaybillDocumentAction(formData: FormData): Promise<A
   const wb = await loadWaybill(data.waybillId);
   if (!wb) return { ok: false, error: 'waybill not found' };
 
-  let policyCtx: PolicyContext;
-  try {
-    const r = await policyCtxForWaybill(wb);
-    policyCtx = r.policyCtx;
-    await requirePolicy(POL.canAttachAtStage, policyCtx, { surface: 'action', target: 'attachWaybillDocument' });
-  } catch (err) {
-    if (err instanceof PolicyError) return { ok: false, error: err.message };
-    throw err;
+  const actor = await loadActor();
+  if (!actor) return { ok: false, error: 'unauthorized' };
+  if (!canAttachAtStage(actor, wb)) {
+    return { ok: false, error: 'cannot attach at this stage' };
   }
 
   if (!allowedKindsFor(wb.current_stage).includes(data.kind as WaybillAttachmentKind)) {
@@ -826,8 +909,8 @@ export async function attachWaybillDocumentAction(formData: FormData): Promise<A
     filename: data.filename,
     contentType: data.contentType,
     byteSize: data.byteSize,
-    actorId: policyCtx.actor.id,
-    actorRole: policyCtx.actor.roleName ?? 'officer',
+    actorId: actor.id,
+    actorRole: actor.role_name ?? 'officer',
     caption: data.caption ?? null,
   });
 
@@ -843,14 +926,16 @@ const RemoveAttachForm = z.object({
 export async function removeWaybillAttachmentAction(formData: FormData): Promise<void> {
   const parsed = RemoveAttachForm.parse({
     waybillId: String(formData.get('waybillId') ?? ''),
-    attachmentId: String(formData.get('attachmentId') ?? ''),
+    attachmentId: String(formData.get('attachmentId') ?? '0'),
   });
 
   const wb = await loadWaybill(parsed.waybillId);
   if (!wb) throw new Error('Waybill not found');
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.canRemoveAttachment, policyCtx, { surface: 'action', target: 'removeWaybillAttachment' });
+  const actor = await actorForWaybill();
+  if (!canRemoveAttachment(actor)) {
+    throw new Error('cannot remove attachment');
+  }
 
   const att = await getAttachment(parsed.attachmentId);
   if (!att || att.waybill_id !== parsed.waybillId) {
@@ -867,8 +952,8 @@ export async function removeWaybillAttachmentAction(formData: FormData): Promise
       kind: 'advanced',
       stageFrom: null,
       stageTo: null,
-      actorId: ctx.actor.id,
-      actorRole: ctx.actor.roleName ?? 'officer',
+      actorId: actor.id,
+      actorRole: actor.role_name ?? 'officer',
       payload: {
         decision: 'attachment_removed',
         attachment_id: parsed.attachmentId,
@@ -902,8 +987,9 @@ export async function subscribeWaybillAction(formData: FormData): Promise<Subscr
   }
 
   const cookieValue = (await cookies()).get('erp_session')?.value ?? null;
-  const ctx = await buildPolicyContextFromCookieValue(cookieValue);
-  if (!ctx) return { ok: false, error: 'unauthenticated' };
+  void cookieValue;
+  const actor = await loadActor();
+  if (!actor) return { ok: false, error: 'unauthenticated' };
 
   const wb = await loadWaybill(parsed.data.waybillId);
   if (!wb) return { ok: false, error: 'not found' };
@@ -914,14 +1000,14 @@ export async function subscribeWaybillAction(formData: FormData): Promise<Subscr
 
   const approvers = await loadApproversByStage(parsed.data.waybillId);
   const list = approvers[parsed.data.stageKey] ?? [];
-  if (!list.some((a) => a.user_id === ctx.actor.id)) {
+  if (!list.some((a) => a.user_id === actor.id)) {
     return { ok: false, error: 'only listed approvers can subscribe' };
   }
 
   await addWatcher({
     waybillId: parsed.data.waybillId,
     stageKey: parsed.data.stageKey,
-    userId: ctx.actor.id,
+    userId: actor.id,
   });
   revalidatePath(`/waybill/${parsed.data.waybillId}`);
   return { ok: true };
@@ -936,14 +1022,13 @@ export async function unsubscribeWaybillAction(formData: FormData): Promise<Subs
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'invalid input' };
   }
 
-  const cookieValue = (await cookies()).get('erp_session')?.value ?? null;
-  const ctx = await buildPolicyContextFromCookieValue(cookieValue);
-  if (!ctx) return { ok: false, error: 'unauthenticated' };
+  const actor = await loadActor();
+  if (!actor) return { ok: false, error: 'unauthenticated' };
 
   await removeWatcher({
     waybillId: parsed.data.waybillId,
     stageKey: parsed.data.stageKey,
-    userId: ctx.actor.id,
+    userId: actor.id,
   });
   revalidatePath(`/waybill/${parsed.data.waybillId}`);
   return { ok: true };
@@ -963,8 +1048,10 @@ export async function recomputeExpenseDraftGlAction(formData: FormData): Promise
     throw new Error(`recompute-draft-gl only for expense origin (got ${wb.origin})`);
   }
 
-  const { policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.canSaveProcurementAccrual, policyCtx, { surface: 'action', target: 'recomputeExpenseDraftGl' });
+  const actor = await actorForWaybill();
+  if (!canSaveProcurementAccrual(actor)) {
+    throw new Error('cannot recompute expense draft GL');
+  }
 
   const expRes = await _query<{ vendor_name: string | null }>(
     `SELECT vendor_name FROM expenses WHERE id = $1`,
@@ -994,8 +1081,10 @@ export async function saveProcurementAccrualAction(formData: FormData): Promise<
     throw new Error(`accrual only for procurement origin (got ${wb.origin})`);
   }
 
-  const { policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.canSaveProcurementAccrual, policyCtx, { surface: 'action', target: 'saveProcurementAccrual' });
+  const actor = await actorForWaybill();
+  if (!canSaveProcurementAccrual(actor)) {
+    throw new Error('cannot save procurement accrual');
+  }
 
   let vendorName = '';
   if (wb.origin === 'pr') {
@@ -1038,12 +1127,14 @@ export async function postProcurementAccrualAction(formData: FormData): Promise<
     throw new Error(`accrual only for procurement origin (got ${wb.origin})`);
   }
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.canPostGlAccrual, policyCtx, { surface: 'action', target: 'postProcurementAccrual' });
+  const actor = await actorForWaybill();
+  if (!canPostGlAccrual(actor, wb)) {
+    throw new Error('cannot post GL accrual at this stage');
+  }
 
   const fin = await finalizeProcurementDraft({
     journalId: parsed.journalId,
-    actorId: ctx.actor.id,
+    actorId: actor.id,
   });
   if (!fin) throw new Error('draft journal not found');
 
@@ -1052,8 +1143,8 @@ export async function postProcurementAccrualAction(formData: FormData): Promise<
     kind: 'posted-to-gl-accrual',
     stageFrom: 'accounting_authorization',
     stageTo: 'accounting_authorization',
-    actorId: ctx.actor.id,
-    actorRole: ctx.actor.roleName,
+    actorId: actor.id,
+    actorRole: actor.role_name,
     payload: { journalId: fin.journalId, step: 'accrual' },
   });
 
@@ -1077,12 +1168,14 @@ export async function postProcurementSettlementAction(formData: FormData): Promi
     throw new Error(`settlement only for procurement origin (got ${wb.origin})`);
   }
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.canPostGlSettlement, policyCtx, { surface: 'action', target: 'postProcurementSettlement' });
+  const actor = await actorForWaybill();
+  if (!canPostGlSettlement(actor, wb)) {
+    throw new Error('cannot post GL settlement at this stage');
+  }
 
   const fin = await finalizeProcurementDraft({
     journalId: parsed.journalId,
-    actorId: ctx.actor.id,
+    actorId: actor.id,
   });
   if (!fin) throw new Error('draft journal not found');
 
@@ -1091,8 +1184,8 @@ export async function postProcurementSettlementAction(formData: FormData): Promi
     kind: 'posted-to-gl-settlement',
     stageFrom: 'disbursed',
     stageTo: 'disbursed',
-    actorId: ctx.actor.id,
-    actorRole: ctx.actor.roleName,
+    actorId: actor.id,
+    actorRole: actor.role_name,
     payload: { journalId: fin.journalId, step: 'settlement' },
   });
 
@@ -1116,8 +1209,10 @@ export async function confirmProcurementGlAction(formData: FormData): Promise<vo
     throw new Error(`confirm-gl only for procurement origin (got ${wb.origin})`);
   }
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.canConfirmGl, policyCtx, { surface: 'action', target: 'confirmProcurementGl' });
+  const actor = await actorForWaybill();
+  if (!canConfirmGl(actor, wb)) {
+    throw new Error('cannot confirm GL at this stage');
+  }
 
   const kind = parsed.step === 'accrual' ? 'gl-confirmed-accrual' : 'gl-confirmed-settlement';
 
@@ -1148,8 +1243,8 @@ export async function confirmProcurementGlAction(formData: FormData): Promise<vo
     kind,
     stageFrom: wb.current_stage,
     stageTo: wb.current_stage,
-    actorId: ctx.actor.id,
-    actorRole: ctx.actor.roleName,
+    actorId: actor.id,
+    actorRole: actor.role_name,
     payload: { step: parsed.step },
   });
 
@@ -1165,7 +1260,6 @@ const PostSalesGlForm = z.object({
 async function postSalesGlStep(args: {
   formData: FormData;
   expectedOrigin: 'so';
-  policy: typeof POL.canPostSalesGlVat | typeof POL.canPostSalesGlAccrual | typeof POL.canPostSalesGlSettlement;
   stage: 'so_invoiced' | 'so_paid';
   postedKind: 'posted-to-gl-sales-vat' | 'posted-to-gl-sales-accrual' | 'posted-to-gl-sales-settlement';
   stepLabel: 'vat' | 'accrual' | 'settlement';
@@ -1185,15 +1279,14 @@ async function postSalesGlStep(args: {
     );
   }
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(args.policy, policyCtx, {
-    surface: 'action',
-    target: `postSalesGl${args.stepLabel}`,
-  });
+  const actor = await actorForWaybill();
+  if (!canPostSalesGlStep(actor, wb, args.stage)) {
+    throw new Error(`cannot post sales GL ${args.stepLabel} at this stage`);
+  }
 
   const fin = await finalizeSalesDraft({
     journalId: parsed.journalId,
-    actorId: ctx.actor.id,
+    actorId: actor.id,
   });
   if (!fin) throw new Error('draft journal not found');
 
@@ -1202,8 +1295,8 @@ async function postSalesGlStep(args: {
     kind: args.postedKind,
     stageFrom: args.stage,
     stageTo: args.stage,
-    actorId: ctx.actor.id,
-    actorRole: ctx.actor.roleName,
+    actorId: actor.id,
+    actorRole: actor.role_name,
     payload: { journalId: fin.journalId, step: args.stepLabel },
   });
 
@@ -1215,7 +1308,6 @@ export async function postSalesGlVatAction(formData: FormData): Promise<void> {
   await postSalesGlStep({
     formData,
     expectedOrigin: 'so',
-    policy: POL.canPostSalesGlVat,
     stage: 'so_invoiced',
     postedKind: 'posted-to-gl-sales-vat',
     stepLabel: 'vat',
@@ -1226,7 +1318,6 @@ export async function postSalesGlAccrualAction(formData: FormData): Promise<void
   await postSalesGlStep({
     formData,
     expectedOrigin: 'so',
-    policy: POL.canPostSalesGlAccrual,
     stage: 'so_invoiced',
     postedKind: 'posted-to-gl-sales-accrual',
     stepLabel: 'accrual',
@@ -1237,7 +1328,6 @@ export async function postSalesGlSettlementAction(formData: FormData): Promise<v
   await postSalesGlStep({
     formData,
     expectedOrigin: 'so',
-    policy: POL.canPostSalesGlSettlement,
     stage: 'so_paid',
     postedKind: 'posted-to-gl-sales-settlement',
     stepLabel: 'settlement',
@@ -1260,11 +1350,10 @@ export async function confirmSalesGlAction(formData: FormData): Promise<void> {
     throw new Error(`confirm-sales-gl only for sales origin (got ${wb.origin})`);
   }
 
-  const { ctx, policyCtx } = await policyCtxForWaybill(wb);
-  await requirePolicy(POL.canConfirmSalesGl, policyCtx, {
-    surface: 'action',
-    target: `confirmSalesGl${parsed.step}`,
-  });
+  const actor = await actorForWaybill();
+  if (!canConfirmSalesGl(actor, wb)) {
+    throw new Error('cannot confirm sales GL at this stage');
+  }
 
   const kind =
     parsed.step === 'vat'
@@ -1307,8 +1396,8 @@ export async function confirmSalesGlAction(formData: FormData): Promise<void> {
     kind,
     stageFrom: wb.current_stage,
     stageTo: wb.current_stage,
-    actorId: ctx.actor.id,
-    actorRole: ctx.actor.roleName,
+    actorId: actor.id,
+    actorRole: actor.role_name,
     payload: { step: parsed.step },
   });
 

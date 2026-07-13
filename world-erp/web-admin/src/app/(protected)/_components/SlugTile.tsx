@@ -26,7 +26,7 @@ interface Props {
     id: number;
     role_name: string;
     fullname?: string;
-    rbac_role_id?: string | null;
+    role_id?: string | null;
     [k: string]: unknown;
   };
 }

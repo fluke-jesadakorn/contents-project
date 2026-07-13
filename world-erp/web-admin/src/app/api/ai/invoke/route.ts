@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { invoke } from '@erp-lib/ai/router';
-import { loadActor } from '@/lib/server/guard';
+import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 export async function POST(req: Request) {
-  const actor = await loadActor();
+  const guard = await apiGuard(req, { perm: PERM.ai.staff.invoke });
+  if (guard.response) return guard.response;
+  const actor = guard.actor;
   if (!actor) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
 
   const body = (await req.json().catch(() => ({}))) as { sectionKey?: string; task?: string; [k: string]: unknown };

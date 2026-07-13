@@ -201,7 +201,7 @@ export async function reviewAndCorrectExpense(
   }
 ) {
   try {
-    await requireActionFor(actorId, 'review_expense', { perm: 'finance:expense:review' });
+    await requireActionFor(actorId, 'review_expense', { perm: PERM.finance.expense.review });
     await query('BEGIN');
 
     await query(`
@@ -255,7 +255,7 @@ export async function changeExpenseStatus(
     if (newStatus === 'approved' || newStatus === 'rejected') {
       await requireActionFor(actorId, 'approve_expense', { perm: 'finance:expense:approve:all' });
     } else if (newStatus === 'paid') {
-      await requireActionFor(actorId, 'settle_payment', { perm: 'finance:expense:settle' });
+      await requireActionFor(actorId, 'settle_payment', { perm: PERM.finance.expense.settle });
     }
 
     if (newStatus === 'rejected') {
@@ -354,7 +354,7 @@ export async function submitExpenseFromSlip(args: {
   };
 }) {
   try {
-    await requireActionFor(args.actorId, 'submit_expense', { perm: 'finance:expense:create' });
+    await requireActionFor(args.actorId, 'submit_expense', { perm: PERM.finance.expense.create });
 
     const slipRes = await query(`SELECT * FROM slips WHERE id = $1`, [args.slipId]);
     if (slipRes.rows.length === 0) throw new Error('Slip not found');
@@ -910,7 +910,7 @@ export async function ceoForceDecision(args: {
   reason: string;
 }) {
   try {
-    await requireActionFor(args.actorId, 'ceo_override', { perm: 'finance:expense:override' });
+    await requireActionFor(args.actorId, 'ceo_override', { perm: PERM.finance.expense.override });
     if (!args.reason || args.reason.trim().length < 5) {
       throw new Error('Override reason is required (min 5 chars)');
     }
@@ -1005,7 +1005,7 @@ export async function submitPurchaseRequisition(args: {
   items: Array<{ description: string; qty: number; unit_price: number; mapped_account_code?: string }>;
 }) {
   try {
-    await requireActionFor(args.requesterId, 'submit_pr', { perm: 'finance:pr:create' });
+    await requireActionFor(args.requesterId, 'submit_pr', { perm: PERM.finance.pr.create });
 
 const submitterRes = await query<{ dept_perm: string | null; role_id: string | null; level: number }>(
       `SELECT (SELECT up.permission_id FROM perm.user_permissions up
@@ -1086,12 +1086,11 @@ export async function advancePurchaseRequisition(args: {
   comment?: string;
 }) {
   try {
-    const { actor: actorSession } = await requireActionFor(args.actorId, 'approve_pr', { perm: 'finance:pr:approve:all' });
+    const { actor: actorSession } = await requireActionFor(args.actorId, 'approve_pr', { perm: PERM.finance.pr.approve });
     const actorPerms = new Set(actorSession.permissions);
     const prRes = await query(
-      `SELECT pr.*, dg.display_name AS dept_name, dg.id AS dept_group_id, dg.id AS dept_group_code
+      `SELECT pr.*
          FROM purchase_requisitions pr
-         LEFT JOIN perm.roles dg ON dg.id = pr.dept_group_id AND dg.kind = 'department' AND dg.kind = 'department'
         WHERE pr.id = $1`,
       [args.prId]
     );
@@ -1202,12 +1201,11 @@ export async function createPurchaseOrderFromPr(args: {
   actorId: number;
 }) {
   try {
-    await requireActionFor(args.actorId, 'approve_pr', { perm: 'finance:pr:create' });
+    await requireActionFor(args.actorId, 'approve_pr', { perm: PERM.finance.pr.approve });
 
     const prRes = await query(
-      `SELECT pr.*, dg.display_name AS dept_name, dg.id AS dept_group_id, dg.id AS dept_group_code
+      `SELECT pr.*
          FROM purchase_requisitions pr
-         LEFT JOIN perm.roles dg ON dg.id = pr.dept_group_id AND dg.kind = 'department' AND dg.kind = 'department'
         WHERE pr.id = $1`,
       [args.prId]
     );
@@ -1294,11 +1292,9 @@ export async function advancePurchaseOrder(args: {
     await requireActionFor(args.actorId, 'approve_po', { perm: 'finance:po:approve:all' });
 
     const poRes = await query(
-      `SELECT po.*, dg.display_name AS dept_name,
-              dg.id AS dept_group_id, dg.id AS dept_group_code, pr.is_recurring
+      `SELECT po.*, pr.is_recurring
        FROM purchase_orders po
        JOIN purchase_requisitions pr ON po.pr_id = pr.id
-       LEFT JOIN perm.roles dg ON dg.id = pr.dept_group_id AND dg.kind = 'department' AND dg.kind = 'department'
        WHERE po.id = $1`,
       [args.poId]
     );
@@ -1434,7 +1430,7 @@ export async function attachDisbursementPayslip(args: {
   slipId: number;
 }) {
   try {
-    await requireActionFor(args.actorId, 'attach_po_payslip', { perm: 'finance:po:attach_payslip' });
+    await requireActionFor(args.actorId, 'attach_po_payslip', { perm: PERM.finance.po.attach_payslip });
 
     const poRes = await query(`SELECT * FROM purchase_orders WHERE id = $1`, [args.poId]);
     if (poRes.rows.length === 0) throw new Error('PO not found');
@@ -1556,7 +1552,7 @@ export async function settleExpenseMock(args: {
   paymentMethod: 'cash' | 'credit_card' | 'transfer';
 }) {
   try {
-    await requireActionFor(args.actorId, 'settle_expense', { perm: 'finance:expense:settle' });
+    await requireActionFor(args.actorId, 'settle_expense', { perm: PERM.finance.expense.settle });
 
     const expRes = await query(
       `SELECT id, status, vendor_name, total_amount, vat_amount, submitter_id
@@ -1842,7 +1838,7 @@ export async function submitManualExpense(args: {
   totalAmount: number;
 }): Promise<{ ok: boolean; error?: string; waybillId?: string }> {
   try {
-    await requireActionFor(args.actorId, 'submit_expense', { perm: 'finance:expense:create' });
+    await requireActionFor(args.actorId, 'submit_expense', { perm: PERM.finance.expense.create });
 
     const wbRes = await query<{ submitter_id: number; origin_id: number; current_stage: string }>(
       `SELECT submitter_id, origin_id, current_stage

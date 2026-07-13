@@ -9,7 +9,7 @@ export interface UserForWiring {
   dept_id: number | null;
   dept_code: string | null;
   dept_name: string | null;
-  staff_level: number;
+  level: number;
   reports_to_user_id: number | null;
   is_active: boolean;
 }
@@ -57,7 +57,7 @@ function scoreEdge(
   if (parent.id === child.id) return Number.POSITIVE_INFINITY;
 
   // Same-level wires are allowed but penalized (e.g. CFO→CEO, CoPeers).
-  const levelGap = child.staff_level - parent.staff_level;
+  const levelGap = child.level - parent.level;
   if (levelGap < 0) return Number.POSITIVE_INFINITY;
 
   let s = 0;
@@ -118,7 +118,7 @@ export async function loadAllUsersForWiring(): Promise<UserForWiring[]> {
                               WHEN ur.role_id LIKE '%::5' THEN 4
                               ELSE 5 END), ur.granted_at ASC
                LIMIT 1
-            ), 5) AS staff_level,
+            ), 5) AS level,
             (SELECT ur.role_id FROM perm.user_roles ur
               WHERE ur.user_id = u.id
               ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
@@ -150,7 +150,7 @@ export async function loadAllUsersForWiring(): Promise<UserForWiring[]> {
       dept_id: deptId as any,
       dept_code: null,
       dept_name: deptId,
-      staff_level: typeof row.staff_level === 'number' ? row.staff_level : 5,
+      level: typeof row.level === 'number' ? row.level : 5,
       reports_to_user_id: null,
       is_active: row.is_active,
     };
@@ -170,7 +170,7 @@ export async function proposeAutoWire(): Promise<AutoWireProposal> {
 
   const usersById = new Map(users.map((u) => [u.id, u]));
   const ceo = users.find((u) => u.role_name === 'ceo');
-  const root = ceo ?? users.reduce((min, u) => (u.staff_level < min.staff_level ? u : min));
+  const root = ceo ?? users.reduce((min, u) => (u.level < min.level ? u : min));
 
   const proposedWires = new Map<number, number>();
   const childCount = new Map<number, number>();
@@ -183,16 +183,16 @@ export async function proposeAutoWire(): Promise<AutoWireProposal> {
     if (createsCycle(usersById, u.id, parent.id)) continue;
     // Preserve chain only if it's a valid edge (not same-level unless CEO)
     const isCtoCEO = parent.role_name === 'ceo';
-    if (!isCtoCEO && parent.staff_level > u.staff_level) continue;
+    if (!isCtoCEO && parent.level > u.level) continue;
     proposedWires.set(u.id, parent.id);
     childCount.set(parent.id, (childCount.get(parent.id) ?? 0) + 1);
   }
 
   const byLevel = new Map<number, UserForWiring[]>();
   for (const u of users) {
-    const arr = byLevel.get(u.staff_level) ?? [];
+    const arr = byLevel.get(u.level) ?? [];
     arr.push(u);
-    byLevel.set(u.staff_level, arr);
+    byLevel.set(u.level, arr);
   }
 
   const eligibleParents = new Set<number>([root.id, ...proposedWires.keys()]);
@@ -208,9 +208,9 @@ export async function proposeAutoWire(): Promise<AutoWireProposal> {
         const p = usersById.get(pId);
         if (!p) continue;
         // Reject if parent is at higher level number (lower rank)
-        if (p.staff_level > u.staff_level) continue;
+        if (p.level > u.level) continue;
         // Same-level only allowed if parent is CEO
-        if (p.staff_level === u.staff_level && p.role_name !== 'ceo') continue;
+        if (p.level === u.level && p.role_name !== 'ceo') continue;
         const score = scoreEdge(p, u, childCount.get(p.id) ?? 0, u.reports_to_user_id);
         if (score < bestScore) {
           bestScore = score;
@@ -258,7 +258,7 @@ export async function proposeAutoWire(): Promise<AutoWireProposal> {
       children: childIds
         .map((cid) => buildNode(cid, depth + 1))
         .sort((a, b) => {
-          if (a.user.staff_level !== b.user.staff_level) return a.user.staff_level - b.user.staff_level;
+          if (a.user.level !== b.user.level) return a.user.level - b.user.level;
           return (a.user.fullname || '').localeCompare(b.user.fullname || '');
         }),
       proposedManagerId: proposed,

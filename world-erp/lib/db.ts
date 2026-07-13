@@ -22,12 +22,14 @@ export const query = <T extends pg.QueryResultRow = pg.QueryResultRow>(
 ) => pool.query<T>(text, params as never);
 
 export async function withTransaction<T>(
-  fn: (client: pg.PoolClient) => Promise<T>,
+  fn: (q: <R extends pg.QueryResultRow = pg.QueryResultRow>(text: string, params?: unknown[]) => Promise<pg.QueryResult<R>>) => Promise<T>,
 ): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const result = await fn(client);
+    const wrapped = (<R extends pg.QueryResultRow = pg.QueryResultRow>(text: string, params?: unknown[]): Promise<pg.QueryResult<R>> =>
+      client.query<R>(text, params as never)) as <R extends pg.QueryResultRow = pg.QueryResultRow>(text: string, params?: unknown[]) => Promise<pg.QueryResult<R>>;
+    const result = await fn(wrapped);
     await client.query('COMMIT');
     return result;
   } catch (err) {

@@ -6,11 +6,11 @@
 
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { loadActivePermSession, hasPermission } from '@erp-lib/perm/server';
+import { loadActivePermSession, hasPermission, PERM } from '@erp-lib/perm/server';
 import {
-  listUserPerms,
+  listActiveUserPerms,
   revokeUserPerm,
-  setUserPerms,
+  setUserPermanentPerms,
 } from '@erp-lib/perm/server';
 
 export const runtime = 'nodejs';
@@ -19,10 +19,10 @@ export const dynamic = 'force-dynamic';
 function canMutate(s: ReturnType<typeof JSON.parse>['session'] | null) {
   if (!s) return false;
   return (
-    hasPermission(s, 'rbac:role:assign') ||
-    hasPermission(s, 'user:role:assign') ||
-    hasPermission(s, 'rbac:matrix:edit') ||
-    hasPermission(s, 'admin:system:bypass:all')
+    hasPermission(s, PERM.rbac.role.assign) ||
+    hasPermission(s, PERM.user.role.assign) ||
+    hasPermission(s, PERM.rbac.matrix.edit) ||
+    hasPermission(s, PERM.admin.system.bypass)
   );
 }
 
@@ -42,7 +42,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const userId = parseInt(idStr, 10);
   if (!userId) return NextResponse.json({ error: 'invalid id' }, { status: 400 });
 
-  const all = await listUserPerms(userId, { activeOnly: false });
+  const all = await listActiveUserPerms(userId);
 
   return NextResponse.json({
     user_id: userId,
@@ -81,7 +81,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   );
   const validIds = valid.rows.map((r) => r.id);
 
-  const result = await setUserPerms({
+  const result = await setUserPermanentPerms({
     user_id: userId,
     desired_perm_ids: validIds,
     ends_at: mode === 'temporary' ? endsAt : null,

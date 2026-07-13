@@ -51,7 +51,7 @@ const DEPT_META: Record<string, { code: string; icon: string }> = {
 };
 
 function staffLevelOf(u: any): StaffLevel {
-  const lv = u.staff_level;
+  const lv = u.level;
   if (lv === 1 || lv === 2 || lv === 3 || lv === 4 || lv === 5) return lv;
   const role = u.role_id || u.role_name || '';
   return ROLE_LEVEL_DISPLAY[role as DisplayRoleName] ?? 5;
@@ -219,7 +219,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
     if (open && flat.length) setHighlight(0);
   }, [query, open, flat.length]);
 
-  const curRole = currentUser?.rbac_role_id || currentUser?.role_name;
+  const curRole = currentUser?.role_id || currentUser?.role_name;
 
   return (
     <div className="relative" ref={rootRef}>
@@ -238,7 +238,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
       >
         <UserAvatar
           fullname={currentUser?.fullname}
-          role={currentUser?.rbac_role_id || currentUser?.role_name}
+          role={currentUser?.role_id || currentUser?.role_name}
           level={currentUser ? staffLevelOf(currentUser) : undefined}
           size="sm"
         />

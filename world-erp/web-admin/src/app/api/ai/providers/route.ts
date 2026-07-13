@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { encryptKey } from '@erp-lib/ai/crypto';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,14 +13,14 @@ const SELECT = `SELECT id, name, type, base_url, enabled, preset, notes,
                 FROM ai_providers ORDER BY id`;
 
 export async function GET(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-providers', rbacAction: 'read' });
+  const guard = await apiGuard(req, { perm: PERM.ai.provider.read });
   if (guard.response) return guard.response;
   const res = await query(SELECT);
   return NextResponse.json({ providers: res.rows });
 }
 
 export async function POST(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-providers', rbacAction: 'create' });
+  const guard = await apiGuard(req, { perm: PERM.ai.provider.create });
   if (guard.response) return guard.response;
 
   const body = await req.json().catch(() => ({}));

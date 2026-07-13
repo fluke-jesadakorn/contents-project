@@ -15,7 +15,7 @@ interface Props {
   actor: {
     id: number;
     role_name: string;
-    rbac_role_id?: string | null;
+    role_id?: string | null;
     fullname?: string;
     permissions?: string[] | null;
     [k: string]: unknown;

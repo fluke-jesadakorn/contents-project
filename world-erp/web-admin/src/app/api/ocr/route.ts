@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { extractText, extractViaOllamaVision } from '@erp-lib/slips/ocr_lib/pdf-pipeline.js';
 import { config } from '@erp-lib/config';
+import { apiGuard } from '@erp-lib/server/apiGuard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const guard = await apiGuard(req, { perm: 'finance:expense:create::allow' });
+  if (guard.response) return guard.response;
+
   const body = (await req.json().catch(() => ({}))) as { pdf_b64?: string; file_data_b64?: string };
   if (!body.pdf_b64 && !body.file_data_b64) {
     return NextResponse.json({ ok: false, error_code: 'missing_pdf_b64', error_message: 'pdf_b64 required' }, { status: 400 });
@@ -29,6 +33,9 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const guard = await apiGuard(req, { perm: 'finance:expense:create::allow' });
+  if (guard.response) return guard.response;
+
   const body = (await req.json().catch(() => ({}))) as { file_data_b64?: string; pdf_b64?: string; file_mime?: string; file_name?: string };
   const b64 = body.file_data_b64 || body.pdf_b64;
   if (!b64) return NextResponse.json({ ok: false, error_code: 'missing_file_data_b64', error_message: 'file_data_b64 required' }, { status: 400 });

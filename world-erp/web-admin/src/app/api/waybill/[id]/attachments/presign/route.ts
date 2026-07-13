@@ -4,6 +4,7 @@ import { apiGuard } from '@/lib/server/apiGuard';
 import { loadWaybill } from '@/lib/server/waybill';
 import { canActorAttachAt, isTerminalStage } from '@erp-lib/waybill/permissions';
 import { allowedKindsFor, type WaybillAttachmentKind } from '@erp-lib/waybill/kinds';
+import { PERM } from '@erp-lib/perm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,9 +14,9 @@ const VALID_KINDS: ReadonlySet<string> = new Set([
 ]);
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
-  const guard = await apiGuard(req, { perm: 'finance:expense:view_own' });
+  const guard = await apiGuard(req, { perm: PERM.finance.expense.view_own });
   if (guard.response) {
-    const alt = await apiGuard(req, { perm: 'finance:expense:view_all' });
+    const alt = await apiGuard(req, { perm: PERM.finance.expense.view_all });
     if (alt.response) return alt.response;
   }
 
@@ -39,7 +40,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     );
   }
 
-  const role = guard.actor.session?.user?.role ?? '';
+  const role = guard.actor?.role_name ?? '';
   if (!canActorAttachAt(role, wb.current_stage)) {
     return NextResponse.json(
       { error: `role '${role}' cannot attach at stage '${wb.current_stage}'` },

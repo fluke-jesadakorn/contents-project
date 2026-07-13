@@ -84,7 +84,6 @@ export async function POST(req: Request) {
     id: sid,
     sub: row.id,
     role: roleId,
-    rbacRoleId: null,
     impersonatorUserId: null,
   });
 

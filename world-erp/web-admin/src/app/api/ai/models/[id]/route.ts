@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-models', rbacAction: 'update' });
+  const guard = await apiGuard(req, { perm: PERM.ai.model.update });
   if (guard.response) return guard.response;
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
@@ -23,7 +24,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-models', rbacAction: 'delete' });
+  const guard = await apiGuard(req, { perm: PERM.ai.model.delete });
   if (guard.response) return guard.response;
   const { id } = await params;
   await query(`DELETE FROM ai_models WHERE id = $1`, [id]);

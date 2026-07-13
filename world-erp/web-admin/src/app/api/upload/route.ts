@@ -23,7 +23,7 @@
 
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { loadActor } from '@/lib/server/guard';
+import { apiGuard } from '@erp-lib/server/apiGuard';
 import { put, publicUrlFor, makeKey } from '@erp-lib/slips/storage';
 import {
   runOcrPipeline,
@@ -37,7 +37,9 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const actor = await loadActor();
+  const guard = await apiGuard(req, { perm: 'finance:expense:create::allow' });
+  if (guard.response) return guard.response;
+  const actor = guard.actor;
   if (!actor) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const form = await req.formData();

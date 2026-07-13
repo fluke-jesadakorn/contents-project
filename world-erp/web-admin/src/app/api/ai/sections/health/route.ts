@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { SECTION_CATALOG } from '@erp-lib/ai/sections';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 const ACTIVE_WINDOW_DAYS = 7;
 
 export async function GET(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'view-ai-invocations', rbacAction: 'read' });
+  const guard = await apiGuard(req, { perm: PERM.ai.section_health.view });
   if (guard.response) return guard.response;
 
   const healthRes = await query<{

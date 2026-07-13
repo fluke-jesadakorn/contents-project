@@ -63,7 +63,7 @@ export async function switchActor(formData: FormData): Promise<SwitchActorResult
     await query(`UPDATE auth.sessions SET revoked_at = now() WHERE id = $1`, [prevPayload.id]).catch(() => {});
   }
 
-  const token = await signSession({ id: sid, sub: id, role: roleName, rbacRoleId: null, impersonatorUserId: null });
+  const token = await signSession({ id: sid, sub: id, role: roleName, impersonatorUserId: null });
 
   c.set(SESSION_COOKIE, token, {
     httpOnly: true,

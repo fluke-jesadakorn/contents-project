@@ -37,7 +37,7 @@ export function GroupHub({ actor, group, users, prs, tiles, accessByTile, greeti
     if (access.state === 'open' || access.state === 'checking') router.push(tileHref(t.id));
   };
 
-  if (actor && actor.role_name && !actor.rbac_role_id) {
+  if (actor && actor.role_name) {
     return (
       <PageLayout title={title} subtitle="Restricted">
         <AccessDenied roleName={actor.role_name} requiredAccess={`${GROUP_LABEL[group].label} group`} />

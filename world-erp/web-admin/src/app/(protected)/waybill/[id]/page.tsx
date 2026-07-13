@@ -1,5 +1,4 @@
 import React, { Suspense } from 'react';
-import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import {
   loadWaybillRailContext,
@@ -9,8 +8,7 @@ import {
 } from '@/lib/server/waybill';
 import { loadActor } from '@/lib/server/guard';
 import { loadVisionModels } from '@/lib/ai/loadVisionModels';
-import { verifySession } from '@erp-lib/server/sessionToken';
-import { buildPolicyContext, evalPolicy, POL, type PolicyContext } from '@erp-lib/policy';
+import { matchPerm } from '@erp-lib/perm/server';
 import { getSecondaryLocale } from '@erp-lib/server/locale';
 import { pipsForDomain, pipIndex, domainForOrigin } from '@erp-lib/waybill/derive';
 import { WaybillStepCards } from '@/components/waybill/WaybillStepCards';
@@ -35,6 +33,14 @@ function asString(v: string | string[] | undefined): string | null {
   return v ?? null;
 }
 
+function isRecallRole(roleName: string): boolean {
+  return roleName === 'cfo' || roleName === 'ceo' || roleName === 'finance' || roleName === 'admin';
+}
+
+function isFinalApproveStage(stage: string): boolean {
+  return stage === 'accounting_authorization';
+}
+
 export default async function WaybillDetail({ params, searchParams }: PageProps) {
   const { id } = await params;
   const sp = await searchParams;
@@ -50,24 +56,6 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
 
   const action = asString(sp.action);
 
-  const cookieValue = (await cookies()).get('erp_session')?.value ?? null;
-  const payload = await verifySession(cookieValue);
-  if (!payload) redirect('/login');
-  const baseCtx = await buildPolicyContext(payload);
-  if (!baseCtx) redirect('/login');
-
-  const policyCtx: PolicyContext = {
-    ...baseCtx,
-    resource: {
-      current_stage: wb.current_stage,
-      origin: wb.origin,
-      submitter_id: wb.submitter_id,
-      requester_id: wb.submitter_id,
-      total_amount_thb: wb.total_amount != null ? Number(wb.total_amount) : null,
-      status: wb.status,
-    },
-  };
-
   const [approversByStage, actedUsersByStage, visionModels, locale, expensePicture] = await Promise.all([
     loadApproversByStage(wb.id),
     loadActedUsersByStage(wb.id),
@@ -76,17 +64,36 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
     wb.origin === 'expense' ? loadExpenseFullPicture(wb.origin_id) : Promise.resolve(null),
   ]);
 
-  const canAct = (await evalPolicy(POL.canActOnWaybill, policyCtx)).allow;
-  const canAttach = (await evalPolicy(POL.canAttachAtStage, policyCtx)).allow;
-  const canSettle = (await evalPolicy(POL.canSettleExpense, policyCtx)).allow;
-  const canFinalApprove = (await evalPolicy(POL.canFinalApproveExpense, policyCtx)).allow;
-  const canConfirmGl = (await evalPolicy(POL.canConfirmGl, policyCtx)).allow;
-  const canReCall = (await evalPolicy(POL.recallWaybill, policyCtx)).allow;
-  const canSaveAccrual = (await evalPolicy(POL.canSaveProcurementAccrual, policyCtx)).allow;
-  const canPostAccrual = (await evalPolicy(POL.canPostGlAccrual, policyCtx)).allow;
-  const canPostSettlement = (await evalPolicy(POL.canPostGlSettlement, policyCtx)).allow;
-  const canReject = (await evalPolicy(POL.rejectWaybill, policyCtx)).allow;
-  const actorCanSeeGlLines = (await evalPolicy(POL.canSeeGlLines, policyCtx)).allow;
+  const perms = actor.permissions;
+  const stage = wb.current_stage;
+  const actorCanSeeGlLines = matchPerm(perms, 'finance:gl:view::allow');
+  const canAct = matchPerm(perms, `stage:${stage}:act::allow`)
+    || matchPerm(perms, `stage:${stage}:act:all::allow`)
+    || matchPerm(perms, 'admin:system:bypass::allow');
+  const canAttach = matchPerm(perms, 'finance:waybill:attach::allow')
+    || (actor.id === wb.submitter_id && stage === 'submission' && matchPerm(perms, 'finance:expense:create::allow'));
+  const canSettle = stage === 'awaiting_disbursement'
+    && matchPerm(perms, 'finance:expense:settle::allow');
+  const canFinalApprove = isFinalApproveStage(stage)
+    && matchPerm(perms, 'finance:expense:approve::allow');
+  const canConfirmGl = stage === 'disbursed'
+    && matchPerm(perms, 'finance:gl:confirm::allow');
+  const canReCall = !['disbursed', 'rejected'].includes(stage)
+    && isRecallRole(actor.role_name);
+  const canSaveAccrual = matchPerm(perms, 'finance:pr:edit::allow');
+  const canPostAccrual = stage === 'accounting_authorization'
+    && matchPerm(perms, 'finance:gl:post::allow');
+  const canPostSettlement = stage === 'disbursed'
+    && matchPerm(perms, 'finance:gl:post::allow');
+  const canReject = !['disbursed', 'gl_confirmed', 'rejected'].includes(stage)
+    && (matchPerm(perms, 'admin:system:bypass::allow')
+      || actor.role_name === 'cfo'
+      || actor.role_name === 'ceo'
+      || actor.role_name === 'admin'
+      || actor.role_name === 'finance'
+      || actor.role_name === 'account_officer'
+      || actor.role_name === 'account_supervisor'
+      || actor.role_name === 'accounting_manager');
 
   const isRejected = wb.status === 'rejected';
   const rejectionEvent = ctx.events.find((e) => e.kind === 'rejected') ?? null;
@@ -166,7 +173,7 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
             isAwaitingDisbursement={wb.current_stage === 'awaiting_disbursement'}
             isDisbursed={wb.current_stage === 'disbursed'}
             isRejected={isRejected}
-            actorRole={actor.rbac_role_id ?? actor.role_name}
+            actorRole={actor.role_id}
           />
 
           {action === 'reject' && canReject && !isRejected && wb.status === 'open' && (
@@ -180,7 +187,7 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
               currentStage={wb.current_stage}
               status={wb.status}
               activeActorName={ctx.activeActorName}
-              activeRole={actor.rbac_role_id ?? actor.role_name}
+              activeRole={actor.role_id}
               rejectionReason={rejectionReason}
               rejectionActorName={rejectionActorName}
               rejectedAt={null}

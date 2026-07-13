@@ -6,6 +6,9 @@ import { PageLayout } from '@/components/PageLayout';
 import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
 import { getSecondaryLocale, type SecondaryLocale } from '@erp-lib/server/locale';
 import custDict from '@erp-lib/i18n/customers';
+import { headers } from 'next/headers';
+import { loadActivePermSession, hasPermission } from '@erp-lib/perm/server';
+import { NoPermissionView } from '@/components/NoPermissionView';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +36,31 @@ function fill(tmpl: string, vars: Record<string, string | number>): string {
 }
 
 export default async function CustomersPage({ searchParams }: PageProps) {
+  const h = await headers();
+  const out = await loadActivePermSession(
+    new Request('http://internal', { headers: h as unknown as HeadersInit }),
+  );
+  if (!out || !hasPermission(out.session, 'tile:customers:view::allow')) {
+    return (
+      <>
+        <BreadcrumbSetter
+          crumbs={[
+            { label: 'Hub', href: '/' },
+            { label: 'Customers', href: '/customers' },
+          ]}
+        />
+        <PageLayout title={custDict.en['customers.title']} subtitle={out?.session.user.name ?? undefined}>
+          <NoPermissionView
+            kind="locked"
+            actor={out ? (out.session.user as any) : null}
+            attemptedPath="/customers"
+            reason={out ? 'tile:customers:view required.' : 'Sign in to view this page.'}
+          />
+        </PageLayout>
+      </>
+    );
+  }
+
   const actor = await loadActor();
   if (!actor) redirect('/login');
   const sp = await searchParams;

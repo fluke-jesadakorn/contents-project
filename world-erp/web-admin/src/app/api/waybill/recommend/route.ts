@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { invoke } from '@erp-lib/ai/router';
-import { withApiPolicy } from '@erp-lib/policy/server';
-import { POL } from '@erp-lib/policy';
+import { loadActor } from '@/lib/server/guard';
+import { hasPermission } from '@erp-lib/perm/auth-client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,7 @@ interface Body {
 }
 
 function stripThink(s: string): string {
-  return (s ?? '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  return (s ?? '').replace(/<\/?think[^>]*>/g, '').trim();
 }
 
 function extractJson(raw: string): { decision: 'approve' | 'reject'; confidence: number; rationale: string } | null {
@@ -54,7 +54,18 @@ function normalize(o: Record<string, unknown>): { decision: 'approve' | 'reject'
   return { decision, confidence, rationale };
 }
 
-export const POST = withApiPolicy(POL.viewWaybill, async (req, ctx) => {
+export async function POST(req: Request) {
+  const actor = await loadActor();
+  if (!actor) {
+    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  }
+  const session = { user: { id: actor.id, name: actor.fullname, role: actor.role_id ?? 'officer::5' }, permissions: actor.permissions };
+  const allowed = hasPermission(session, 'finance:expense:view_all::allow')
+    || hasPermission(session, 'finance:expense:view_own::allow');
+  if (!allowed) {
+    return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
+  }
+
   const body = (await req.json().catch(() => ({}))) as Body;
   const waybillId = typeof body.waybillId === 'string' ? body.waybillId.trim() : '';
   const currentStage = typeof body.currentStage === 'string' ? body.currentStage.trim() : '';
@@ -86,7 +97,7 @@ export const POST = withApiPolicy(POL.viewWaybill, async (req, ctx) => {
     'am:recommend',
     'chat',
     { text: userText, systemPrompt, temperature: 0.2 },
-    { actorId: ctx.actor.id },
+    { actorId: actor.id },
   );
 
   if (!result.ok || !result.text) {
@@ -116,4 +127,4 @@ export const POST = withApiPolicy(POL.viewWaybill, async (req, ctx) => {
     modelName: result.modelName ?? 'unknown',
     latencyMs: result.latencyMs ?? 0,
   });
-}, 'waybill.recommend');
+}

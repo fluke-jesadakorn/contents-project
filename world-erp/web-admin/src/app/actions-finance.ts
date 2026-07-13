@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { query } from '@/lib/db';
 import { requireActionFor } from '@/lib/server/requireActionFor';
 import { publish as publishEvent } from '@/lib/events';
+import { PERM } from '@erp-lib/perm';
 import { postExpenseToGL } from '@/lib/finance/postExpenseToGL';
 
 export async function disbursePayment(args: {
@@ -13,8 +14,7 @@ export async function disbursePayment(args: {
 }) {
   try {
     await requireActionFor(args.actorId, 'settle_payment', {
-      rbacSection: 'core-operations',
-      rbacAction: 'update',
+      perm: PERM.finance.expense.update,
       stage: 'finance_review',
     });
 
@@ -98,8 +98,7 @@ export async function rejectDisbursement(args: {
     if (t.length < 5) throw new Error('Rejection reason required, min 5 chars');
 
     await requireActionFor(args.actorId, 'settle_payment', {
-      rbacSection: 'core-operations',
-      rbacAction: 'update',
+      perm: PERM.finance.expense.update,
       stage: 'finance_review',
     });
 

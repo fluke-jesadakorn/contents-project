@@ -90,11 +90,18 @@ async function expandByDomainScope(
     );
     anchorSubmitter = r.rows[0]?.submitter_id ?? null;
     if (anchorSubmitter) {
-      const u = await query<{ dept_group_id: string | null }>(
-        `SELECT dept_group_id FROM users WHERE id = $1`,
+      const u = await query<{ dept_id: string | null }>(
+        `SELECT split_part(up.permission_id, ':', 3) AS dept_id
+           FROM perm.user_permissions up
+          WHERE up.user_id = $1
+            AND up.permission_id LIKE 'user:dept:%'
+            AND up.revoked_at IS NULL
+            AND (up.ends_at IS NULL OR up.ends_at > now())
+          ORDER BY up.permission_id
+          LIMIT 1`,
         [anchorSubmitter],
       );
-      _anchorDept = u.rows[0]?.dept_group_id ?? null;
+      _anchorDept = u.rows[0]?.dept_id ?? null;
     }
   }
 

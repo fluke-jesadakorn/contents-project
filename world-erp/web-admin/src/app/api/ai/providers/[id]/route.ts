@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { encryptKey } from '@erp-lib/ai/crypto';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-providers', rbacAction: 'update' });
+  const guard = await apiGuard(req, { perm: PERM.ai.provider.update });
   if (guard.response) return guard.response;
 
   const { id } = await params;
@@ -29,7 +30,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-providers', rbacAction: 'delete' });
+  const guard = await apiGuard(req, { perm: PERM.ai.provider.delete });
   if (guard.response) return guard.response;
   const { id } = await params;
   await query(`DELETE FROM ai_providers WHERE id = $1`, [id]);

@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 export async function GET(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-models', rbacAction: 'read' });
+  const guard = await apiGuard(req, { perm: PERM.ai.model.read });
   if (guard.response) return guard.response;
   const r = await query(`SELECT id, name, provider_id, capabilities, context_window, enabled FROM ai_models ORDER BY id`);
   return NextResponse.json({ models: r.rows });
 }
 
 export async function POST(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-models', rbacAction: 'create' });
+  const guard = await apiGuard(req, { perm: PERM.ai.model.create });
   if (guard.response) return guard.response;
   const body = await req.json().catch(() => ({}));
   if (!body.name || !body.provider_id) return NextResponse.json({ error: 'name and provider_id required' }, { status: 400 });

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-staff', rbacAction: 'update' });
+  const guard = await apiGuard(req, { perm: PERM.ai.staff.update });
   if (guard.response) return guard.response;
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
@@ -22,7 +23,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-staff', rbacAction: 'delete' });
+  const guard = await apiGuard(req, { perm: PERM.ai.staff.delete });
   if (guard.response) return guard.response;
   const { id } = await params;
   await query(`DELETE FROM ai_staff WHERE id = $1`, [id]);

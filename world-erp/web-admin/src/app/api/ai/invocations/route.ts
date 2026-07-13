@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 export async function GET(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'view-ai-invocations', rbacAction: 'read' });
+  const guard = await apiGuard(req, { perm: PERM.ai.invocation.view });
   if (guard.response) return guard.response;
   const url = new URL(req.url);
   const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 500);

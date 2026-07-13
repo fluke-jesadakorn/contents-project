@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
-import { loadActor } from '@/lib/server/guard';
+import { apiGuard } from '@erp-lib/server/apiGuard';
 import { listSalesOrders } from '@/lib/server/queries';
 import { listMyWaybills } from '@/lib/server/waybill';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const actor = await loadActor();
+export async function GET(req: Request) {
+  const guard = await apiGuard(req, { perm: 'tile:sales:view::allow' });
+  if (guard.response) return guard.response;
+  const actor = guard.actor;
   if (!actor) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
   try {
     const [r, mine] = await Promise.all([listSalesOrders(actor.id), listMyWaybills(actor.id)]);

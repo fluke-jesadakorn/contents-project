@@ -1,15 +1,14 @@
 import 'server-only';
 import { z } from 'zod';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { withTransaction, query } from '@erp-lib/db';
 import { recordEvent } from '@erp-lib/waybill/events';
 import { appendWaybillEvent } from '@erp-lib/waybill/append';
 import { loadWaybill } from '@/lib/server/waybill';
-import { verifySession } from '@erp-lib/server/sessionToken';
-import { buildPolicyContextFromCookieValue } from '@erp-lib/policy/context';
-import { POL, requirePolicy, evalPolicy, PolicyError } from '@erp-lib/policy';
+import { loadActor, type ActorWithScope } from '@/lib/server/guard';
+import { matchPerm } from '@erp-lib/perm';
+import { STAGE_TO_PERM, stageRoles } from '@erp-lib/perm';
 import {
   upsertSalesDraftVat,
   upsertSalesDraftAccrual,
@@ -43,13 +42,18 @@ async function loadSalesOrderContext(salesOrderId: number) {
   return r.rows[0] ?? null;
 }
 
-async function requireActor() {
-  const cookieValue = (await cookies()).get('erp_session')?.value ?? null;
-  const payload = await verifySession(cookieValue);
-  if (!payload) redirect('/login');
-  const ctx = await buildPolicyContextFromCookieValue(cookieValue);
-  if (!ctx) redirect('/login');
-  return { actor: ctx.actor, ctx };
+async function requireActor(): Promise<ActorWithScope> {
+  const actor = await loadActor();
+  if (!actor) redirect('/login');
+  return actor;
+}
+
+function canActOnSalesStage(actor: ActorWithScope, stage: string): boolean {
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
+  const stagePerm = STAGE_TO_PERM[stage];
+  if (stagePerm && matchPerm(actor.permissions, stagePerm)) return true;
+  const roles = stageRoles(stage);
+  return roles.includes(actor.role_name);
 }
 
 export async function submitSalesOrderAction(formData: FormData): Promise<void> {
@@ -57,20 +61,13 @@ export async function submitSalesOrderAction(formData: FormData): Promise<void> 
   const wb = await loadWaybill(parsed.waybillId);
   if (!wb || wb.origin !== 'so') throw new Error('Sales waybill not found');
 
-  const { actor, ctx } = await requireActor();
-  const policyCtx = {
-    ...ctx,
-    resource: {
-      current_stage: wb.current_stage,
-      origin: wb.origin,
-      submitter_id: wb.submitter_id,
-      requester_id: wb.submitter_id,
-      total_amount_thb: wb.total_amount != null ? Number(wb.total_amount) : null,
-      status: wb.status,
-    },
-  };
-
-  await requirePolicy(POL.canSubmitSalesOrder, policyCtx, { surface: 'action', target: 'submitSalesOrder' });
+  const actor = await requireActor();
+  if (!matchPerm(actor.permissions, 'finance:sales:submit::allow')) {
+    throw new Error('forbidden');
+  }
+  if (!canActOnSalesStage(actor, wb.current_stage)) {
+    throw new Error('cannot act on current stage');
+  }
 
   const amountTHB = wb.total_amount != null ? Number(wb.total_amount) : 0;
   const nextStage = amountTHB < 5000 ? 'so_credit_check' : 'so_sales_review';
@@ -91,7 +88,7 @@ export async function submitSalesOrderAction(formData: FormData): Promise<void> 
       stageFrom: wb.current_stage,
       stageTo: nextStage,
       actorId: actor.id,
-      actorRole: actor.roleName ?? 'sales_rep',
+      actorRole: actor.role_name ?? 'sales_rep',
       payload: { decision: 'submit', auto_approved: amountTHB < 5000, total_amount_thb: amountTHB },
       client: q as never,
     });
@@ -120,18 +117,13 @@ export async function issueSalesInvoiceAction(formData: FormData): Promise<void>
   const wb = await loadWaybill(parsed.waybillId);
   if (!wb || wb.origin !== 'so') throw new Error('Sales waybill not found');
 
-  const { actor, ctx } = await requireActor();
-  const policyCtx = {
-    ...ctx,
-    resource: {
-      current_stage: wb.current_stage,
-      origin: wb.origin,
-      submitter_id: wb.submitter_id,
-      requester_id: wb.submitter_id,
-      status: wb.status,
-    },
-  };
-  await requirePolicy(POL.canIssueSalesInvoice, policyCtx, { surface: 'action', target: 'issueSalesInvoice' });
+  const actor = await requireActor();
+  if (!matchPerm(actor.permissions, 'finance:sales:invoice::allow')) {
+    throw new Error('forbidden');
+  }
+  if (!canActOnSalesStage(actor, wb.current_stage)) {
+    throw new Error('cannot act on current stage');
+  }
 
   const so = await loadSalesOrderContext(wb.origin_id);
   if (!so) throw new Error('Sales order not found');
@@ -151,7 +143,7 @@ export async function issueSalesInvoiceAction(formData: FormData): Promise<void>
       stageFrom: wb.current_stage,
       stageTo: 'so_invoiced',
       actorId: actor.id,
-      actorRole: actor.roleName ?? 'accounting_manager',
+      actorRole: actor.role_name ?? 'accounting_manager',
       payload: { invoice_number: invoiceNumber },
       client: q as never,
     });
@@ -171,7 +163,7 @@ export async function issueSalesInvoiceAction(formData: FormData): Promise<void>
     stageFrom: 'so_invoiced',
     stageTo: 'so_invoiced',
     actorId: actor.id,
-    actorRole: actor.roleName ?? 'accounting_manager',
+    actorRole: actor.role_name ?? 'accounting_manager',
     payload: { final: true },
   });
 
@@ -183,19 +175,10 @@ async function advanceSalesOrderAction(args: { waybillId: string; target: string
   const wb = await loadWaybill(args.waybillId);
   if (!wb || wb.origin !== 'so') throw new Error('Sales waybill not found');
 
-  const { actor, ctx } = await requireActor();
-  const policyCtx = {
-    ...ctx,
-    resource: {
-      current_stage: wb.current_stage,
-      origin: wb.origin,
-      submitter_id: wb.submitter_id,
-      requester_id: wb.submitter_id,
-      total_amount_thb: wb.total_amount != null ? Number(wb.total_amount) : null,
-      status: wb.status,
-    },
-  };
-  await requirePolicy(POL.canActOnSalesOrder, policyCtx, { surface: 'action', target: args.target });
+  const actor = await requireActor();
+  if (!canActOnSalesStage(actor, wb.current_stage)) {
+    throw new Error('cannot act on current stage');
+  }
 
   await withTransaction(async (q) => {
     await q(`UPDATE sales_orders SET status = $1, updated_at = now() WHERE id = $2`, [args.target, wb.origin_id]);
@@ -206,7 +189,7 @@ async function advanceSalesOrderAction(args: { waybillId: string; target: string
       stageFrom: wb.current_stage,
       stageTo: args.target,
       actorId: actor.id,
-      actorRole: actor.roleName ?? 'staff',
+      actorRole: actor.role_name ?? 'staff',
       payload: { decision: 'advance' },
       client: q as never,
     });
@@ -228,19 +211,12 @@ export async function rejectSalesOrderAction(formData: FormData): Promise<void> 
   const wb = await loadWaybill(parsed.waybillId);
   if (!wb || wb.origin !== 'so') throw new Error('Sales waybill not found');
 
-  const { actor, ctx } = await requireActor();
-  const policyCtx = {
-    ...ctx,
-    resource: {
-      current_stage: wb.current_stage,
-      origin: wb.origin,
-      submitter_id: wb.submitter_id,
-      requester_id: wb.submitter_id,
-      status: wb.status,
-    },
-  };
-  const r = await evalPolicy(POL.rejectWaybill, policyCtx);
-  if (!r.allow) throw new PolicyError(403, 'reject blocked');
+  const actor = await requireActor();
+  if (!['disbursed', 'rejected'].includes(wb.current_stage)) {
+    if (!canActOnSalesStage(actor, wb.current_stage)) {
+      throw new Error('cannot reject at this stage');
+    }
+  }
 
   await withTransaction(async (q) => {
     await q(
@@ -279,18 +255,15 @@ export async function attachArReceiptAction(formData: FormData): Promise<void> {
   const wb = await loadWaybill(parsed.waybillId);
   if (!wb || wb.origin !== 'so') throw new Error('Sales waybill not found');
 
-  const { actor, ctx } = await requireActor();
-  const policyCtx = {
-    ...ctx,
-    resource: {
-      current_stage: wb.current_stage,
-      origin: wb.origin,
-      submitter_id: wb.submitter_id,
-      requester_id: wb.submitter_id,
-      status: wb.status,
-    },
-  };
-  await requirePolicy(POL.canSettleSales, policyCtx, { surface: 'action', target: 'attachArReceipt' });
+  const actor = await requireActor();
+  if (!matchPerm(actor.permissions, 'finance:sales:settle::allow')) {
+    throw new Error('forbidden');
+  }
+  if (wb.current_stage === 'so_paid') {
+    if (!canActOnSalesStage(actor, wb.current_stage)) {
+      throw new Error('cannot act on current stage');
+    }
+  }
 
   const so = await loadSalesOrderContext(wb.origin_id);
   if (!so) throw new Error('Sales order not found');
@@ -307,7 +280,7 @@ export async function attachArReceiptAction(formData: FormData): Promise<void> {
       stageFrom: wb.current_stage,
       stageTo: 'so_paid',
       actorId: actor.id,
-      actorRole: actor.roleName ?? 'finance',
+      actorRole: actor.role_name ?? 'finance',
       payload: { slip_id: parsed.slipId },
       client: q as never,
     });
@@ -324,7 +297,7 @@ export async function attachArReceiptAction(formData: FormData): Promise<void> {
     stageFrom: 'so_paid',
     stageTo: 'so_paid',
     actorId: actor.id,
-    actorRole: actor.roleName ?? 'finance',
+    actorRole: actor.role_name ?? 'finance',
     payload: { final: true, slip_id: parsed.slipId },
   });
 
@@ -333,14 +306,6 @@ export async function attachArReceiptAction(formData: FormData): Promise<void> {
 }
 
 export async function startSalesDraftAction(_formData: FormData): Promise<{ waybillId: string; salesOrderId: number } | null> {
-  const { actor, ctx } = await requireActor();
-  void actor; void ctx;
-  await query(
-    `SELECT 1`,
-    [],
-  ).catch(() => null);
-  void requirePolicy;
-  void requireActor;
   return null;
 }
 
@@ -351,5 +316,3 @@ export async function saveSalesDraftAction(_formData: FormData): Promise<{ saved
 export async function discardSalesDraftAction(_formData: FormData): Promise<{ ok: boolean }> {
   return { ok: true };
 }
-
-void Promise;

@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 export async function GET(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-assignments', rbacAction: 'read' });
+  const guard = await apiGuard(req, { perm: PERM.ai.assignment.read });
   if (guard.response) return guard.response;
   const r = await query(`SELECT * FROM ai_assignments ORDER BY section_key, task_type, priority`);
   return NextResponse.json({ assignments: r.rows });
 }
 
 export async function POST(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-assignments', rbacAction: 'create' });
+  const guard = await apiGuard(req, { perm: PERM.ai.assignment.create });
   if (guard.response) return guard.response;
   const body = await req.json().catch(() => ({}));
   if (!body.section_key || !body.task_type || !body.provider_id || !body.model_id) {
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-assignments', rbacAction: 'delete' });
+  const guard = await apiGuard(req, { perm: PERM.ai.assignment.delete });
   if (guard.response) return guard.response;
   const url = new URL(req.url);
   const id = url.searchParams.get('id');

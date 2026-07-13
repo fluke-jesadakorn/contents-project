@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
-import { loadActor } from '@/lib/server/guard';
+import { apiGuard } from '@erp-lib/server/apiGuard';
 import { loadOrgTree } from '@/lib/orgScope';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const actor = await loadActor();
+export async function GET(req: Request) {
+  const guard = await apiGuard(req, { perm: 'org:tree:view::allow' });
+  if (guard.response) return guard.response;
+  const actor = guard.actor;
   if (!actor) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const tree = await loadOrgTree(actor.id);
   return NextResponse.json({ tree });

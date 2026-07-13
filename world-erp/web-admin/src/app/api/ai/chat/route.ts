@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { invoke } from '@erp-lib/ai/router';
-import { loadActor } from '@/lib/server/guard';
+import { apiGuard } from '@erp-lib/server/apiGuard';
 import { parseChartBlocks } from '@/components/chat/chartContract';
 import { parseExtractBlocks, SALES_EXTRACT_REGEX } from '@/components/chat/extractContract';
 import { cockpitProjectionPrompt, salesExtractPrompt, customerCreditPrompt, getTileSystemPrompt, renderLocaleAwarePrompt } from '@/lib/ai/systemPrompts';
@@ -23,7 +23,9 @@ function buildFinanceAssistantPrompt(tileId: string, lang: 'en' | 'th' | 'de', a
 }
 
 export async function POST(req: Request) {
-  const actor = await loadActor();
+  const guard = await apiGuard(req, { perm: 'ai:chat:use::allow' });
+  if (guard.response) return guard.response;
+  const actor = guard.actor;
   if (!actor) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
 
   let body: any = {};

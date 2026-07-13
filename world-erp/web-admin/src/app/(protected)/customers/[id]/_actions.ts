@@ -2,10 +2,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { loadActor } from '@/lib/server/guard';
-import { requirePolicy, PolicyError } from '@erp-lib/policy';
-import { buildPolicyContextFromCookieValue } from '@erp-lib/policy/context';
-import { POL } from '@erp-lib/policy';
-import { cookies } from 'next/headers';
+import { matchPerm } from '@erp-lib/perm';
 import { createCustomer as serverCreate, updateCustomer as serverUpdate, blacklistCustomer as serverBlacklist } from '@/lib/server/customer';
 
 const CreateForm = z.object({
@@ -41,20 +38,11 @@ const BlacklistForm = z.object({
   blacklist: z.union([z.literal('true'), z.literal('false'), z.literal('on'), z.literal('off')]),
 });
 
-async function requirePolicyOn(actorId: number, policy: any) {
-  const cookieValue = (await cookies()).get('erp_session')?.value ?? null;
-  const ctx = await buildPolicyContextFromCookieValue(cookieValue);
-  if (!ctx) throw new PolicyError(401, 'unauthenticated');
-  await requirePolicy(policy, ctx, { surface: 'action', target: 'customer' });
-}
-
 export async function createCustomerAction(formData: FormData): Promise<{ ok: boolean; id?: number; error?: string }> {
   const actor = await loadActor();
   if (!actor) return { ok: false, error: 'unauthorized' };
-  try {
-    await requirePolicyOn(actor.id, POL.canManageCustomer);
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'forbidden' };
+  if (!matchPerm(actor.permissions, 'customer:manage::allow')) {
+    return { ok: false, error: 'forbidden' };
   }
 
   const parsed = CreateForm.safeParse({
@@ -97,10 +85,8 @@ export async function createCustomerAction(formData: FormData): Promise<{ ok: bo
 export async function updateCustomerAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const actor = await loadActor();
   if (!actor) return { ok: false, error: 'unauthorized' };
-  try {
-    await requirePolicyOn(actor.id, POL.canManageCustomer);
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'forbidden' };
+  if (!matchPerm(actor.permissions, 'customer:manage::allow')) {
+    return { ok: false, error: 'forbidden' };
   }
   const parsed = UpdateForm.safeParse({
     id: formData.get('id'),
@@ -131,10 +117,8 @@ export async function updateCustomerAction(formData: FormData): Promise<{ ok: bo
 export async function blacklistCustomerAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const actor = await loadActor();
   if (!actor) return { ok: false, error: 'unauthorized' };
-  try {
-    await requirePolicyOn(actor.id, POL.canManageCustomer);
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'forbidden' };
+  if (!matchPerm(actor.permissions, 'customer:manage::allow')) {
+    return { ok: false, error: 'forbidden' };
   }
   const parsed = BlacklistForm.safeParse({
     id: formData.get('id'),

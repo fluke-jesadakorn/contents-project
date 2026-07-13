@@ -14,7 +14,7 @@ interface SeedUser {
   dept_group_name?: string | null;
   role_name: string;
   role_id: string;
-  staff_level?: number;
+  level?: number;
 }
 
 const ROLE_ACCENT: Record<string, string> = {
@@ -70,7 +70,7 @@ const LEVEL_META: Record<StaffLevel, { th: string; icon: string; accent: string 
 };
 
 function staffLevelOf(u: SeedUser): StaffLevel {
-  const lv = u.staff_level;
+  const lv = u.level;
   if (lv === 1 || lv === 2 || lv === 3 || lv === 4 || lv === 5) return lv;
   const role = u.role_id || '';
   return ROLE_LEVEL[role as DisplayRoleName] ?? 5;

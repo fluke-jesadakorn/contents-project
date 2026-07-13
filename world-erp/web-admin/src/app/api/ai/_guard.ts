@@ -1,22 +1,22 @@
 // Shared AI route guard. Use at the top of each /api/ai/* handler.
 
 import { NextResponse } from 'next/server';
-import { loadActor, requireAction } from '@/lib/server/guard';
-import type { ActionName } from '@/lib/roles/display';
+import { loadActor } from '@/lib/server/guard';
 
 export async function aiGuard(opts: {
-  action?: ActionName;
-  rbacAction?: 'create' | 'read' | 'update' | 'delete';
+  action?: string;
+  perm?: string;
+  stage?: string;
 }): Promise<{ ok: true } | { ok: false; response: Response }> {
   const actor = await loadActor();
   if (!actor) {
     return { ok: false, response: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) };
   }
-  if (opts.action) {
-    try {
-      await requireAction(actor, opts.action, opts.rbacAction ? { rbacAction: opts.rbacAction } : {});
-    } catch (e: any) {
-      return { ok: false, response: NextResponse.json({ error: e?.message || 'forbidden' }, { status: e?.status ?? 403 }) };
+  if (opts.perm || opts.stage) {
+    const { hasPermission } = await import('@erp-lib/perm/server');
+    const session = { user: actor, perms: [] as string[] };
+    if (!hasPermission(session, opts.perm || opts.stage!)) {
+      return { ok: false, response: NextResponse.json({ error: 'forbidden' }, { status: 403 }) };
     }
   }
   return { ok: true };

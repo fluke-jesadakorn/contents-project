@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { loadActivePermSession, hasPermission } from '@erp-lib/perm/server';
+import { loadActivePermSession, hasPermission, PERM } from '@erp-lib/perm/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,8 +12,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   const out = await loadActivePermSession(req);
   if (!out) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (
-    !hasPermission(out.session, 'rbac:role:assign') &&
-    !hasPermission(out.session, 'user:role:assign')
+    !hasPermission(out.session, PERM.rbac.role.assign) &&
+    !hasPermission(out.session, PERM.user.role.assign)
   )
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 

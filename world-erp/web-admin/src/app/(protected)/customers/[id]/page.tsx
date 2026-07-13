@@ -1,12 +1,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import { loadActor } from '@/lib/server/guard';
+import { loadActivePermSession, hasPermission, PERM } from '@erp-lib/perm/server';
 import { getCustomer, getCustomerArHistory, listCustomerContacts } from '@/lib/server/customer';
 import { query } from '@/lib/db';
 import { CustomerArHistory } from '@/components/customer/CustomerArHistory';
 import { PageLayout } from '@/components/PageLayout';
 import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
+import { NoPermissionView } from '@/components/NoPermissionView';
 import { getSecondaryLocale, type SecondaryLocale } from '@erp-lib/server/locale';
 import custDict from '@erp-lib/i18n/customers';
 import { UpdateCustomerForm } from './UpdateCustomerForm';
@@ -48,6 +51,26 @@ function t(key: string, locale: SecondaryLocale): string {
 }
 
 export default async function CustomerDetailPage({ params }: PageProps) {
+  const h = await headers();
+  const out = await loadActivePermSession(
+    new Request('http://internal', { headers: h as unknown as HeadersInit }),
+  );
+  if (!out || !hasPermission(out.session, PERM.tile.customers.view)) {
+    return (
+      <>
+        <BreadcrumbSetter crumbs={[{ label: 'Hub', href: '/' }, { label: 'Customers', href: '/customers' }, { label: 'Detail', href: '/customers' }]} />
+        <PageLayout title="Customer" subtitle={out?.session.user.name ?? undefined}>
+          <NoPermissionView
+            kind="locked"
+            actor={out ? (out.session.user as any) : null}
+            attemptedPath="/customers/[id]"
+            reason={out ? 'tile:customers:view required.' : 'Sign in to view this page.'}
+          />
+        </PageLayout>
+      </>
+    );
+  }
+
   const actor = await loadActor();
   if (!actor) redirect('/login');
   const { id } = await params;

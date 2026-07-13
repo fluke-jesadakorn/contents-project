@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { invoke } from '@erp-lib/ai/router';
-import { loadActor } from '@/lib/server/guard';
+import { apiGuard } from '@erp-lib/server/apiGuard';
 import { parseChartBlocks } from '@/components/chat/chartContract';
 import { parseExtractBlocks } from '@/components/chat/extractContract';
 import { cockpitSummarizePrompt, renderLocaleAwarePrompt } from '@/lib/ai/systemPrompts';
@@ -9,7 +9,9 @@ import { getSecondaryLocaleFromHeaders } from '@erp-lib/server/locale';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const actor = await loadActor();
+  const guard = await apiGuard(req, { perm: 'tile:cockpit:view::allow' });
+  if (guard.response) return guard.response;
+  const actor = guard.actor;
   if (!actor) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
 
   let body: any = {};

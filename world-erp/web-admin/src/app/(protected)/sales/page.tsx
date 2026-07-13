@@ -22,6 +22,9 @@ import { ApproverChip } from '@/components/waybill/ApproverChip';
 import { stageRoles } from '@erp-lib/waybill/derive';
 import { getSecondaryLocale, type SecondaryLocale } from '@erp-lib/server/locale';
 import salesDict from '@erp-lib/i18n/sales';
+import { headers } from 'next/headers';
+import { loadActivePermSession, hasPermission } from '@erp-lib/perm/server';
+import { NoPermissionView } from '@/components/NoPermissionView';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +86,31 @@ function fill(tmpl: string, vars: Record<string, string | number>): string {
 }
 
 export default async function SalesInboxPage({ searchParams }: PageProps) {
+  const h = await headers();
+  const out = await loadActivePermSession(
+    new Request('http://internal', { headers: h as unknown as HeadersInit }),
+  );
+  if (!out || !hasPermission(out.session, 'tile:sales:view::allow')) {
+    return (
+      <>
+        <BreadcrumbSetter
+          crumbs={[
+            { label: 'Hub', href: '/' },
+            { label: 'Sales', href: '/sales' },
+          ]}
+        />
+        <PageLayout title={salesDict.en['sales.title']} subtitle={out?.session.user.name ?? undefined}>
+          <NoPermissionView
+            kind="locked"
+            actor={out ? (out.session.user as any) : null}
+            attemptedPath="/sales"
+            reason={out ? 'tile:sales:view required.' : 'Sign in to view this page.'}
+          />
+        </PageLayout>
+      </>
+    );
+  }
+
   const sp = await searchParams;
   const actor = await loadActor();
   if (!actor) redirect('/login');

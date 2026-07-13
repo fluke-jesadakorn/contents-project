@@ -12,11 +12,11 @@ export {
   sessionLevel,
   sessionRoleName,
   levelFromRoles,
-  type OwnedResource,
   type ActivePermSession,
   type DecodedPermToken,
   SESSION_COOKIE,
 } from './auth';
+export { type OwnedResource } from './auth-client';
 export {
   buildAbilityFor,
   loadUserRoleIds,

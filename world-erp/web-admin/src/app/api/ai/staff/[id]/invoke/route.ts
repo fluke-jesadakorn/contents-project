@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { invoke } from '@erp-lib/ai/router';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-staff', rbacAction: 'update' });
+  const guard = await apiGuard(req, { perm: PERM.ai.staff.invoke });
   if (guard.response) return guard.response;
 
   const { id: idStr } = await params;

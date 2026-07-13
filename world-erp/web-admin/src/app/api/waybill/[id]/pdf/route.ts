@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server';
 import { loadWaybill, loadWaybillEvents, loadAttachmentsForWaybill } from '@/lib/server/waybill';
 import { apiGuard } from '@/lib/server/apiGuard';
 import { buildWaybillPdf } from '@erp-lib/waybill/exportPdf';
+import { PERM } from '@erp-lib/perm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
-  const guard = await apiGuard(req, { perm: 'finance:expense:view_own' });
+  const guard = await apiGuard(req, { perm: PERM.finance.expense.view_own });
   if (guard.response) {
-    const alt = await apiGuard(req, { perm: 'finance:expense:view_all' });
+    const alt = await apiGuard(req, { perm: PERM.finance.expense.view_all });
     if (alt.response) return alt.response;
   }
 

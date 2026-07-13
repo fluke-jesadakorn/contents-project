@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { loadActivePermSession, hasPermission, SESSION_COOKIE } from '@erp-lib/perm/server';
+import { loadActivePermSession, hasPermission, PERM, SESSION_COOKIE } from '@erp-lib/perm/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const out = await loadActivePermSession(req);
   if (!out) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  if (!hasPermission(out.session, 'rbac:matrix:edit'))
+  if (!hasPermission(out.session, PERM.rbac.matrix.edit))
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const { id } = await ctx.params;

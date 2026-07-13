@@ -1,6 +1,6 @@
 import { cache } from 'react';
 import { query } from '@/lib/db';
-import { getActorScope, scopeFilter } from '@erp-lib/perm/server';
+import { getActorScope, scopeFilter, PERM } from '@erp-lib/perm/server';
 import { assertRole } from '@/lib/assertRole';
 import { aiInvoke } from '@/lib/ai/router';
 import { getUserLevels, getUserStaffLevels, resolveActorScope, loadOrgTree, type OrgNode } from '@/lib/orgScope';
@@ -154,7 +154,7 @@ export async function getSemanticSuggestions(description: string) {
 export async function getLedgerEntries(actorId?: number) {
   try {
     if (actorId) {
-      try { await assertRole(actorId, [], { rbacSection: 'tile-ledger', rbacAction: 'read' }); }
+      try { await assertRole(actorId, [], { perm: PERM.finance.ledger.view }); }
       catch { return { success: false, error: 'forbidden' }; }
     }
     const journalRes = await query(`
@@ -185,7 +185,7 @@ export async function getLedgerEntries(actorId?: number) {
 export const getExecutiveReport = cache(async (actorId?: number) => {
   try {
     if (actorId) {
-      try { await assertRole(actorId, [], { rbacSection: 'dashboard-exec', rbacAction: 'read' }); }
+      try { await assertRole(actorId, [], { perm: 'tile:dash_exec:view::allow' }); }
       catch { return { success: false, error: 'forbidden' }; }
     }
 
@@ -318,7 +318,7 @@ export const getExecutiveReport = cache(async (actorId?: number) => {
 export async function listApprovalPolicies(actorId?: number) {
   try {
     if (actorId) {
-      try { await assertRole(actorId, [], { rbacSection: 'tile-policy', rbacAction: 'read' }); }
+      try { await assertRole(actorId, [], { perm: PERM.tile.policy.view }); }
       catch { return { success: false, error: 'forbidden', policies: [] }; }
     }
     const r = await query(
@@ -480,6 +480,8 @@ export async function listPayslipsForPo(poId: number) {
 
 type DashKind = 'it' | 'exec' | 'hod' | 'am' | 'reviewer' | 'staff' | 'hr' | 'finance';
 
+// Legacy role-name matrix kept as dead code for reference; dashboard routing
+// now resolves via `pickKindFromMatrix` based on the actor's tile:* perms.
 const DASHBOARD_MATRIX: Record<DashKind, string[]> = {
   it:       ['it'],
   exec:     ['cfo', 'ceo', 'admin'],
@@ -690,7 +692,7 @@ async function buildHRPayload() {
     FROM users
   `);
   const departments = await query(`
-    SELECT COUNT(*)::int AS n FROM perm.roles WHERE kind='department' AND head_user_id IS NOT NULL
+    SELECT COUNT(*)::int AS n FROM perm.roles WHERE id LIKE 'dept-%' AND head_user_id IS NOT NULL
   `);
   const byRole = await query(`
     SELECT r.display_name AS role, COUNT(ur.user_id)::int AS n
@@ -926,7 +928,7 @@ export async function listUserDirectory(args: {
   filterDeptId?: number;
   includeInactive?: boolean;
 }) {
-  await assertRole(args.actorId, [], { rbacSection: 'tile-directory', rbacAction: 'read' });
+  await assertRole(args.actorId, [], { perm: 'tile:directory:view::allow' });
   const scope = await resolveActorScope(args.actorId);
   if (!scope.isHrManager && !scope.isHr) {
     throw new Error('Permission denied');
@@ -989,8 +991,8 @@ export async function listUserDirectory(args: {
 }
 
 export async function listRoleOptions(actorId: number) {
-  await assertRole(actorId, [], { rbacSection: 'tile-directory', rbacAction: 'read' });
-  const r = await query(`SELECT id, display_name AS name FROM perm.roles WHERE kind='persona' ORDER BY id`);
+  await assertRole(actorId, [], { perm: 'tile:directory:view::allow' });
+  const r = await query(`SELECT id, display_name AS name FROM perm.roles ORDER BY id`);
   return { success: true as const, roles: r.rows };
 }
 

@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verifySession } from '@erp-lib/server/sessionToken';
-import { buildPolicyContext } from '@erp-lib/policy/context';
-import { evalPolicy, POL } from '@erp-lib/policy';
+import { matchPerm } from '@erp-lib/perm/server';
 import { loadActor } from '@/lib/server/guard';
 import { ActorProvider, type ActorSnapshot } from '@/components/ActorProvider';
 import { OnboardingOverlay } from '@/components/onboarding/OnboardingOverlay';
@@ -12,27 +11,27 @@ export const dynamic = 'force-dynamic';
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const tok = (await cookies()).get('erp_session')?.value ?? null;
   const payload = await verifySession(tok);
-  const ctx = await buildPolicyContext(payload);
-  if (!ctx) {
-    redirect('/login');
-  }
-
-  const canSeeGlLines = (await evalPolicy(POL.canSeeGlLines, ctx)).allow;
-  const canPostAccrual = (await evalPolicy(POL.canPostGlAccrual, ctx)).allow;
-  const canPostSettlement = (await evalPolicy(POL.canPostGlSettlement, ctx)).allow;
-  const canConfirmGl = (await evalPolicy(POL.canConfirmGl, ctx)).allow;
-  const canSettleExpense = (await evalPolicy(POL.canSettleExpense, ctx)).allow;
-  const canFinalApprove = (await evalPolicy(POL.canFinalApproveExpense, ctx)).allow;
-  const canAttach = (await evalPolicy(POL.canAttachAtStage, ctx)).allow;
-  const canRemoveAttachment = (await evalPolicy(POL.canRemoveAttachment, ctx)).allow;
-  const canRecall = (await evalPolicy(POL.recallWaybill, ctx)).allow;
+  if (!payload) redirect('/login');
 
   const profile = await loadActor();
+  if (!profile) redirect('/login');
+  const perms = profile.permissions;
+
+  const canSeeGlLines = matchPerm(perms, 'finance:gl:view::allow');
+  const canPostAccrual = matchPerm(perms, 'finance:gl:post::allow');
+  const canPostSettlement = matchPerm(perms, 'finance:gl:post::allow');
+  const canConfirmGl = matchPerm(perms, 'finance:gl:confirm::allow');
+  const canSettleExpense = matchPerm(perms, 'finance:expense:settle::allow');
+  const canFinalApprove = matchPerm(perms, 'finance:expense:approve::allow');
+  const canAttach = matchPerm(perms, 'finance:expense:create::allow');
+  const canRemoveAttachment = profile.role_name === 'cfo' || profile.role_name === 'ceo' || profile.role_name === 'admin';
+  const canRecall = profile.role_name === 'cfo' || profile.role_name === 'ceo' || profile.role_name === 'finance';
+
   const snapshot: ActorSnapshot = {
-    id: ctx.actor.id,
-    fullname: profile?.fullname ?? '',
-    employee_code: profile?.employee_code ?? '',
-    role_name: profile?.role_name ?? ctx.actor.roleName ?? '',
+    id: profile.id,
+    fullname: profile.fullname,
+    employee_code: profile.employee_code,
+    role_name: profile.role_name,
     policies: {
       canSeeGlLines,
       canPostAccrual,

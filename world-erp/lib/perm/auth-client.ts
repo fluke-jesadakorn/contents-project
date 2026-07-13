@@ -1,7 +1,8 @@
 // lib/perm/auth-client.ts — client-safe permission check helpers.
 // Pure functions, no DB / no 'server-only'. Safe to import from client components.
 
-import { ADMIN_PERM, matchPerm, parseDeptFromPerms, parseLevelFromRoles, parseRoleId, type PermSession } from './grammar';
+import { ADMIN_PERM, matchPerm, parseDeptFromPerms, parseLevelFromRoles, parseRoleId } from './grammar';
+import type { PermSession } from './session';
 
 export function hasPermission(session: PermSession | null, permission: string): boolean {
   if (!session) return false;

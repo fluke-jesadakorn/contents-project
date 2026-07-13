@@ -4,10 +4,11 @@ import * as ollama from '@erp-lib/ai/providers/ollama';
 import * as openai from '@erp-lib/ai/providers/openai';
 import { decryptKey } from '@erp-lib/ai/crypto';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 export async function POST(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-providers', rbacAction: 'update' });
+  const guard = await apiGuard(req, { perm: PERM.ai.provider.test });
   if (guard.response) return guard.response;
 
   const body = await req.json().catch(() => ({}));

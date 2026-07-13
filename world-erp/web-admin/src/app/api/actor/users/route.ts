@@ -32,7 +32,7 @@ export async function GET() {
                 AND (up.ends_at IS NULL OR up.ends_at > now())
               ORDER BY up.permission_id LIMIT 1) AS dept_group_name,
             r.role_id, r.role_name,
-            r.level AS staff_level
+            r.level AS level
        FROM users u
        LEFT JOIN LATERAL (
          SELECT ur.role_id, split_part(ur.role_id, '::', 1) AS role_name,

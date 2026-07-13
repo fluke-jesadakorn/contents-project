@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { POL, evalPolicy, buildPolicyContextFromHeaders } from '@erp-lib/policy';
+import { loadActor } from '@/lib/server/guard';
+import { canManageResource, hasPermission, ADMIN_PERM } from '@erp-lib/perm/auth-client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -187,14 +188,22 @@ export async function GET(
     return NextResponse.json({ error: 'invalid expenseId' }, { status: 400 });
   }
 
-  const pctx = await buildPolicyContextFromHeaders(req.headers);
-  if (!pctx) {
+  const actor = await loadActor();
+  if (!actor) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  const session = {
+    user: { id: actor.id, name: actor.fullname, role: actor.role_id ?? 'officer::5' },
+    permissions: actor.permissions,
+  };
   const subRes = await query<{ submitter_id: number | null }>(`SELECT submitter_id FROM expenses WHERE id = $1`, [id]);
   const submitterId = subRes.rows[0]?.submitter_id ?? null;
-  const allow = await evalPolicy(POL.viewSlipPayslip, { ...pctx, resource: { submitter_id: submitterId } });
-  if (!allow.allow) {
+  const allow =
+    actor.permissions.includes(ADMIN_PERM)
+    || (submitterId !== null && submitterId === actor.id)
+    || hasPermission(session, 'finance:expense:settle::allow')
+    || hasPermission(session, 'finance:expense:view_all::allow');
+  if (!allow) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

@@ -1,31 +1,31 @@
 // GET /api/policy/matrix — payload for the /policy RBAC matrix UI.
-// Returns the stage-chain permissions (stage:*:act:all) plus the personas
-// in `perm.roles` (kind='persona'), with the current grant set per role.
+// Returns the stage-chain permissions (stage:*:act::allow) plus the personas
+// in `perm.roles`, with the current grant set per role.
 //
 // Behind perm: rbac:matrix:view.
 
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { loadActivePermSession, hasPermission, STAGE_PERMS_BY_STAGE } from '@erp-lib/perm/server';
+import { loadActivePermSession, hasPermission, PERM } from '@erp-lib/perm/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const STAGE_PERMS: string[] = [
-  STAGE_PERMS_BY_STAGE.dept_verification,
-  STAGE_PERMS_BY_STAGE.dept_authorization,
-  STAGE_PERMS_BY_STAGE.accounting_verification,
-  STAGE_PERMS_BY_STAGE.accounting_supervision,
-  STAGE_PERMS_BY_STAGE.accounting_authorization,
-  STAGE_PERMS_BY_STAGE.disbursement_authorization,
-  STAGE_PERMS_BY_STAGE.cfo_authorization,
-  STAGE_PERMS_BY_STAGE.ceo_authorization,
+  PERM.stage.dept_verification.act,
+  PERM.stage.dept_authorization.act,
+  PERM.stage.accounting_verification.act,
+  PERM.stage.accounting_supervision.act,
+  PERM.stage.accounting_authorization.act,
+  PERM.stage.disbursement_authorization.act,
+  PERM.stage.cfo_authorization.act,
+  PERM.stage.ceo_authorization.act,
 ];
 
 export async function GET(_req: Request) {
   const out = await loadActivePermSession(_req);
   if (!out) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  if (!hasPermission(out.session, 'rbac:matrix:view:all'))
+  if (!hasPermission(out.session, PERM.rbac.matrix.view))
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const personasRes = await query<{
@@ -34,24 +34,22 @@ export async function GET(_req: Request) {
     sort_order: number;
     level: number;
   }>(
-    `SELECT id, display_name, sort_order, level
+    `SELECT id, display_name, sort_order,
+            split_part(id, '::', 2)::int AS level
        FROM perm.roles
-      WHERE kind = 'persona'
       ORDER BY sort_order, display_name`,
   );
 
   const grantsRes = await query<{ role_id: string; permission_id: string }>(
     `SELECT role_id, permission_id
        FROM perm.role_permissions
-      WHERE permission_id = ANY($1::text[])
-        AND effect = 'allow'`,
+      WHERE permission_id = ANY($1::text[])`,
     [STAGE_PERMS],
   );
 
   const usersRes = await query<{ role_id: string; count: string }>(
     `SELECT ur.role_id, COUNT(*)::text AS count
        FROM perm.user_roles ur
-      WHERE ur.role_id IN (SELECT id FROM perm.roles WHERE kind = 'persona')
       GROUP BY ur.role_id`,
   );
 

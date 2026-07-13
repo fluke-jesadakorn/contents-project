@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
-import { withApiPolicy } from '@erp-lib/policy/server';
-import { POL } from '@erp-lib/policy';
+import { loadActor } from '@/lib/server/guard';
 import { discardDraftExpense } from '@/app/actions';
+import { canManageResource } from '@erp-lib/perm/auth-client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export const POST = withApiPolicy(POL.canDiscardExpenseDraft, async (req, ctx) => {
+export async function POST(req: Request) {
+  const actor = await loadActor();
+  if (!actor) {
+    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  }
   let waybillId: string | null = null;
   const ct = req.headers.get('content-type') ?? '';
   try {
@@ -26,6 +30,6 @@ export const POST = withApiPolicy(POL.canDiscardExpenseDraft, async (req, ctx) =
     return NextResponse.json({ ok: false, error: 'waybillId required' }, { status: 400 });
   }
 
-  const r = await discardDraftExpense({ waybillId, actorId: ctx.actor.id });
+  const r = await discardDraftExpense({ waybillId, actorId: actor.id });
   return NextResponse.json(r, { status: r.ok ? 200 : 400 });
-}, 'waybill.discard-draft');
+}

@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { apiGuard } from '@erp-lib/server/apiGuard';
+import { PERM } from '@erp-lib/perm';
 
 
 export async function GET(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-staff', rbacAction: 'read' });
+  const guard = await apiGuard(req, { perm: PERM.ai.staff.read });
   if (guard.response) return guard.response;
   const r = await query(`SELECT id, name, role_label, system_prompt, capabilities, default_provider_id, default_model_id, enabled FROM ai_staff ORDER BY id`);
   return NextResponse.json({ staff: r.rows });
 }
 
 export async function POST(req: Request) {
-  const guard = await apiGuard(req, { rbacSection: 'manage-ai-staff', rbacAction: 'create' });
+  const guard = await apiGuard(req, { perm: PERM.ai.staff.create });
   if (guard.response) return guard.response;
   const body = await req.json().catch(() => ({}));
   if (!body.name) return NextResponse.json({ error: 'name required' }, { status: 400 });

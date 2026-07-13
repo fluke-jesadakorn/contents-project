@@ -7,7 +7,6 @@ export interface SessionPayload {
   id: string;
   sub: number;
   role: string;
-  rbacRoleId: string | null;
   impersonatorUserId: number | null;
   iat: number;
   exp: number;

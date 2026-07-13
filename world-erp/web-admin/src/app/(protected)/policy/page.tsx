@@ -7,7 +7,7 @@
 
 import 'server-only';
 import { headers } from 'next/headers';
-import { loadActivePermSession, hasPermission, STAGE_TO_PERM } from '@erp-lib/perm/server';
+import { loadActivePermSession, hasPermission, PERM } from '@erp-lib/perm/server';
 import { PageLayout } from '@/components/PageLayout';
 import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
 import { ROOT_CRUMB } from '@/components/breadcrumbs';
@@ -35,14 +35,14 @@ export const dynamic = 'force-dynamic';
 
 async function loadMatrix(): Promise<{ stages: Stage[]; personas: Persona[] }> {
   const STAGE_PERMS: string[] = [
-    STAGE_TO_PERM.dept_verification,
-    STAGE_TO_PERM.dept_authorization,
-    STAGE_TO_PERM.accounting_verification,
-    STAGE_TO_PERM.accounting_supervision,
-    STAGE_TO_PERM.accounting_authorization,
-    STAGE_TO_PERM.disbursement_authorization,
-    STAGE_TO_PERM.cfo_authorization,
-    STAGE_TO_PERM.ceo_authorization,
+    PERM.stage.dept_verification.act,
+    PERM.stage.dept_authorization.act,
+    PERM.stage.accounting_verification.act,
+    PERM.stage.accounting_supervision.act,
+    PERM.stage.accounting_authorization.act,
+    PERM.stage.disbursement_authorization.act,
+    PERM.stage.cfo_authorization.act,
+    PERM.stage.ceo_authorization.act,
   ];
 
   const personasRes = await query<{
@@ -53,23 +53,20 @@ async function loadMatrix(): Promise<{ stages: Stage[]; personas: Persona[] }> {
     sort_order: number;
     level: number;
   }>(
-    `SELECT id, display_name, display_name_th, display_name_de, sort_order, level
+    `SELECT id, display_name, display_name_th, display_name_de, sort_order,
+            split_part(id, '::', 2)::int AS level
        FROM perm.roles
-      WHERE kind = 'persona'
       ORDER BY sort_order, display_name`,
   );
   const grantsRes = await query<{ role_id: string; permission_id: string }>(
     `SELECT role_id, permission_id
        FROM perm.role_permissions
-      WHERE permission_id = ANY($1::text[])
-        AND effect = 'allow'`,
+      WHERE permission_id = ANY($1::text[])`,
     [STAGE_PERMS],
   );
   const usersRes = await query<{ role_id: string; count: string }>(
     `SELECT ur.role_id, COUNT(*)::text AS count
        FROM perm.user_roles ur
-       JOIN perm.roles r ON r.id = ur.role_id
-      WHERE r.kind = 'persona'
       GROUP BY ur.role_id`,
   );
 
@@ -122,7 +119,7 @@ export default async function PolicyPage() {
     );
   }
 
-  if (!hasPermission(out.session, 'rbac:matrix:view:all')) {
+  if (!hasPermission(out.session, PERM.rbac.matrix.view)) {
     return (
       <>
         <BreadcrumbSetter crumbs={[ROOT_CRUMB, { label: <Bilingual {...B_POLICY_TITLE} /> }]} />
@@ -139,7 +136,7 @@ export default async function PolicyPage() {
   }
 
   const matrix = await loadMatrix();
-  const canEdit = hasPermission(out.session, 'rbac:matrix:edit:all');
+  const canEdit = hasPermission(out.session, PERM.rbac.matrix.edit);
   const actor = out.session.user;
 
   return (

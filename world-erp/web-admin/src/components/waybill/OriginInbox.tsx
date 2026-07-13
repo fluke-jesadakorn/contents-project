@@ -127,7 +127,7 @@ async function loadUserMap(): Promise<Map<number, UserLite>> {
             u.fullname,
             (
               SELECT pr.id FROM perm.user_roles ur
-                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+                JOIN perm.roles pr ON pr.id = ur.role_id
                WHERE ur.user_id = u.id
             ORDER BY pr.sort_order ASC LIMIT 1
             ) AS role_id

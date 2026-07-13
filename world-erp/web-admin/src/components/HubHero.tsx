@@ -29,7 +29,7 @@ interface HubHeroProps {
     department?: string | null;
     dept_group_name?: string | null;
     employee_code?: string | null;
-    staff_level?: number | null;
+    level?: number | null;
   } | null;
   tiles: TileWithMeta[];
   pendingPrs: any[];
@@ -73,7 +73,7 @@ export const HubHero: React.FC<HubHeroProps> = ({
   const greet = greetingLine(fullname, greetingKey);
   const role = actor?.role_name ?? undefined;
   const dept = actor?.dept_group_name || actor?.department || null;
-  const level = actor?.staff_level ?? null;
+  const level = actor?.level ?? null;
   const levelLabel = level != null ? staffLevelLabel(level) : null;
   const levelGlyph = level != null ? staffLevelGlyph(level) : '·';
 

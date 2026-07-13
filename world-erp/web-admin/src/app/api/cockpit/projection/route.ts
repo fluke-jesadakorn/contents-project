@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { loadActor } from '@/lib/server/guard';
+import { apiGuard } from '@erp-lib/server/apiGuard';
 import { loadProjection } from '@erp-lib/server/projection';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  const actor = await loadActor();
+  const guard = await apiGuard(req, { perm: 'tile:cockpit:view::allow' });
+  if (guard.response) return guard.response;
+  const actor = guard.actor;
   if (!actor) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
 
   const url = new URL(req.url);
