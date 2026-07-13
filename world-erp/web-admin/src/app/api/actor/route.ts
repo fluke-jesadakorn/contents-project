@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     id: sid,
     sub: id,
     role: roleName,
-    rbacRoleId,
+    rbacRoleId: null,
     impersonatorUserId: null,
   });
 
