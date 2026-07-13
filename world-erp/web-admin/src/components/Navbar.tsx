@@ -5,6 +5,7 @@ import { roleAccent } from './UserAvatar';
 import { PersonaMenu } from './PersonaMenu';
 import { NavbarSearch } from './NavbarSearch';
 import { NotificationBell } from './NotificationBell';
+import { LangPickerTrigger } from './lang/LangPicker';
 
 interface NavbarProps {
   users: any[];
@@ -80,6 +81,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         users={users}
         currentUser={currentUser}
       />
+
+      <LangPickerTrigger />
 
       <NotificationBell />
 
