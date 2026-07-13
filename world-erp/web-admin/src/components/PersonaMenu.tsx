@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserAvatar, roleGlyph, roleLabel, roleBadge, type StaffLevel } from './UserAvatar';
 import { ROLE_RANK, ROLE_LEVEL as ROLE_LEVEL_DISPLAY, type DisplayRoleName } from '@/lib/roles/display';
+import { deptLabel as deptLabelFn, deptIcon as deptIconFn, deptCode as deptCodeFn } from '@erp-lib/perm/depts';
 import { signOutActor } from '@/app/actions/actor';
 
 type GroupBy = 'department' | 'level' | 'role';
@@ -40,15 +41,17 @@ const LEVEL_META_SAFE: Record<StaffLevel, { th: string; icon: string }> = {
   5: { th: 'P5 · Staff',             icon: '📋' },
 };
 
-const DEPT_META: Record<string, { code: string; icon: string }> = {
-  'dept-finance-2':   { code: 'FIN', icon: '💰' },
-  'dept-marketing':   { code: 'MKT', icon: '📣' },
-  'dept-it':          { code: 'IT',  icon: '💻' },
-  'dept-executive':   { code: 'EXE', icon: '👑' },
-  'dept-development': { code: 'DEV', icon: '🛠️' },
-  'dept-hr-2':        { code: 'HR',  icon: '🤝' },
-  'dept-sales':       { code: 'SLS', icon: '📈' },
-};
+const DEPT_META: Record<string, { code: string; icon: string; label: string }> = {};
+
+function deptMetaFromKey(key: string): { code: string; icon: string; label: string; key: string } {
+  const cleaned = (key || '').replace(/^dept-/, '');
+  return {
+    key: cleaned,
+    code: deptCodeFn(cleaned),
+    icon: deptIconFn(cleaned),
+    label: deptLabelFn(cleaned),
+  };
+}
 
 function staffLevelOf(u: any): StaffLevel {
   const lv = u.level;
@@ -65,10 +68,18 @@ function initials(name?: string): string {
 }
 
 function deptMeta(deptId: string | null | undefined, deptName: string | null | undefined) {
-  if (deptId && DEPT_META[deptId]) return DEPT_META[deptId];
-  const name = deptName || 'Department';
-  const code = name.split(/\s+/).map((w) => w[0] || '').join('').slice(0, 3).toUpperCase() || 'DEP';
-  return { code, icon: '🏢' };
+  const cleaned = (deptId || '').replace(/^dept-/, '');
+  if (cleaned) {
+    return {
+      code: deptCodeFn(cleaned),
+      icon: deptIconFn(cleaned),
+    };
+  }
+  if (deptName) {
+    const code = deptName.split(/\s+/).map((w) => w[0] || '').join('').slice(0, 3).toUpperCase() || 'DEP';
+    return { code, icon: '🏢' };
+  }
+  return { code: 'DEP', icon: '🏢' };
 }
 
 interface PersonaMenuProps {
@@ -354,9 +365,9 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
                         code: (head?.role_id || gKey).toString().toUpperCase().slice(0, 6),
                       };
                     }
-                    const dName = head?.dept_group_name || head?.department || 'Department';
-                    const m = deptMeta(gKey !== '__other__' ? gKey : null, dName);
-                    return { icon: m.icon, label: dName, code: m.code };
+                    const dKey = gKey !== '__other__' ? gKey : (head?.department || 'department');
+                    const m = deptMetaFromKey(dKey);
+                    return { icon: m.icon, label: m.label, code: m.code };
                   })();
                   return (
                     <div key={gKey}>

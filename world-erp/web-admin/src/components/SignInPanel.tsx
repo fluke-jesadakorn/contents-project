@@ -40,7 +40,7 @@ const ROLE_ACCENT: Record<string, string> = {
 
 const ROLE_LABEL: Record<string, string> = {
   staff: 'Staff',
-  officer: 'Operations Officer',
+  officer: 'Officer',
   sales_rep: 'Sales Representative',
   accountant: 'Accountant',
   account_officer: 'Account Officer',
@@ -49,7 +49,7 @@ const ROLE_LABEL: Record<string, string> = {
   supervisor: 'Supervisor',
   sales_supervisor: 'Sales Supervisor',
   head_of_department: 'Head of Department',
-  manager: 'Operations Manager',
+  manager: 'Manager',
   admin: 'System Admin',
   cfo: 'Chief Financial Officer',
   finance: 'Financial Officer',
