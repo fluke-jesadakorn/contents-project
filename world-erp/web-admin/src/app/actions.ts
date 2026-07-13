@@ -1289,7 +1289,7 @@ export async function advancePurchaseOrder(args: {
   comment?: string;
 }) {
   try {
-    await requireActionFor(args.actorId, 'approve_po', { perm: 'finance:po:approve:all' });
+    await requireActionFor(args.actorId, 'approve_po', { perm: PERM.finance.po.approve });
 
     const poRes = await query(
       `SELECT po.*, pr.is_recurring
