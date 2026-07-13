@@ -60,14 +60,20 @@ const GROUP_LABEL: Record<string, string> = {
 
 // Synchronous optimistic evaluator: tile is `open` if the actor's perm list
 // already grants the tile's view_perm_id (passed via tile.access_meta.viewPermId).
+// Global override: any signed-in user with `system:authenticated:view::allow` opens
+// every tile — basic access is universal.
 export function evaluateTileOptimistic(
   tile: TileDef,
   actor: ActorLite | null | undefined,
 ): TileAccess {
   if (!actor) return { state: 'locked', reason: 'Sign in to view.' };
+  const perms = actor.permissions ?? [];
+  if (perms.includes('system:authenticated:view::allow') || perms.includes('admin:system:bypass::allow')) {
+    return { state: 'open', reason: 'Authenticated.', source: 'global' };
+  }
   const viewPerm = (tile as any).view_perm_id ?? (tile as any).access_meta?.viewPermId;
-  if (!viewPerm) return { state: 'checking', reason: 'No view permission on tile.' };
-  const allowed = matchPerm(actor.permissions ?? [], viewPerm);
+  if (!viewPerm) return { state: 'open', reason: 'No gate.', source: 'open' };
+  const allowed = matchPerm(perms, viewPerm);
   return allowed
     ? { state: 'open', reason: 'Allowed by your role.', source: 'perm' }
     : { state: 'locked', reason: 'Restricted by your role.', source: 'perm' };

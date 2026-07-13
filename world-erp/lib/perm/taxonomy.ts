@@ -174,11 +174,14 @@ export const PERM = {
       resolve: allow('access_request', 'request', 'resolve'),
     },
   },
+  system: {
+    authenticated: { view: allow('system', 'authenticated', 'view') },
+  },
 } as const;
 
 export { PERM_ID_REGEX } from './grammar';
 
 export const DOMAINS = [
-  'rbac', 'user', 'org', 'finance', 'stage', 'tile', 'hook', 'ai', 'policy', 'access_request', 'admin',
+  'rbac', 'user', 'org', 'finance', 'stage', 'tile', 'hook', 'ai', 'policy', 'access_request', 'admin', 'system',
 ] as const;
 export type Domain = (typeof DOMAINS)[number];

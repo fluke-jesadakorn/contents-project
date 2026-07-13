@@ -91,9 +91,13 @@ const loadTileData = cache(async (): Promise<TileDataBundle> => {
   return { tiles, viewPermById };
 });
 
+const GLOBAL_OPEN_PERM = 'system:authenticated:view::allow';
+
 function gateOk(tilePerm: string | undefined, perms: string[] | null | undefined): boolean {
+  if (!perms || perms.length === 0) return false;
+  // Global override: any signed-in user with the authenticated perm opens every tile.
+  if (perms.includes(GLOBAL_OPEN_PERM) || perms.includes('admin:system:bypass::allow')) return true;
   if (!tilePerm) return true;
-  if (!perms) return false;
   return matchPerm(perms, tilePerm);
 }
 

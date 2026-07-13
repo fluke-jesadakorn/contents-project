@@ -185,7 +185,9 @@ SELECT id, NULL FROM (VALUES
   ('ai:section_health:view::allow'),
   -- access_request
   ('access_request:request:list::allow'),
-  ('access_request:request:resolve::allow')
+  ('access_request:request:resolve::allow'),
+  -- system (global authenticated access — every signed-in user)
+  ('system:authenticated:view::allow')
 ) AS v(id)
 ON CONFLICT (id) DO NOTHING;
 
@@ -193,7 +195,8 @@ ON CONFLICT (id) DO NOTHING;
 -- 3. ROLE GRANTS (curated bundles)
 -- ════════════════════════════════════════════════════════════════════════════
 
--- Baseline submit-own bundle: every persona gets expense+pr create, view-own, plus inbox tile.
+-- Baseline submit-own bundle: every persona gets expense+pr create, view-own, plus inbox tile,
+-- plus the global `system:authenticated:view` so basic access is universal.
 INSERT INTO perm.role_permissions (role_id, permission_id, granted_by)
 SELECT r.id, p.id, 'baseline'
   FROM perm.roles r
@@ -207,7 +210,8 @@ SELECT r.id, p.id, 'baseline'
    'tile:inbox:view::allow',
    'tile:expense:view::allow',
    'tile:pr:view::allow',
-   'tile:my_prs:view::allow'
+   'tile:my_prs:view::allow',
+   'system:authenticated:view::allow'
  )
 ON CONFLICT DO NOTHING;
 
