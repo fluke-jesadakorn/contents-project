@@ -1,8 +1,6 @@
-import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getActor } from '@/lib/server/actor';
-import { SlugTile } from '../_components/SlugTile';
-import { SlugFallback } from '../_components/SlugFallback';
+import { SlugTile } from '../(protected)/_components/SlugTile';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +13,5 @@ export default async function TilePageRoute({ params }: PageProps) {
   const actor = await getActor();
   if (!actor) redirect('/?login=1');
 
-  return (
-    <Suspense fallback={<SlugFallback />}>
-      <SlugTile slug={slug} actor={actor as any} />
-    </Suspense>
-  );
+  return <SlugTile slug={slug} actor={actor as any} />;
 }

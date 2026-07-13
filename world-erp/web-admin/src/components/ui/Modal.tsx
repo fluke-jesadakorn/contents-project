@@ -1,6 +1,5 @@
-'use client';
-
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export type ModalTone = 'indigo' | 'rose' | 'amber' | 'emerald' | 'cyan' | 'purple' | 'slate';
 
@@ -62,6 +61,12 @@ export const Modal: React.FC<ModalProps> = ({
   bareHeader,
 }) => {
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // ESC to close
   useEffect(() => {
@@ -94,8 +99,9 @@ export const Modal: React.FC<ModalProps> = ({
   }, [open, initialFocusRef]);
 
   if (!open) return null;
+  if (!mounted) return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -135,9 +141,11 @@ export const Modal: React.FC<ModalProps> = ({
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="w-7 h-7 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 text-sm shrink-0"
+                className="w-7 h-7 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 text-sm shrink-0 transition-colors"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             )}
           </header>
@@ -151,6 +159,7 @@ export const Modal: React.FC<ModalProps> = ({
           </footer>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

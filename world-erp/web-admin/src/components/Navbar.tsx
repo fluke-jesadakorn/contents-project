@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import type { RoleName } from '@/lib/permissions';
+import type { RoleName } from '@/lib/roles/display';
 import { roleAccent } from './UserAvatar';
 import { PersonaMenu } from './PersonaMenu';
 import { NavbarSearch } from './NavbarSearch';

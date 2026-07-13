@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { getAllowedTabs, type RoleName, type TabName } from '@/lib/permissions';
+import { getAllowedTabs, type RoleName, type TabName } from '@/lib/roles/display';
 
 const TABS: { key: TabName; th: string; en: string; glyph: string }[] = [
   { key: 'workbench', th: 'Workbench', en: 'workbench', glyph: '🧰' },

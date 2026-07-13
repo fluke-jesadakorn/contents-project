@@ -204,7 +204,7 @@ LINE OA bot: พนักงานขอลาหยุด / เช็คสิ�
 AI Financial System. Single Next.js process + consolidated server library:
 
 - `world-erp/` (root) — `bun install`, `bun run embed` / `bun run audit` scripts. `pg` + `axios`.
-- `world-erp/lib/` — server-only library imported by web-admin via the `@erp-lib/*` tsconfig path alias. Contains RBAC matrix logic (`lib/rbac/`), AI router + provider clients (`lib/ai/`), MinIO slip storage + OCR pipeline (`lib/slips/`), shared DB / config / session-token / guard (`lib/{db,config,server}/`), and the Swift N-API vision-ocr binding (`lib/native/vision-ocr/`). Previously this code lived in two separate Fastify services (`server/rbac-svc/`, `server/ai-svc/`) — those were consolidated into `lib/` on 2026-07-02 so a single Node process can serve everything.
+- `world-erp/lib/` — server-only library imported by web-admin via the `@erp-lib/*` tsconfig path alias. Contains **single** perm/RBAC system (`lib/perm/*`), AI router + provider clients (`lib/ai/`), MinIO slip storage + OCR pipeline (`lib/slips/`), shared DB / config / session-token / guard (`lib/{db,config,server}/`), and the Swift N-API vision-ocr binding (`lib/native/vision-ocr/`).
 - `world-erp/web-admin/` — Next.js 16 admin dashboard. **NOT the Next.js you know** — same warning as hr-line-agent. Port 3003. UI + server actions + Next.js route handlers under `src/app/api/*` that call `@erp-lib/*` functions directly (no HTTP hop).
 
 Verify with `bun run lint` + `bunx tsc --noEmit` (run from `world-erp/web-admin/`).
@@ -214,14 +214,14 @@ Verify with `bun run lint` + `bunx tsc --noEmit` (run from `world-erp/web-admin/
 ### Architecture
 
 ```
-Browser → web-admin (Next.js :3003) ─┬→ @erp-lib/rbac/* ──→ Postgres
-                                    ├→ @erp-lib/ai/*    ──┬→ Postgres
-                                    │                     ├→ Ollama
-                                    │                     └→ MinIO (epsx-erp-slips)
-                                    └→ @erp-lib/slips/* (storage + OCR pipeline)
+Browser → web-admin (Next.js :3003) ─┬→ @erp-lib/perm/*      ──→ Postgres
+                                    ├→ @erp-lib/ai/*        ──┬→ Postgres
+                                    │                        ├→ Ollama
+                                    │                        └→ MinIO (epsx-erp-slips)
+                                    └→ @erp-lib/slips/*    (storage + OCR pipeline)
 ```
 
-All business logic lives in `world-erp/lib/`. The Next.js route handlers under `src/app/api/*` are thin: parse input, call a `@erp-lib/*` function, return JSON. The legacy `RBAC_SVC_URL` / `AI_SVC_URL` env vars and `com.worlderp.rbac` / `com.worlderp.ai` launchd plists are no longer used — the Fastify services they pointed at have been removed.
+All business logic lives in `world-erp/lib/`. The Next.js route handlers under `src/app/api/*` are thin: parse input, call a `@erp-lib/*` function, return JSON. The legacy Fastify services and the separate `lib/rbac/*` matrix module have been removed — RBAC is now exclusively the perm-string system in `lib/perm/*`.
 
 ### tsconfig path alias
 
@@ -243,6 +243,86 @@ cd world-erp/web-admin && bun install && bun run dev
 
 That's it — one process. The native vision-ocr binding only loads at runtime via `createRequire`; the `bun run install:vision-ocr` script from the old ai-svc is no longer needed at runtime but the compiled `.node` binary in `lib/native/vision-ocr/build/Release/` is still required for OCR Pass 3.
 
+### Permission grammar (single RBAC system)
+
+**RBAC = compound of permissions. Roles = compound of permissions.** There is one system; legacy `lib/rbac/*` and `web-admin/src/lib/{rbac,access}/` are deleted.
+
+**Permission string grammar** (one canonical shape, no effect/dept/scope columns anywhere):
+
+```
+<domain>:<subject>:<verb>[:<qualifier>]::<effect>
+```
+
+- `domain` ∈ `{rbac, user, org, finance, stage, tile, hook, ai, policy, access_request, admin}`
+- `subject` / `verb` — lowercase snake, lowercase snake
+- `qualifier` — optional: omitted or `*` = global; otherwise free-form (typically a dept-id)
+- `effect` ∈ `{allow, deny}` — required, **encoded inline in the string** (no separate `effect` column)
+
+| Example | Meaning |
+|---|---|
+| `finance:expense:approve::allow` | global allow |
+| `finance:expense:approve:finance-2::allow` | dept-scoped allow |
+| `user:dept:finance-2::allow` | dept membership marker (granted to user) |
+| `tile:expense:view::allow` | tile view gate |
+| `admin:system:bypass::allow` | admin bypass — grants everything |
+
+**Role-id grammar** (level encoded inline, no `level` column):
+
+```
+<name>::<level>
+```
+
+- `<level>` integer 1–10 (1 = CEO / highest authority)
+- Examples: `ceo::1`, `cfo::2`, `manager::3`, `officer::5`
+- Effective level = MIN(level) over assigned role-ids
+- A user's department = the value of their `user:dept:<id>::allow` permission
+
+**File layout** (`world-erp/lib/perm/`):
+
+- `grammar.ts` — **single source of truth**: `parsePerm`, `parseRoleId`, `buildPerm`, `buildRoleId`, `parseDeptFromPerms`, `parseLevelFromRoles`, `effectOf`, `isAllow`/`isDeny`, `matchPerm`, `PERM_ID_REGEX`, `ROLE_ID_REGEX`, `ADMIN_PERM`
+- `auth-client.ts` — client-safe `hasPermission`, `canManageResource`, `sessionDept`, `sessionLevel` (pure functions, no DB)
+- `auth.ts` — server-only session loader: `loadActivePermSession`, `loadPermSessionFromHeaders`, `loadPermSessionFromCookieValue`; re-exports client helpers
+- `ability.ts` — CASL ability builder: `buildAbilityFor(userId)`, `loadUserRoleIds`, `loadRoleGrants`
+- `level.ts` — `getEffectiveLevel(userId)`, `getEffectiveLevels(userIds[])`, `getRoleEffectiveLevel(roleId)`
+- `scope.ts` — `getActorScope`, `scopeFilter`, `assertInScope` (scope derived from perm string qualifiers)
+- `chain.ts` — approval chain resolver: `resolveApprovalChain`, `canActOnStage`, `getApprovedStages`, `resolveNextStage`, `isFinalApprovalStage`
+- `grants.ts` — CRUD for `perm.user_permissions` (replaces legacy `rbac.perm_grants`)
+- `stages.ts` — pure stage data + `STAGE_ORDER`, `STAGE_TO_ROLE`, `STAGE_TO_PERM`, `normalizeStage` (with `LEGACY_TO_NEW` alias map)
+- `taxonomy.ts` — `PERM` catalog (every value already includes `::allow`)
+- `schema.ts` / `session.ts` — types only
+- `client.ts` — browser hooks: `useHasPerm`, `useActorDept`, `useActorLevel`, `useActorRoleName`, `useHasPerms`
+- `index.ts` — client-safe barrel
+- `server.ts` — server-only barrel (imports `'server-only'`)
+
+**DB tables** (`finance_db.perm.*`):
+
+- `roles (id PK, display_name, description, is_system, sort_order, parent_role_id, display_name_th, display_name_de, monthly_budget, head_user_id)` — **no `kind`, no `level` column**
+- `permissions (id PK, description)` — id is the full `::` string
+- `role_permissions (role_id, permission_id, granted_at, granted_by)` — **no `effect` column**
+- `user_roles (user_id, role_id, granted_at, granted_by)` — single binding table (persona + dept via row semantics)
+- `user_permissions (id, user_id, permission_id, granted_by, reason, granted_at, revoked_at, revoked_by, starts_at, ends_at)` — supports both permanent (`ends_at IS NULL`) and time-bound grants; effect encoded in `permission_id`
+- `tiles (id, display_name, subtitle, icon, accent, group_name, sub_view, href, request_target, sort_order, is_system, owner_group_id, view_perm_id, created_at, updated_at)` — **`view_perm_id`** replaces the old `required_level` + `required_dept_id` columns
+- `audit (id, kind, actor, target jsonb, occurred_at)`
+- `policies (id, name, ast jsonb, …)` + `policy_decisions`
+
+**No views** — the old `perm.user_effective_level`, `perm.role_effective_level`, `perm.effective_user_perms`, `perm.active_user_permissions` are dropped. Levels and effective perms are derived at read time via `parseRoleId` / `parseLevelFromRoles` / a SQL `COALESCE` + `array_agg` of role-ids.
+
+**No triggers** — `perm_rp_sync_level`, `perm_ur_one_dept`, `perm_ur_sync_dept_cache`, `tile_required_dept_check` are dropped.
+
+`users.dept_group_id` column is dropped — department is a `user:dept:<id>::allow` grant on `perm.user_permissions`.
+
+**Caller rules**:
+
+- Server-side code (route handlers, server actions, `*.server.ts`): `import { ... } from '@erp-lib/perm/server'`
+- Client code (components, hooks): `import { ... } from '@erp-lib/perm'`
+- The split exists because `'server-only'` modules cannot be bundled into client chunks.
+
+**Migration scripts**:
+
+- `db/perm/9000-rebuild-string-grammar.sql` — drops + recreates `perm` schema with new shape; also `ALTER TABLE users DROP COLUMN dept_group_id`
+- `db/perm/9001-seed-new-grammar.sql` — full catalog (15 roles, 131 permissions, curated grants)
+- `db/perm/9002-seed-user-roles-and-depts.sql` — 25 users + persona bindings + `user:dept:<id>::allow` grants
+
 ### Waybill system (consolidated expense/PR/PO)
 
 **All expense, PR and PO flows now share a single Waybill object**. One DB row in `waybills` (keyed `WB-YYYY-NNNNNN`), one audit log in `waybill_events` (linked-list, HMAC-SHA256 signed), one detail page (`/waybill/[id]`), one inbox (`/my-waybills`), one Rail component (`<WaybillRail>`).
@@ -252,8 +332,7 @@ That's it — one process. The native vision-ocr binding only loads at runtime v
 - `waybills` — `(id text PK, origin text, origin_id int, current_stage text, total_amount_thb numeric, fiscal_year int, created_at, updated_at)`; CHECK on `origin IN ('expense','pr','po')`
 - `waybill_events` — append-only; `(id bigserial PK, waybill_id text, sequence int, kind text, from_stage text, to_stage text, actor int, payload jsonb, previous_event_id bigint, signature text, occurred_at)`; UNIQUE(waybill_id, sequence); `previous_event_id` IS NULL only for `sequence=1`; HMAC-SHA256 signature over `(sequence|kind|from_stage|to_stage|actor|previous_event_id|waybill_id)` keyed by `SESSION_SECRET`; **UPDATE/DELETE revoked** for `contract` + `n8n_user` roles
 - `next_waybill_number(fiscal_year)` SQL function — per-fiscal-year sequences starting at 1
-- All legacy tables (`expenses`, `purchase_requisitions`, `purchase_orders`, `approval_transitions`) now enforce **finance-standard status keys** via CHECK constraints: `submission`, `dept_verification`, `dept_authorization`, `accounting_verification`, `accounting_supervision`, `accounting_authorization`, `disbursement_authorization`, `cfo_authorization`, `ceo_authorization`, `awaiting_disbursement`, `disbursed`, `rejected`. **Snake_case keys (`pending_approval`, `po_cfo`, etc.) are rejected at INSERT.**
-- `perm.tiles` — `expense-claim` → `expense`, `my-prs` → `pr`, `all-approvals` → `my-waybills`, `approve-expense` deleted. `perm.roles` + `perm.role_permissions` rewritten via nested REPLACE.
+- All legacy tables (`expenses`, `purchase_requisitions`, `purchase_orders`, `approval_transitions`) enforce **finance-standard status keys** via CHECK constraints: `submission`, `dept_verification`, `dept_authorization`, `accounting_verification`, `accounting_supervision`, `accounting_authorization`, `disbursement_authorization`, `cfo_authorization`, `ceo_authorization`, `awaiting_disbursement`, `disbursed`, `rejected`. **Snake_case keys (`pending_approval`, `po_cfo`, etc.) are rejected at INSERT.**
 
 **lib modules** (all in `world-erp/lib/waybill/`):
 
@@ -263,7 +342,7 @@ That's it — one process. The native vision-ocr binding only loads at runtime v
 - `events.ts` — `recordEvent({client, waybillId, kind, fromStage, toStage, actor, payload, previousEventId})`, `listEvents()`, `verifyEventChain()`
 - `append.ts` — `appendWaybillEvent({client, origin, originId, kind, fromStage, toStage, actor, payload})` — best-effort audit in own tx; resolves Waybill by `(origin, origin_id)`; creates placeholder if missing
 
-**lib/perm/* backward-compat**: `STAGE_TO_ROLE`, `STAGE_TO_PERM`, `normalizeStage()` accept both legacy snake_case AND new finance-standard keys via `LEGACY_TO_NEW` alias map.
+**Stage permissions** (e.g. `stage:dept_verification:act::allow`) — granted to roles via `perm.role_permissions` and matched against the actor's effective permission list at every waybill action. Stage→role mapping is static in `lib/perm/stages.ts`.
 
 **Routes**:
 
@@ -273,19 +352,35 @@ That's it — one process. The native vision-ocr binding only loads at runtime v
 - `/expense`, `/pr`, `/po` — thin landings (each 308 → `/my-waybills?scope=…`)
 - Legacy URLs (`/expense-claim`, `/approve-expense`, `/all-approvals`, `/my-prs`, `/po`) — 308 redirects in `next.config.ts`
 
-**Server actions wired** (in `web-admin/src/app/actions.ts`): every state mutation calls `appendWayliftEvent()` — `submitExpenseFromSlip`, `submitPurchaseRequisition`, `advanceApproval`, `advancePurchaseRequisition`, `advancePurchaseOrder`, `attachDisbursementPayslip`, `settleExpenseMock`. Actions on `/waybill/[id]` live in `web-admin/src/app/waybill/[id]/_actions.ts`.
+**Server actions wired** (in `web-admin/src/app/actions.ts`): every state mutation calls `appendWaybillEvent()` — `submitExpenseFromSlip`, `submitPurchaseRequisition`, `advanceApproval`, `advancePurchaseRequisition`, `advancePurchaseOrder`, `attachDisbursementPayslip`, `settleExpenseMock`. Actions on `/waybill/[id]` live in `web-admin/src/app/(protected)/waybill/[id]/_actions.ts`.
 
 **CEO escalation**: 200,000 THB threshold. `nextStageOf()` and `<WaybillRail>` auto-dim the `ceo_authorization` pip when `total_amount_thb < 200_000`.
 
 **Bilingual**: `localStorage.worderp.lang` ∈ `{en, th}`. `LangGate` (in `app/layout.tsx`) shows first-visit modal. `LangPickerTrigger` toggles via header pill. `<html lang>` hydrates from inline script in layout to avoid FOUC.
 
-**Verification commands**:
+### Admin pages
+
+- `/roles` — full role CRUD + user-role assignment + per-user perm grants. Backed by `/api/perm/roles*`, `/api/perm/users*`, `/api/perm/permissions`, `/api/perm/audit`, `/api/perm/levels`.
+- `/tiles` — tile catalog with `view_perm_id` editor. Backed by `/api/perm/tiles*`.
+- `/policy` — persona × stage matrix editor. Backed by `/api/policy/matrix` + `/api/perm/roles/[id]/permissions`.
+- `/audit` — perm-tile audit log feed. Gated by `tile:audit:view::allow`.
+
+### Verification commands
 
 ```bash
 cd world-erp/web-admin
 bun run lint && bunx tsc --noEmit
+curl -s http://localhost:3003/roles
+curl -s http://localhost:3003/tiles
+curl -s http://localhost:3003/policy
 curl -s http://localhost:3003/my-waybills
-curl -s http://localhost:3003/waybill/WB-2026-000001
+
+PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
+  SELECT id FROM perm.roles LIMIT 5;"
+PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
+  SELECT id FROM perm.permissions LIMIT 5;"
+PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
+  SELECT role_id, permission_id FROM perm.role_permissions LIMIT 5;"
 
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
   SELECT id, origin, current_stage, total_amount_thb

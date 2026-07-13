@@ -15,3 +15,4 @@ export { useDialog } from './Dialog';
 export { Modal, type ModalProps, type ModalTone } from './Modal';
 export { Kpi, type KpiProps, type KpiAccent } from './Kpi';
 export { Skeleton, PanelSkeleton, KpiSkeleton, TileSkeleton, SkeletonGrid, HeaderSkeleton } from './Loading';
+export { GlobalLoading } from './GlobalLoading';

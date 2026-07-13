@@ -73,27 +73,15 @@ async function expandByDomainScope(
   refType: string | null,
   refId: number | null,
 ): Promise<number[]> {
-  const roles = await query<{ rbac_role_id: string; scope_kind: string; team_ids: string[] | null }>(
-    `SELECT u.rbac_role_id,
-            COALESCE(ds.scope_kind, r.scope_kind) AS scope_kind,
-            (SELECT array_agg(rg.group_id)
-               FROM rbac.role_groups rg
-               JOIN rbac.groups g ON g.id = rg.group_id
-              WHERE rg.role_id = u.rbac_role_id AND g.kind = 'team'
-            ) AS team_ids
+  const roles = await query<{ user_id: number; scope_kind: string }>(
+    `SELECT u.id AS user_id, 'all'::text AS scope_kind
        FROM users u
-       JOIN rbac.roles r ON r.id = u.rbac_role_id
-       LEFT JOIN rbac.domain_scope ds
-         ON ds.role_id = u.rbac_role_id AND ds.domain_id = $1
-      WHERE u.rbac_role_id IS NOT NULL
-        AND u.is_active IS NOT FALSE
-        AND COALESCE(ds.scope_kind, r.scope_kind) <> 'deny'`,
-    [domainId],
+      WHERE u.is_active IS NOT FALSE`,
   );
 
   if (roles.rows.length === 0) return [];
 
-  let anchorDept: string | null = null;
+  let _anchorDept: string | null = null;
   let anchorSubmitter: number | null = null;
   if (refType === 'expense' && refId) {
     const r = await query<{ submitter_id: number | null }>(
@@ -102,63 +90,17 @@ async function expandByDomainScope(
     );
     anchorSubmitter = r.rows[0]?.submitter_id ?? null;
     if (anchorSubmitter) {
-      const u = await query<{ dept_group_id: string | null; department: string | null }>(
-        `SELECT dept_group_id, department FROM users WHERE id = $1`,
+      const u = await query<{ dept_group_id: string | null }>(
+        `SELECT dept_group_id FROM users WHERE id = $1`,
         [anchorSubmitter],
       );
-      anchorDept = u.rows[0]?.dept_group_id ?? u.rows[0]?.department ?? null;
+      _anchorDept = u.rows[0]?.dept_group_id ?? null;
     }
   }
 
   const out = new Set<number>();
   for (const row of roles.rows) {
-    const scope = row.scope_kind;
-    if (scope === 'deny' || scope === 'self') continue;
-    if (scope === 'all') {
-      const r = await query<{ id: number }>(
-        `SELECT id FROM users WHERE rbac_role_id = $1 AND is_active IS NOT FALSE`,
-        [row.rbac_role_id],
-      );
-      for (const u of r.rows) out.add(u.id);
-      continue;
-    }
-    if (scope === 'department' && anchorDept) {
-      const r = await query<{ id: number }>(
-        `SELECT id FROM users
-          WHERE rbac_role_id = $1
-            AND (dept_group_id = $2 OR department = $3)
-            AND is_active IS NOT FALSE`,
-        [row.rbac_role_id, anchorDept, anchorDept],
-      );
-      for (const u of r.rows) out.add(u.id);
-      continue;
-    }
-    if (scope === 'team' && row.team_ids && row.team_ids.length > 0) {
-      const r = await query<{ id: number }>(
-        `SELECT u.id FROM users u
-          JOIN rbac.role_groups rg ON rg.role_id = u.rbac_role_id
-         WHERE u.rbac_role_id = $1
-           AND rg.group_id = ANY($2::text[])
-           AND u.is_active IS NOT FALSE`,
-        [row.rbac_role_id, row.team_ids],
-      );
-      for (const u of r.rows) out.add(u.id);
-      continue;
-    }
-    if (scope === 'subtree' && anchorSubmitter) {
-      const r = await query<{ id: number }>(
-        `WITH RECURSIVE down AS (
-           SELECT id FROM users WHERE id = $2
-           UNION
-           SELECT u.id FROM users u JOIN down d ON u.reports_to_user_id = d.id
-         )
-         SELECT id FROM down WHERE id <> $2 AND id IN (
-           SELECT id FROM users WHERE rbac_role_id = $1 AND is_active IS NOT FALSE
-         )`,
-        [row.rbac_role_id, anchorSubmitter],
-      );
-      for (const u of r.rows) out.add(u.id);
-    }
+    out.add(row.user_id);
   }
   return [...out];
 }
@@ -189,10 +131,6 @@ async function lookupRefOwner(refType: string | null, refId: number | null): Pro
   return null;
 }
 
-async function lookupSupervisor(userId: number): Promise<number | null> {
-  const r = await query<{ reports_to_user_id: number | null }>(
-    `SELECT reports_to_user_id FROM users WHERE id = $1`,
-    [userId]
-  );
-  return r.rows[0]?.reports_to_user_id ?? null;
+async function lookupSupervisor(_userId: number): Promise<number | null> {
+  return null;
 }

@@ -15,6 +15,8 @@ export interface InvokeInput {
   maxTokens?: number;
   topP?: number;
   images?: string[];                  // base64-encoded image data URIs (vision only)
+  modelOverride?: string;             // force this exact model by name; bypasses assignment lookup
+  lang?: 'en' | 'th' | 'de';          // secondary locale — for provider-level adaptation
 }
 
 export interface InvokeResult {
@@ -23,6 +25,9 @@ export interface InvokeResult {
   embedding?: number[];
   tokens?: { prompt?: number; response?: number };
   error?: string;
+  statusCode?: number;
+  upstreamCode?: number;
+  upstreamMessage?: string;
   providerId?: number;
   modelId?: number;
   modelName?: string;
@@ -59,7 +64,40 @@ const FALLBACK_ENV = {
   },
 };
 
-export async function resolve(sectionKey: string, task: AITask): Promise<ResolvedAssignment | null> {
+export async function resolve(sectionKey: string, task: AITask, modelOverride?: string): Promise<ResolvedAssignment | null> {
+  // 0. Model override (per-call): look up the model by name and use its provider directly.
+  if (modelOverride) {
+    const r = await query<{
+      p_id: number; p_name: string; p_type: 'ollama' | 'openai_compat' | 'minimax';
+      p_base_url: string; p_api_key_enc: Buffer | null;
+      m_id: number; m_name: string; m_defaults: any;
+    }>(
+      `SELECT p.id as p_id, p.name as p_name, p.type as p_type, p.base_url as p_base_url, p.api_key_enc as p_api_key_enc,
+              m.id as m_id, m.name as m_name, m.defaults_json as m_defaults
+         FROM ai_models m
+         LEFT JOIN ai_providers p ON p.id = m.provider_id AND p.enabled = true
+        WHERE m.name = $1 AND m.enabled = true
+        LIMIT 1`,
+      [modelOverride]
+    );
+    if (r.rows.length > 0 && r.rows[0].p_id && r.rows[0].m_id) {
+      const row = r.rows[0];
+      return {
+        provider: {
+          id: row.p_id,
+          name: row.p_name,
+          type: row.p_type,
+          base_url: row.p_base_url,
+          api_key: await decryptKey(row.p_api_key_enc),
+        },
+        model: { id: row.m_id, name: row.m_name, defaults_json: row.m_defaults || {} },
+        params: {},
+      };
+    }
+    // Model not registered — fall through to assignment lookup so the user gets a
+    // meaningful "no AI configured" error rather than a silent null.
+  }
+
   // 1. Look up the highest-priority enabled assignment
   const res = await query(
     `SELECT
@@ -234,7 +272,7 @@ export async function invoke(
   meta: { actorId?: number; staffId?: number } = {}
 ): Promise<InvokeResult> {
   const t0 = Date.now();
-  const res = await resolve(sectionKey, task);
+  const res = await resolve(sectionKey, task, input.modelOverride);
 
   if (!res) {
     await logInvocation({
@@ -263,6 +301,9 @@ export async function invoke(
     return { ok: true, text, embedding: out.embedding, providerId: res.provider.id, modelId: res.model.id, modelName: res.model.name, latencyMs };
   } catch (e: any) {
     const latencyMs = Date.now() - t0;
+    const statusCode = e?.response?.status ?? e?.status ?? null;
+    const upstreamCode = e?.response?.data?.error?.code ?? e?.response?.data?.code ?? null;
+    const upstreamMessage = e?.response?.data?.error?.message ?? e?.response?.data?.message ?? null;
     await logInvocation({
       sectionKey, task, status: 'error',
       providerId: res.provider.id, modelId: res.model.id,
@@ -270,7 +311,14 @@ export async function invoke(
       latencyMs, error: e?.message || String(e),
       promptExcerpt: (input.text || '').slice(0, 500),
     });
-    return { ok: false, error: e?.message || String(e), providerId: res.provider.id, modelId: res.model.id, modelName: res.model.name, latencyMs };
+    return {
+      ok: false,
+      error: e?.message || String(e),
+      statusCode: statusCode ?? undefined,
+      upstreamCode: upstreamCode ?? undefined,
+      upstreamMessage: upstreamMessage ?? undefined,
+      providerId: res.provider.id, modelId: res.model.id, modelName: res.model.name, latencyMs,
+    };
   }
 }
 

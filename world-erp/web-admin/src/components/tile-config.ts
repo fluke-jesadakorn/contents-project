@@ -69,6 +69,18 @@ export const GROUP_LABEL: Record<TileGroup, { label: string; icon: string }> = {
   hr:                     { label: 'HR',                     icon: '👥' },
 };
 
+const GROUP_LABEL_BI: Record<TileGroup, { en: string; th: string; de: string }> = {
+  hub:                    { en: 'Hub',                    th: 'หน้าหลัก',         de: 'Übersicht' },
+  workflow:               { en: 'Workflow',               th: 'เวิร์กโฟลว์',      de: 'Workflow' },
+  'workflow-approval':    { en: 'Workflow · Approval',    th: 'เวิร์กโฟลว์ · อนุมัติ', de: 'Workflow · Genehmigung' },
+  'workflow-procurement': { en: 'Workflow · Procurement', th: 'เวิร์กโฟลว์ · จัดซื้อ', de: 'Workflow · Beschaffung' },
+  finance:                { en: 'Finance',                th: 'การเงิน',          de: 'Finanzen' },
+  cockpit:                { en: 'Cockpit',                th: 'ห้องนักบิน',        de: 'Cockpit' },
+  policy:                 { en: 'Policy',                 th: 'นโยบาย',           de: 'Richtlinie' },
+  it:                     { en: 'IT',                     th: 'ไอที',              de: 'IT' },
+  hr:                     { en: 'HR',                     th: 'บุคคล',             de: 'Personal' },
+};
+
 export const GROUP_ORDER: TileGroup[] = [
   'hub',
   'workflow',
@@ -80,6 +92,14 @@ export const GROUP_ORDER: TileGroup[] = [
   'it',
   'hr',
 ];
+
+export function groupLabel(g: TileGroup, _locale: 'en' = 'en'): string {
+  return GROUP_LABEL[g].label;
+}
+
+export function groupLabelBi(g: TileGroup): { en: string; th: string; de: string } {
+  return GROUP_LABEL_BI[g];
+}
 
 export function targetLabel(t: { request_target?: string | null }): string {
   switch (t.request_target) {
@@ -108,9 +128,10 @@ export interface TileRow {
   group_name: string;
   sub_view: string | null;
   href: string;
-  module_id: string;
+  view_perm_id: string;
   request_target: string | null;
   sort_order: number;
+  module_id?: string;
   access_meta?: TileAccessMeta | null;
 }
 
@@ -124,10 +145,11 @@ export function tileFromRow(t: TileRow): TileWithMeta {
     group: t.group_name as TileGroup,
     sub_view: t.sub_view,
     href: t.href,
-    module_id: t.module_id,
+    module_id: t.module_id ?? `tile:${t.id}`,
+    view_perm_id: t.view_perm_id,
     request_target: t.request_target,
     sort_order: t.sort_order,
     requestAccessTarget: requestAccessTargetToEnum(t.request_target),
-    access_meta: t.access_meta ?? null,
+    access_meta: t.access_meta ?? { viewPermId: t.view_perm_id } as TileAccessMeta,
   };
 }

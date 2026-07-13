@@ -7,8 +7,6 @@ import { ROOT_CRUMB, groupCrumb } from './breadcrumbs';
 import { GROUP_LABEL, type TileGroup } from './tile-config';
 import { useBreadcrumbContext } from './breadcrumbs/BreadcrumbProvider';
 
-const DASH_CRUMB: Crumb = { label: 'Dashboard', href: '/dashboard' };
-
 function isTileGroup(s: string | undefined): s is TileGroup {
   return !!s && s in GROUP_LABEL;
 }
@@ -22,7 +20,6 @@ export const BreadcrumbBar: React.FC = () => {
   const derived: Crumb[] = useMemo(() => {
     if (!useDerived) return [];
     if (pathname === '/' || pathname === '') return [ROOT_CRUMB];
-    if (pathname.startsWith('/dashboard')) return [ROOT_CRUMB, DASH_CRUMB];
     if (pathname.startsWith('/group/')) {
       const seg = pathname.split('/')[2] || '';
       if (isTileGroup(seg)) return [ROOT_CRUMB, groupCrumb(seg)];

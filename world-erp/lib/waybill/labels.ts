@@ -5,10 +5,14 @@ export interface WaybillStagePip {
   key: string;
   en: string;
   th: string;
+  de?: string;
   emoji: string;
   bucket: 'submission' | 'verification' | 'authorization' | 'disbursement' | 'closed';
   description_en: string;
   description_th: string;
+  description_de?: string;
+  thirdParty?: boolean;
+  paysBefore?: boolean;
 }
 
 export interface WaybillDomainPips {
@@ -185,15 +189,26 @@ export const PROCUREMENT_STAGES: WaybillDomainPips = {
 };
 
 // Convenience: fallback label lookup by stage key.
+export const SALES_STAGES: WaybillDomainPips = {
+  title_en: 'Sales Order Waybill',
+  title_th: 'ใบส่งจ่าย (ใบสั่งขาย)',
+  pips: [
+    { key: 'so_draft', en: 'Draft', th: 'ร่าง', de: 'Entwurf', emoji: '📝', bucket: 'submission', description_en: 'Composing SO', description_th: 'กำลังร่าง SO', description_de: 'SO wird erstellt' },
+    { key: 'so_sales_review', en: 'Sales Review', th: 'ตรวจสอบยอดขาย', de: 'Verkaufsprüfung', emoji: '🛡️', bucket: 'authorization', description_en: 'Sales supervisor confirms', description_th: 'หัวหน้าทีมขายยืนยัน', description_de: 'Verkaufsleiter bestätigt' },
+    { key: 'so_credit_check', en: 'Credit Check', th: 'ตรวจเครดิตลูกค้า', de: 'Bonitätsprüfung', emoji: '🔍', bucket: 'verification', description_en: 'Verify AR + credit limit', description_th: 'ตรวจสอบวงเงิน AR + เครดิต', description_de: 'AR + Kreditlimit prüfen' },
+    { key: 'so_invoiced', en: 'Invoiced', th: 'ออกใบกำกับภาษี', de: 'Fakturiert', emoji: '🧾', bucket: 'disbursement', description_en: 'Tax Invoice issued', description_th: 'ออกใบกำกับภาษีแล้ว', description_de: 'Rechnung ausgestellt', thirdParty: true },
+    { key: 'so_paid', en: 'Paid (AR Receipt)', th: 'รับชำระแล้ว', de: 'Bezahlt', emoji: '💰', bucket: 'closed', description_en: 'AR receipt attached', description_th: 'แนบสลิปรับชำระแล้ว', description_de: 'AR-Beleg angehängt', thirdParty: true },
+  ],
+};
+
 export function stageLabel(
   stageKey: string,
-  domain: 'expense' | 'procurement',
+  domain: 'expense' | 'procurement' | 'sales',
   lang: 'en' | 'th' = 'en',
 ): { label: string; emoji: string } {
-  const set = domain === 'procurement' ? PROCUREMENT_STAGES : EXPENSE_STAGES;
+  const set = domain === 'sales' ? SALES_STAGES : domain === 'procurement' ? PROCUREMENT_STAGES : EXPENSE_STAGES;
   const pip = set.pips.find((p) => p.key === stageKey);
   if (pip) return { label: lang === 'th' ? pip.th : pip.en, emoji: pip.emoji };
-  // fallback to generic map
   const fallback = EXPENSE_STAGES.pips.find((p) => p.key === stageKey);
   if (fallback) return { label: lang === 'th' ? fallback.th : fallback.en, emoji: fallback.emoji };
   return { label: stageKey, emoji: '📄' };

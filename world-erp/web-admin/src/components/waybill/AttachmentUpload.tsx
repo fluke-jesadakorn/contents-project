@@ -7,7 +7,7 @@ import {
   allowedKindsFor,
   type WaybillAttachmentKind,
 } from '@erp-lib/waybill/kinds';
-import { attachWaybillDocumentAction } from '@/app/waybill/[id]/_actions';
+import { attachWaybillDocumentAction } from '@/app/(protected)/waybill/[id]/_actions';
 
 interface Props {
   waybillId: string;

@@ -1,6 +1,13 @@
 import React from 'react';
 import type { WaybillDomain, WaybillStagePip } from '@erp-lib/waybill/derive';
-import { pipsForDomain } from '@erp-lib/waybill/derive';
+import { pipsForDomain, stageRoleLabel, stageRoles } from '@erp-lib/waybill/derive';
+
+export interface PipActor {
+  name: string;
+  ts: string | number | Date;
+  kind: string;
+  actorId?: number | null;
+}
 
 interface Props {
   domain: WaybillDomain;
@@ -11,12 +18,22 @@ interface Props {
   amountTHB?: number | null;
   compact?: boolean;
   onPipHref?: (pipKey: string) => string;
+  actorRole?: string | null;
+  pipActors?: Record<string, PipActor> | null;
 }
 
 interface PipStatus {
   pip: WaybillStagePip;
   index: number;
   state: 'passed' | 'active' | 'pending' | 'rejected' | 'skipped';
+}
+
+function fmtActorTs(ts: string | number | Date): string {
+  try {
+    return new Date(ts).toLocaleString('th-TH');
+  } catch {
+    return '';
+  }
 }
 
 export function WaybillRail({
@@ -28,6 +45,8 @@ export function WaybillRail({
   amountTHB = null,
   compact = false,
   onPipHref,
+  actorRole = null,
+  pipActors = null,
 }: Props) {
   const pips = pipsForDomain(domain);
   const idx = pips.findIndex((p) => p.key === currentStage);
@@ -106,21 +125,31 @@ export function WaybillRail({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-7">
         {rendered.map(({ pip, index, state }) => {
           const isCeoOptional = pip.key === 'ceo_authorization' && !needCeo;
+          const approverLabel = stageRoleLabel(pip.key, lang);
+          const stageRole = stageRoles(pip.key);
+          const isYourRole = !!actorRole && stageRole.includes(actorRole);
+          const actor = pipActors?.[pip.key] ?? null;
           return (
             <a
               key={pip.key}
               href={onPipHref ? onPipHref(pip.key) : undefined}
               className={
-                'relative flex flex-col items-start gap-1 rounded-xl border p-2.5 ' +
+                'relative flex flex-col items-start gap-1 rounded-xl border p-2.5 overflow-hidden ' +
                 (state === 'passed'
                   ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-200'
                   : state === 'active'
                   ? 'border-cyan-400 bg-cyan-950/40 text-white shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400/60'
                   : isCeoOptional
                   ? 'border-slate-900 bg-slate-950/40 text-slate-700'
-                  : 'border-slate-800 bg-slate-950/40 text-slate-400')
+                  : 'border-slate-800 bg-slate-950/40 text-slate-400') +
+                (isYourRole ? ' ring-2 ring-purple-500/40' : '')
               }
             >
+              {isYourRole && (
+                <span className="absolute right-0 top-0 rounded-bl bg-purple-500/20 px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider text-purple-300">
+                  {lang === 'th' ? 'บทบาทคุณ' : 'Your role'}
+                </span>
+              )}
               <div className="flex w-full items-center justify-between">
                 <span className="text-xl">{pip.emoji}</span>
                 <span
@@ -156,11 +185,36 @@ export function WaybillRail({
               <p className="text-[10px] leading-tight text-slate-500">
                 {lang === 'th' ? pip.description_th : pip.description_en}
               </p>
-              {state === 'active' && activeActorName && (
-                <p className="mt-1 text-[10px] font-mono text-cyan-300">
-                  ⏱ {activeActorName}
-                </p>
-              )}
+
+              <div className="mt-auto w-full border-t border-slate-800/60 pt-1.5">
+                <div className="text-[9px] font-mono uppercase tracking-widest text-slate-500">
+                  {lang === 'th' ? 'ผู้อนุมัติ' : 'Approver'}
+                </div>
+                <div
+                  className={
+                    'text-[11px] font-bold leading-tight ' +
+                    (state === 'passed' || state === 'active'
+                      ? 'text-amber-300'
+                      : 'text-slate-300')
+                  }
+                >
+                  👤 {approverLabel}
+                </div>
+                {actor && state === 'passed' && (
+                  <div className="mt-1 text-[10px] font-mono leading-tight text-emerald-300">
+                    ✓ {actor.name}
+                    <span className="text-slate-500">
+                      {' · ' + fmtActorTs(actor.ts)}
+                    </span>
+                  </div>
+                )}
+                {state === 'active' && activeActorName && (
+                  <div className="mt-1 text-[10px] font-mono leading-tight text-cyan-300">
+                    ⏱ {activeActorName}
+                  </div>
+                )}
+              </div>
+
               {index < rendered.length - 1 && state === 'passed' && (
                 <span className="pointer-events-none absolute -right-1 top-1/2 hidden -translate-y-1/2 text-slate-600 md:block">
                   ➔

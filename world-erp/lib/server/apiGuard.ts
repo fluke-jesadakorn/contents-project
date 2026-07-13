@@ -2,7 +2,7 @@
 // `{actor, response: null}` or `{actor, response: Response}`.
 //
 // Usage:
-//   const guard = await apiGuard(req, { rbacSection: 'manage-ai-providers', rbacAction: 'read' });
+//   const guard = await apiGuard(req, { perm: 'ai:provider:read::allow' });
 //   if (guard.response) return guard.response;
 //   ... use guard.actor
 
@@ -17,8 +17,7 @@ import type { ActionName } from './sessionToken.types';
 
 export interface ApiGuardOpts {
   action?: ActionName;
-  rbacSection?: string;
-  rbacAction?: 'create' | 'read' | 'update' | 'delete';
+  perm?: string;
   stage?: string;
 }
 
@@ -39,11 +38,10 @@ export async function apiGuard(_req: Request, opts: ApiGuardOpts = {}): Promise<
   if (!actor) {
     return { actor: null, response: NextResponse.json({ error: 'unauthorized' }, { status: 401 }), override: false };
   }
-  if (opts.action || opts.rbacSection || opts.stage) {
+  if (opts.action || opts.perm || opts.stage) {
     try {
       const res = await requireAction(actor, opts.action ?? 'access', {
-        rbacSection: opts.rbacSection,
-        rbacAction: opts.rbacAction,
+        perm: opts.perm,
         stage: opts.stage,
       });
       return { actor, response: null, override: res.override };

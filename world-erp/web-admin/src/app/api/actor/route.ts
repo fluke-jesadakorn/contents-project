@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { query } from '@/lib/db';
-import { signSession, SESSION_COOKIE } from '@/lib/server/sessionToken';
+import { signSession, SESSION_COOKIE, SESSION_TTL_SECONDS, mintSessionId } from '@/lib/server/sessionToken';
 import { safeEqual } from '@/lib/server/sessionToken';
 
 export const runtime = 'nodejs';
@@ -33,14 +33,38 @@ export async function POST(req: Request) {
     }
   }
 
-  const r = await query('SELECT id, fullname, role_id, rbac_role_id FROM users WHERE id = $1', [id]);
+  const r = await query('SELECT id, fullname FROM users WHERE id = $1', [id]);
   if (!r.rows.length) return NextResponse.json({ error: 'user not found' }, { status: 404 });
 
-  const roleRow = await query('SELECT name FROM roles WHERE id = $1', [r.rows[0].role_id]);
-  const roleName = roleRow.rows[0]?.name || 'staff';
-  const rbacRoleId = r.rows[0].rbac_role_id ?? null;
+  const roleRow = await query<{ id: string; name: string }>(
+    `SELECT pr.id, split_part(pr.id, '::', 1) AS name FROM perm.user_roles ur
+       JOIN perm.roles pr ON pr.id = ur.role_id
+      WHERE ur.user_id = $1
+      ORDER BY (CASE WHEN pr.id LIKE '%::1' THEN 0
+                     WHEN pr.id LIKE '%::2' THEN 1
+                     WHEN pr.id LIKE '%::3' THEN 2
+                     WHEN pr.id LIKE '%::4' THEN 3
+                     WHEN pr.id LIKE '%::5' THEN 4
+                     ELSE 5 END), ur.granted_at ASC
+      LIMIT 1`,
+    [id],
+  );
+  const roleName = roleRow.rows[0]?.name || 'officer';
 
-  const token = await signSession({ sub: id, role: roleName, rbacRoleId });
+  const sid = mintSessionId();
+  await query(
+    `INSERT INTO auth.sessions (id, user_id, role, expires_at)
+     VALUES ($1, $2, $3, now() + ($4 || ' seconds')::interval)`,
+    [sid, id, roleName, SESSION_TTL_SECONDS],
+  );
+
+  const token = await signSession({
+    id: sid,
+    sub: id,
+    role: roleName,
+    rbacRoleId,
+    impersonatorUserId: null,
+  });
 
   const c = await cookies();
   c.set(SESSION_COOKIE, token, {

@@ -1,35 +1,27 @@
 // lib/perm/chain.ts — approval chain resolver.
 //
-// Stage → role_id mapping is static (see ./stages.ts); the approver for each
-// stage is found by joining perm.user_roles + users WHERE dept_group_id =
-// submitter.dept.
-//
-// (Replaces lib/rbac/chain.ts which used rbac.role_dept_assignments and
-//  rbac.roles.default_staff_level.)
+// Approver lookup joins perm.user_roles and parses the level from the
+// role-id suffix. Department is derived from the user's `user:dept:<id>::allow`
+// permission grants.
 
 import 'server-only';
 import { query } from '../db';
 import type { StageName } from './stages';
-import { STAGE_TO_ROLE, STAGE_ORDER, normalizeStage } from './stages';
+import { STAGE_ORDER, normalizeStage, stagePrimaryRole, stageRoles } from './stages';
+import { levelOf, roleNameOf } from './grammar';
 
-export { STAGE_TO_ROLE, STAGE_TO_PERM, normalizeStage } from './stages';
+export { STAGE_TO_ROLE, STAGE_TO_PERM, normalizeStage, stageRoles, stagePrimaryRole } from './stages';
 export type { StageName } from './stages';
 export { STAGE_ORDER } from './stages';
 
-const OVERRIDE_ROLES = new Set(['cfo', 'ceo', 'admin']);
+const OVERRIDE_ROLE_NAMES = new Set(['cfo', 'ceo', 'admin']);
 const CROSS_DEPT_STAGES = new Set<string>([
-  // finance-standard keys
   'accounting_verification',
   'accounting_supervision',
   'accounting_authorization',
   'disbursement_authorization',
   'cfo_authorization',
   'ceo_authorization',
-  // legacy aliases (during migration window)
-  'accounting_review',
-  'finance_review',
-  'cfo_review',
-  'ceo_review',
   'po_cfo',
 ]);
 const ALREADY_APPROVED_DEPT_KEYS = new Set<string>([
@@ -38,7 +30,6 @@ const ALREADY_APPROVED_DEPT_KEYS = new Set<string>([
   'dept_verification',
   'dept_authorization',
 ]);
-const ADMIN_PERM = 'admin:system:bypass:all';
 
 export interface ApproverCheck {
   stage: StageName;
@@ -59,28 +50,40 @@ export interface ResolverCtx {
 export interface ActorCtx {
   userId: number;
   roleId: string;
-  deptGroupId: string | null;
+  deptId: string | null;
   level: number;
 }
 
 async function findApprover(
-  roleId: string,
-  deptGroupId: string,
+  roleName: string,
+  deptId: string,
 ): Promise<{ user_id: number | null; level: number } | null> {
-  const r = await query<{ user_id: number | null; level: number }>(
+  // Match any role-id whose name part equals `roleName` (e.g. 'manager' → 'manager::3').
+  const r = await query<{ user_id: number | null; level: number | null }>(
     `SELECT ur.user_id,
-            COALESCE(pr.level, 5) AS level
+            MIN(CASE
+              WHEN ur.role_id ~ '\\m[0-9]+$'
+                THEN split_part(ur.role_id, '::', 2)::int
+              ELSE 5
+            END) AS level
        FROM perm.user_roles ur
-       LEFT JOIN perm.roles pr ON pr.id = ur.role_id
        JOIN users u ON u.id = ur.user_id
-      WHERE ur.role_id = $1
-        AND u.dept_group_id = $2
+      WHERE split_part(ur.role_id, '::', 1) = $1
         AND u.is_active IS NOT FALSE
-      ORDER BY pr.level ASC NULLS LAST, ur.granted_at ASC
+        AND EXISTS (
+          SELECT 1 FROM perm.user_permissions up
+           WHERE up.user_id = u.id
+             AND up.permission_id = $2
+             AND up.revoked_at IS NULL
+        )
+      GROUP BY ur.user_id
+      ORDER BY level ASC NULLS LAST
       LIMIT 1`,
-    [roleId, deptGroupId],
+    [roleName, `user:dept:${deptId}::allow`],
   );
-  return r.rows[0] ?? null;
+  if (r.rows.length === 0) return null;
+  const row = r.rows[0];
+  return { user_id: row.user_id, level: row.level ?? 5 };
 }
 
 export const CEO_ESCALATION_THRESHOLD_THB = 200_000;
@@ -95,13 +98,8 @@ export async function resolveApprovalChain(
   injectedCeo: boolean;
 }> {
   const chain: ApproverCheck[] = [];
-
-  const hasAmount =
-    typeof totalAmount === 'number' && Number.isFinite(totalAmount);
-
-  const needCeo =
-    hasAmount && (totalAmount as number) >= CEO_ESCALATION_THRESHOLD_THB;
-
+  const hasAmount = typeof totalAmount === 'number' && Number.isFinite(totalAmount);
+  const needCeo = hasAmount && (totalAmount as number) >= CEO_ESCALATION_THRESHOLD_THB;
   const skipCeo = hasAmount && !needCeo;
 
   const withCeo: StageName[] = needCeo
@@ -121,18 +119,16 @@ export async function resolveApprovalChain(
   }
 
   for (const stage of dynamicOrder) {
-    const roleId = STAGE_TO_ROLE[stage];
-    if (!roleId) continue;
-
+    const roleName = stagePrimaryRole(stage);
+    if (!roleName) continue;
     let userId: number | null = null;
     let approverLevel = 5;
     if (ctx.submitterDeptId) {
-      const assignee = await findApprover(roleId, ctx.submitterDeptId);
+      const assignee = await findApprover(roleName, ctx.submitterDeptId);
       userId = assignee?.user_id ?? null;
       approverLevel = assignee?.level ?? 5;
     }
-
-    chain.push({ stage, roleId, userId, approverLevel, source: 'perm_user_roles' });
+    chain.push({ stage, roleId: roleName, userId, approverLevel, source: 'perm_user_roles' });
   }
 
   let nextStage: StageName | null = null;
@@ -143,12 +139,7 @@ export async function resolveApprovalChain(
     }
   }
 
-  return {
-    chain,
-    nextStage,
-    completed: nextStage === null,
-    injectedCeo: needCeo,
-  };
+  return { chain, nextStage, completed: nextStage === null, injectedCeo: needCeo };
 }
 
 export async function canActOnStage(
@@ -158,41 +149,35 @@ export async function canActOnStage(
   alreadyApproved: Set<StageName>,
   actorPerms?: Set<string>,
 ): Promise<{ allow: boolean; reason: string }> {
-  const roleId = STAGE_TO_ROLE[stage];
-  if (!roleId) return { allow: false, reason: `Unknown stage "${stage}"` };
+  const roles = stageRoles(stage);
+  if (roles.length === 0) return { allow: false, reason: `Unknown stage "${stage}"` };
 
-  if (OVERRIDE_ROLES.has(actor.roleId)) {
+  const actorRoleName = roleNameOf(actor.roleId);
+  if (OVERRIDE_ROLE_NAMES.has(actorRoleName)) {
     const approvedArr = Array.from(alreadyApproved) as string[];
     const deptApproved = approvedArr.some((s) => ALREADY_APPROVED_DEPT_KEYS.has(s));
     if (!deptApproved) {
-      return {
-        allow: false,
-        reason: `${actor.roleId.toUpperCase()} override requires manager or supervisor approval first`,
-      };
+      return { allow: false, reason: `${actorRoleName.toUpperCase()} override requires manager or supervisor approval first` };
     }
-    return { allow: true, reason: `Override by ${actor.roleId}` };
+    return { allow: true, reason: `Override by ${actorRoleName}` };
   }
-  void ADMIN_PERM;
 
   const hasStagePerm =
-    actorPerms?.has(`stage:${stage}:act:all`) === true ||
-    actorPerms?.has(`stage:${stage}:act`) === true;
+    actorPerms?.has(`stage:${stage}:act::allow`) === true ||
+    actorPerms?.has(`stage:${stage}:act:all::allow`) === true;
 
-  if (!hasStagePerm && actor.roleId !== roleId) {
+  if (!hasStagePerm && !roles.includes(actorRoleName)) {
     return {
       allow: false,
-      reason: `Stage "${stage}" requires role "${roleId}", actor is "${actor.roleId}"`,
+      reason: `Stage "${stage}" requires one of roles [${roles.join(', ')}], actor is "${actorRoleName}"`,
     };
   }
-  if (actor.roleId === roleId && !CROSS_DEPT_STAGES.has(stage)) {
-    if (!actor.deptGroupId) {
-      return { allow: false, reason: `Actor "${actor.roleId}" has no department binding` };
+  if (roles.includes(actorRoleName) && !CROSS_DEPT_STAGES.has(stage)) {
+    if (!actor.deptId) {
+      return { allow: false, reason: `Actor "${actorRoleName}" has no department binding` };
     }
-    if (actor.deptGroupId !== submitter.submitterDeptId) {
-      return {
-        allow: false,
-        reason: `Stage "${stage}" requires same department as submitter`,
-      };
+    if (actor.deptId !== submitter.submitterDeptId) {
+      return { allow: false, reason: `Stage "${stage}" requires same department as submitter` };
     }
   }
   if (actor.level > submitter.submitterLevel) {
@@ -210,9 +195,9 @@ export async function getApprovedStages(
 ): Promise<Set<StageName>> {
   const r = await query<{ stage: string }>(
     `SELECT DISTINCT stage FROM approval_transitions
-       WHERE target_type = $1 AND target_id = $2
-         AND stage IS NOT NULL
-         AND new_status NOT IN ('rejected')`,
+      WHERE target_type = $1 AND target_id = $2
+        AND stage IS NOT NULL
+        AND new_status NOT IN ('rejected')`,
     [entityType, entityId],
   );
   const set = new Set<StageName>();
@@ -222,3 +207,29 @@ export async function getApprovedStages(
   }
   return set;
 }
+
+export function resolveNextStage(
+  currentStage: string,
+  _actorRole: string,
+  _amount?: number,
+  domain?: 'expense' | 'procurement' | 'sales',
+): string | null {
+  if (domain === 'sales') {
+    const salesOrder = ['so_draft', 'so_sales_review', 'so_credit_check', 'so_invoiced', 'so_paid'];
+    const idx = salesOrder.indexOf(currentStage);
+    if (idx < 0 || idx >= salesOrder.length - 1) return null;
+    return salesOrder[idx + 1];
+  }
+  const norm = normalizeStage(currentStage);
+  if (!norm) return null;
+  const idx = STAGE_ORDER.indexOf(norm);
+  if (idx < 0 || idx >= STAGE_ORDER.length - 1) return 'awaiting_disbursement';
+  return STAGE_ORDER[idx + 1];
+}
+
+export function isFinalApprovalStage(stage: string): boolean {
+  const norm = normalizeStage(stage);
+  return norm === STAGE_ORDER[STAGE_ORDER.length - 1];
+}
+
+export { levelOf };

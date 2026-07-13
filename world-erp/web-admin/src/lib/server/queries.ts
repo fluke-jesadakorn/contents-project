@@ -1,7 +1,6 @@
 import { cache } from 'react';
 import { query } from '@/lib/db';
-import { getActorScope, scopeFilter } from '@/lib/rbac/scope';
-import { canBatch } from '@/lib/access/api.server';
+import { getActorScope, scopeFilter } from '@erp-lib/perm/server';
 import { assertRole } from '@/lib/assertRole';
 import { aiInvoke } from '@/lib/ai/router';
 import { getUserLevels, getUserStaffLevels, resolveActorScope, loadOrgTree, type OrgNode } from '@/lib/orgScope';
@@ -9,21 +8,58 @@ import { loadActor } from '@/lib/server/guard';
 
 export async function getDashboardData() {
   try {
-    const usersRes = await query('SELECT u.*, r.name as role_name FROM users u JOIN roles r ON u.role_id = r.id ORDER BY u.id');
+    const usersRes = await query(`
+      SELECT u.id, u.employee_code, u.fullname, u.line_user_id, u.created_at,
+             u.is_active, u.hired_at, u.secondary_locale,
+             r.role_id, r.role_name, dg.dept_id
+        FROM users u
+        LEFT JOIN LATERAL (
+          SELECT ur.role_id, split_part(ur.role_id, '::', 1) AS role_name FROM perm.user_roles ur
+            WHERE ur.user_id = u.id
+            ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                           WHEN ur.role_id LIKE '%::2' THEN 1
+                           WHEN ur.role_id LIKE '%::3' THEN 2
+                           WHEN ur.role_id LIKE '%::4' THEN 3
+                           WHEN ur.role_id LIKE '%::5' THEN 4
+                           ELSE 5 END), ur.granted_at ASC
+            LIMIT 1
+        ) r ON true
+        LEFT JOIN LATERAL (
+          SELECT split_part(up.permission_id, ':', 3) AS dept_id FROM perm.user_permissions up
+            WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+              AND up.revoked_at IS NULL
+              AND (up.ends_at IS NULL OR up.ends_at > now())
+            ORDER BY up.permission_id LIMIT 1
+        ) dg ON true
+        ORDER BY u.id
+    `);
     const levels = await getUserLevels();
-    const users = usersRes.rows.map((u: any) => ({ ...u, level: levels.get(u.id) ?? 0 }));
+    const staffLevels = await getUserStaffLevels();
+    const users = usersRes.rows.map((u: any) => ({
+      ...u,
+      level: levels.get(u.id) ?? 0,
+      staff_level: staffLevels.get(u.id) ?? 5,
+      department: u.dept_id,
+      dept_group_id: u.dept_id,
+    }));
     const coaRes = await query('SELECT code, name, name_th, account_type FROM chart_of_accounts ORDER BY code');
 
     const expensesRes = await query(`
       SELECT e.*,
-             u.fullname      AS submitter_name,
-             u.department    AS submitter_dept,
-             u.dept_group_id AS submitter_dept_group_id,
-             dg.name         AS submitter_dept_group_name,
-             ra.fullname     AS rejection_actor_name
+             u.fullname AS submitter_name,
+             (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+               WHERE up.user_id = e.submitter_id AND up.permission_id LIKE 'user:dept:%'
+                 AND up.revoked_at IS NULL
+                 AND (up.ends_at IS NULL OR up.ends_at > now())
+               ORDER BY up.permission_id LIMIT 1) AS submitter_dept_group_id,
+             (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+               WHERE up.user_id = e.submitter_id AND up.permission_id LIKE 'user:dept:%'
+                 AND up.revoked_at IS NULL
+                 AND (up.ends_at IS NULL OR up.ends_at > now())
+               ORDER BY up.permission_id LIMIT 1) AS submitter_dept_group_name,
+             ra.fullname AS rejection_actor_name
       FROM expenses e
       JOIN users u ON e.submitter_id = u.id
-      LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
       LEFT JOIN users ra ON ra.id = e.rejection_actor_id
       ORDER BY e.created_at DESC
     `);
@@ -39,14 +75,24 @@ export async function getDashboardData() {
         [ids]
       );
       const logsRes = await query(
-        `SELECT l.id, l.expense_id, l.actor_id, l.previous_status, l.new_status,
+        `SELECT l.id, l.target_id AS expense_id, l.actor_id, l.previous_status, l.new_status,
                 l.comments, l.stage, l.chain_index, l.created_at,
-                u.fullname as actor_name, r.name as actor_role
-         FROM approval_logs l
+                u.fullname as actor_name, split_part(r.role_id, '::', 1) as actor_role
+         FROM approval_transitions l
          JOIN users u ON l.actor_id = u.id
-         JOIN roles r ON u.role_id = r.id
-         WHERE l.expense_id = ANY($1::int[])
-         ORDER BY l.expense_id, l.created_at ASC, l.id ASC`,
+         LEFT JOIN LATERAL (
+            SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = u.id
+              ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                             WHEN ur.role_id LIKE '%::2' THEN 1
+                             WHEN ur.role_id LIKE '%::3' THEN 2
+                             WHEN ur.role_id LIKE '%::4' THEN 3
+                             WHEN ur.role_id LIKE '%::5' THEN 4
+                             ELSE 5 END), ur.granted_at ASC
+              LIMIT 1
+          ) r ON true
+         WHERE l.target_type = 'expense' AND l.target_id = ANY($1::int[])
+         ORDER BY l.target_id, l.created_at ASC, l.id ASC`,
         [ids]
       );
       const itemsByExpense = new Map<number, any[]>();
@@ -294,7 +340,7 @@ export async function listPurchaseRequisitions(actorId?: number) {
     if (actorId) {
       const actor = await loadActor();
       if (actor) {
-        const scope = await getActorScope(actor.rbac_role_id ?? null, actor.id);
+        const scope = await getActorScope(new Set(actor.permissions ?? []), actor.id);
         const f = scopeFilter(scope, 'pr.requester_id');
         if (f.clause) {
           scopeSql = 'WHERE ' + f.clause;
@@ -303,15 +349,22 @@ export async function listPurchaseRequisitions(actorId?: number) {
       }
     }
     const r = await query(
-      `SELECT pr.*, u.fullname AS requester_name, u.department AS requester_dept,
-              u.dept_group_id AS requester_dept_group_id,
-              dg.name AS requester_dept_group_name,
-              d.name AS dept_name, p.name AS policy_name, p.priority AS policy_priority,
+      `SELECT pr.*, u.fullname AS requester_name,
+              (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+                WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                  AND up.revoked_at IS NULL
+                  AND (up.ends_at IS NULL OR up.ends_at > now())
+                ORDER BY up.permission_id LIMIT 1) AS requester_dept_group_id,
+              (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+                WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                  AND up.revoked_at IS NULL
+                  AND (up.ends_at IS NULL OR up.ends_at > now())
+                ORDER BY up.permission_id LIMIT 1) AS requester_dept_group_name,
+              d.display_name AS dept_name, p.display_name AS policy_name, p.priority AS policy_priority,
               ra.fullname AS rejection_actor_name
        FROM purchase_requisitions pr
        JOIN users u ON pr.requester_id = u.id
-       LEFT JOIN departments d ON pr.department_id = d.id
-       LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
+       LEFT JOIN perm.roles d ON pr.dept_group_id = d.id
        LEFT JOIN approval_policies p ON pr.matched_policy_id = p.id
        LEFT JOIN users ra ON ra.id = pr.rejection_actor_id
        ${scopeSql}
@@ -328,9 +381,9 @@ export async function listPurchaseRequisitions(actorId?: number) {
       pr.items = items.rows;
       const prLogs = await query(
         `SELECT l.*, u.fullname AS actor_name
-         FROM pr_approval_logs l
+         FROM approval_transitions l
          JOIN users u ON l.actor_id = u.id
-         WHERE l.pr_id = $1
+         WHERE l.target_type = 'pr' AND l.target_id = $1
          ORDER BY l.created_at ASC`, [pr.id]
       );
       pr.logs = prLogs.rows;
@@ -348,7 +401,7 @@ export async function listPurchaseOrders(actorId?: number) {
     if (actorId) {
       const actor = await loadActor();
       if (actor) {
-        const scope = await getActorScope(actor.rbac_role_id ?? null, actor.id);
+        const scope = await getActorScope(new Set(actor.permissions ?? []), actor.id);
         const f = scopeFilter(scope, 'pr.requester_id');
         if (f.clause) {
           scopeSql = 'WHERE ' + f.clause;
@@ -359,11 +412,18 @@ export async function listPurchaseOrders(actorId?: number) {
     const r = await query(
       `SELECT po.*,
               u.fullname AS requester_name,
-              u.department AS requester_dept,
-              u.dept_group_id AS requester_dept_group_id,
-              dg.name AS requester_dept_group_name,
-              d.name AS dept_name,
-              p.name AS policy_name,
+              (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+                WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                  AND up.revoked_at IS NULL
+                  AND (up.ends_at IS NULL OR up.ends_at > now())
+                ORDER BY up.permission_id LIMIT 1) AS requester_dept_group_id,
+              (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+                WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                  AND up.revoked_at IS NULL
+                  AND (up.ends_at IS NULL OR up.ends_at > now())
+                ORDER BY up.permission_id LIMIT 1) AS requester_dept_group_name,
+              d.display_name AS dept_name,
+              p.display_name AS policy_name,
               p.priority AS policy_priority,
               s.file_path AS paid_slip_path,
               s.mime_type AS paid_slip_mime,
@@ -372,8 +432,7 @@ export async function listPurchaseOrders(actorId?: number) {
        FROM purchase_orders po
        JOIN purchase_requisitions pr ON po.pr_id = pr.id
        JOIN users u ON pr.requester_id = u.id
-       LEFT JOIN departments d ON pr.department_id = d.id
-       LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
+       LEFT JOIN perm.roles d ON pr.dept_group_id = d.id
        LEFT JOIN approval_policies p ON po.matched_policy_id = p.id
        LEFT JOIN slips s ON po.settled_slip_id = s.id
        LEFT JOIN users su ON po.settled_by = su.id
@@ -393,9 +452,9 @@ export async function listPurchaseOrders(actorId?: number) {
       po.items = items.rows;
       const poLogs = await query(
         `SELECT l.*, u.fullname AS actor_name
-         FROM po_approval_logs l
+         FROM approval_transitions l
          JOIN users u ON l.actor_id = u.id
-         WHERE l.po_id = $1
+         WHERE l.target_type = 'po' AND l.target_id = $1
          ORDER BY l.created_at ASC`, [po.id]
       );
       po.logs = poLogs.rows;
@@ -439,23 +498,19 @@ function pickKind(role: string): DashKind | null {
   return null;
 }
 
-const DASHBOARD_KIND_TO_MODULE: Record<DashKind, string> = {
-  it:       'dashboard-it',
-  exec:     'dashboard-exec',
-  hod:      'dashboard-hod',
-  am:       'dashboard-am',
-  reviewer: 'dashboard-reviewer',
-  staff:    'dashboard-staff',
-  hr:       'dashboard-hr',
-  finance:  'dashboard-finance',
-};
-
-async function pickKindFromMatrix(rbacRoleId: string | null): Promise<DashKind | null> {
-  if (!rbacRoleId) return null;
-  const modules = Object.values(DASHBOARD_KIND_TO_MODULE);
-  const allow = await canBatch(rbacRoleId, modules, 'read');
-  for (const k of Object.keys(DASHBOARD_KIND_TO_MODULE) as DashKind[]) {
-    if (allow[DASHBOARD_KIND_TO_MODULE[k]]) return k;
+async function pickKindFromMatrix(_rbacRoleId: string | null, perms: string[] = []): Promise<DashKind | null> {
+  const kindByPerm: Record<string, DashKind> = {
+    'tile:dash_it::allow':       'it',
+    'tile:dash_exec::allow':     'exec',
+    'tile:dash_manager::allow':  'hod',
+    'tile:dash_am::allow':       'am',
+    'tile:dash_reviewer::allow': 'reviewer',
+    'tile:dash_staff::allow':    'staff',
+    'tile:dash_hr::allow':       'hr',
+    'tile:dash_finance::allow':  'finance',
+  };
+  for (const [perm, k] of Object.entries(kindByPerm)) {
+    if (perms.includes(perm)) return k;
   }
   return null;
 }
@@ -469,7 +524,7 @@ async function buildITPayload() {
     ORDER BY p.enabled DESC, p.name ASC
   `);
   const models = await query(`
-    SELECT m.id, m.name, m.provider_id, p.name AS provider_name,
+    SELECT m.id, m.display_name AS name, m.provider_id, p.display_name AS provider_name,
            m.capabilities, m.context_window, m.enabled
     FROM ai_models m
     LEFT JOIN ai_providers p ON p.id = m.provider_id
@@ -503,7 +558,7 @@ async function buildITPayload() {
   const recentInv = await query(`
     SELECT i.id, i.section_key, i.task_type, i.status, i.error,
            i.latency_ms, i.prompt_tokens, i.response_tokens, i.created_at,
-           p.name AS provider_name, m.name AS model_name, s.name AS staff_name
+           p.display_name AS provider_name, m.display_name AS model_name, s.display_name AS staff_name
     FROM ai_invocations i
     LEFT JOIN ai_providers p ON p.id = i.provider_id
     LEFT JOIN ai_models m ON m.id = i.model_id
@@ -635,30 +690,63 @@ async function buildHRPayload() {
     FROM users
   `);
   const departments = await query(`
-    SELECT COUNT(*)::int AS n FROM departments WHERE head_user_id IS NOT NULL
+    SELECT COUNT(*)::int AS n FROM perm.roles WHERE kind='department' AND head_user_id IS NOT NULL
   `);
   const byRole = await query(`
-    SELECT r.name AS role, COUNT(u.id)::int AS n
-    FROM roles r
-    LEFT JOIN users u ON u.role_id = r.id AND u.is_active
-    GROUP BY r.name
-    ORDER BY r.name
+    SELECT r.display_name AS role, COUNT(ur.user_id)::int AS n
+    FROM perm.roles r
+    LEFT JOIN perm.user_roles ur ON ur.role_id = r.id
+    LEFT JOIN users u ON u.id = ur.user_id AND u.is_active
+    WHERE r.id NOT LIKE 'user:dept:%'
+      AND r.id IN (
+        'ceo::1','cfo::2','admin::2','finance::2','sales_supervisor::2',
+        'manager::3','hr_manager::3','accounting_manager::3','sales_rep::3',
+        'supervisor::4','account_supervisor::4','it::2',
+        'officer::5','hr::5','account_officer::5'
+      )
+    GROUP BY r.display_name
+    ORDER BY r.display_name
   `);
   const recent = await query(`
-    SELECT u.id, u.fullname, u.employee_code, u.department,
-           u.dept_group_id, dg.name AS dept_group_name,
-           r.name AS role_name, u.created_at
+    SELECT u.id, u.fullname, u.employee_code,
+           (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+             WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+               AND up.revoked_at IS NULL
+               AND (up.ends_at IS NULL OR up.ends_at > now())
+             ORDER BY up.permission_id LIMIT 1) AS dept_id,
+           (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+             WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+               AND up.revoked_at IS NULL
+               AND (up.ends_at IS NULL OR up.ends_at > now())
+             ORDER BY up.permission_id LIMIT 1) AS dept_group_name,
+           split_part(r.role_id, '::', 1) AS role_name, u.created_at
     FROM users u
-    JOIN roles r ON u.role_id = r.id
-    LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
+    LEFT JOIN LATERAL (
+            SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = u.id
+              ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                             WHEN ur.role_id LIKE '%::2' THEN 1
+                             WHEN ur.role_id LIKE '%::3' THEN 2
+                             WHEN ur.role_id LIKE '%::4' THEN 3
+                             WHEN ur.role_id LIKE '%::5' THEN 4
+                             ELSE 5 END), ur.granted_at ASC
+              LIMIT 1
+          ) r ON true
     ORDER BY u.id DESC
     LIMIT 10
   `);
   const unassigned = await query(`
-    SELECT COUNT(*)::int AS n FROM users WHERE reports_to_user_id IS NULL AND is_active = TRUE
+    SELECT 0::int AS n
   `);
   const deptless = await query(`
-    SELECT COUNT(*)::int AS n FROM users WHERE department IS NULL AND is_active = TRUE
+    SELECT COUNT(*)::int AS n FROM users u
+      WHERE u.is_active = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM perm.user_permissions up
+            WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+              AND up.revoked_at IS NULL
+              AND (up.ends_at IS NULL OR up.ends_at > now())
+        )
   `);
   return {
     users: users.rows[0],
@@ -679,8 +767,7 @@ async function buildFinancePayload() {
   `);
   const recent = await query(`
     SELECT e.id, e.vendor_name, e.total_amount, e.status, e.updated_at,
-           u.fullname AS submitter_name, u.department AS submitter_dept
-    FROM expenses e
+           u.fullname AS submitter_name FROM expenses e
     JOIN users u ON e.submitter_id = u.id
     WHERE e.status IN ('finance_review','paid')
     ORDER BY e.updated_at DESC
@@ -727,21 +814,53 @@ async function buildStaffPayload(userId: number) {
 
 export async function getDashboardForRole(actorId: number) {
   try {
-    const r = await query(
-      `SELECT u.id, u.fullname, u.department, u.dept_group_id, dg.name AS dept_group_name, r.name AS role_name
-       FROM users u
-       JOIN roles r ON u.role_id = r.id
-       LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
-       WHERE u.id = $1`,
+    const r = await query<{
+      id: number; fullname: string;
+      role_name: string | null; permissions: string[];
+      dept_perm: string | null;
+    }>(
+      `SELECT u.id, u.fullname,
+              (SELECT split_part(ur.role_id, '::', 1) FROM perm.user_roles ur
+                WHERE ur.user_id = u.id
+                ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                               WHEN ur.role_id LIKE '%::2' THEN 1
+                               WHEN ur.role_id LIKE '%::3' THEN 2
+                               WHEN ur.role_id LIKE '%::4' THEN 3
+                               WHEN ur.role_id LIKE '%::5' THEN 4
+                               ELSE 5 END), ur.granted_at ASC
+                LIMIT 1) AS role_name,
+              COALESCE((
+                SELECT array_agg(DISTINCT p_id ORDER BY p_id)
+                  FROM (
+                    SELECT rp.permission_id AS p_id
+                      FROM perm.user_roles ur
+                      JOIN perm.role_permissions rp ON rp.role_id = ur.role_id
+                     WHERE ur.user_id = u.id
+                    UNION
+                    SELECT permission_id AS p_id
+                      FROM perm.user_permissions
+                     WHERE user_id = u.id AND revoked_at IS NULL
+                       AND (ends_at IS NULL OR ends_at > now())
+                  ) t
+              ), ARRAY[]::text[]) AS permissions,
+              (SELECT up.permission_id FROM perm.user_permissions up
+                WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                  AND up.revoked_at IS NULL
+                  AND (up.ends_at IS NULL OR up.ends_at > now())
+                ORDER BY up.permission_id LIMIT 1) AS dept_perm
+         FROM users u WHERE u.id = $1`,
       [actorId]
     );
     if (r.rows.length === 0) return { success: false, error: 'user not found' };
     const actor = r.rows[0];
-    const role = actor.role_name as string;
-    const rbacRoleId = actor.rbac_role_id ?? null;
+    const role = (actor.role_name ?? 'staff').split('::')[0];
+    const deptId = actor.dept_perm
+      ? actor.dept_perm.replace(/^user:dept:/, '').replace(/::allow$/, '')
+      : null;
     const kind =
-      (rbacRoleId ? await pickKindFromMatrix(rbacRoleId) : null) ??
+      (actor.permissions ? await pickKindFromMatrix(null, actor.permissions) : null) ??
       pickKind(role);
+    void deptId;
     if (!kind) return { success: false, error: `no dashboard view for role "${role}"` };
 
     const common = {
@@ -763,9 +882,9 @@ export async function getDashboardForRole(actorId: number) {
       ...common,
       summary: {
         ...(await buildHODPayload(actor.department || 'Unknown')),
-        department: actor.department,
-        dept_group_id: actor.dept_group_id,
-        dept_group_name: actor.dept_group_name,
+        department: (actor as any).dept_id ?? actor.department,
+        dept_group_id: (actor as any).dept_id ?? actor.department,
+        dept_group_name: (actor as any).dept_id ?? actor.department,
       },
     };
     if (kind === 'am') return { success: true, kind, ...common, summary: await buildAMPayload() };
@@ -780,22 +899,23 @@ export async function getDashboardForRole(actorId: number) {
 }
 
 export async function listOrgTree(actorId: number) {
-  try { await assertRole(actorId, [], { rbacSection: 'tile-org-chart', rbacAction: 'read' }); }
+  try { await assertRole(actorId, [], { perm: 'tile:org_chart:view::allow' }); }
   catch { return { success: false as const, tree: [] }; }
   const tree: OrgNode[] = await loadOrgTree(actorId);
   return { success: true as const, tree };
 }
 
 export async function listDepartments(actorId: number) {
-  try { await assertRole(actorId, [], { rbacSection: 'tile-departments', rbacAction: 'read' }); }
+  try { await assertRole(actorId, [], { perm: 'tile:departments:view::allow' }); }
   catch { return { success: false as const, departments: [] }; }
   const r = await query(
-    `SELECT d.id, d.code, d.name, d.monthly_budget, d.head_user_id,
-            u.fullname AS head_fullname, u.employee_code AS head_code,
-            (SELECT COUNT(*)::int FROM users m WHERE m.department_id=d.id AND m.is_active=TRUE) AS active_members
-     FROM departments d
-     LEFT JOIN users u ON d.head_user_id=u.id
-     ORDER BY d.code`
+    `SELECT DISTINCT split_part(id, ':', 3) AS id, split_part(id, ':', 3) AS name,
+            NULL::text AS monthly_budget, NULL::int AS head_user_id,
+            NULL::text AS head_fullname, NULL::text AS head_code,
+            NULL::int AS active_members
+       FROM perm.permissions
+      WHERE id LIKE 'user:dept:%::allow'
+      ORDER BY id`,
   );
   return { success: true as const, departments: r.rows };
 }
@@ -816,25 +936,44 @@ export async function listUserDirectory(args: {
   const params: any[] = [];
   if (args.filterRole) {
     params.push(args.filterRole);
-    where.push(`r.name=$${params.length}`);
+    where.push(`r.role_name=$${params.length}`);
   }
   if (args.filterDeptId) {
-    params.push(args.filterDeptId);
-    where.push(`u.department_id=$${params.length}`);
+    params.push(`user:dept:${args.filterDeptId}::allow`);
+    where.push(`EXISTS (
+      SELECT 1 FROM perm.user_permissions up
+       WHERE up.user_id = u.id AND up.permission_id = $${params.length}
+         AND up.revoked_at IS NULL
+         AND (up.ends_at IS NULL OR up.ends_at > now())
+    )`);
   }
   if (!args.includeInactive) where.push('u.is_active=TRUE');
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   const r = await query(
-    `SELECT u.id, u.employee_code, u.fullname, u.department, u.department_id, u.reports_to_user_id, u.is_active,
-            u.line_user_id, u.created_at, u.staff_level,
-            r.name AS role_name,
-            d.code AS dept_code, d.name AS dept_name,
-            m.fullname AS manager_name, m.employee_code AS manager_code
+    `SELECT u.id, u.employee_code, u.fullname, u.is_active,
+            u.line_user_id, u.created_at, r.role_id, r.role_name,
+            NULL AS dept_code, dg.dept_id, dg.dept_id AS dept_name,
+            NULL AS manager_name, NULL AS manager_code
      FROM users u
-     JOIN roles r ON u.role_id=r.id
-     LEFT JOIN departments d ON u.department_id=d.id
-     LEFT JOIN users m ON u.reports_to_user_id=m.id
+     LEFT JOIN LATERAL (
+            SELECT ur.role_id, split_part(ur.role_id, '::', 1) AS role_name FROM perm.user_roles ur
+              WHERE ur.user_id = u.id
+              ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                             WHEN ur.role_id LIKE '%::2' THEN 1
+                             WHEN ur.role_id LIKE '%::3' THEN 2
+                             WHEN ur.role_id LIKE '%::4' THEN 3
+                             WHEN ur.role_id LIKE '%::5' THEN 4
+                             ELSE 5 END), ur.granted_at ASC
+              LIMIT 1
+          ) r ON true
+     LEFT JOIN LATERAL (
+       SELECT split_part(up.permission_id, ':', 3) AS dept_id FROM perm.user_permissions up
+         WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+           AND up.revoked_at IS NULL
+           AND (up.ends_at IS NULL OR up.ends_at > now())
+         ORDER BY up.permission_id LIMIT 1
+     ) dg ON true
      ${whereSql}
      ORDER BY u.id`,
     params
@@ -851,7 +990,7 @@ export async function listUserDirectory(args: {
 
 export async function listRoleOptions(actorId: number) {
   await assertRole(actorId, [], { rbacSection: 'tile-directory', rbacAction: 'read' });
-  const r = await query(`SELECT id, name FROM roles ORDER BY id`);
+  const r = await query(`SELECT id, display_name AS name FROM perm.roles WHERE kind='persona' ORDER BY id`);
   return { success: true as const, roles: r.rows };
 }
 

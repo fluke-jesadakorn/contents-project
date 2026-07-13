@@ -1,19 +1,15 @@
 // perm/ability.ts — CASL ability builder.
-// Builds a single CASL AppAbility per (user) using the permission grants
-// from perm.role_permissions and perm.effective_user_perms.
 //
-// Object-level conditions are derived from the 4th perm segment (scope):
-//   :self    → { owner_field: userId }
-//   :dept    → { dept_group_id: <user's dept(s)> }
-//   :subtree → { dept_group_id: <user's dept + descendants> }
-//   :all     → no row constraint
-//
-// (Replaces the old perm.acl_rules lookup. Scope is declarative in the
-// perm key, so no separate rules table is needed.)
+// Loads a user's role grants (each grant is a full '<d>:<s>:<v>[:q]::<effect>'
+// string), then splits into allow/deny sets via grammar.effectOf().
+// Object-level conditions are derived from the qualifier segment.
 
 import 'server-only';
 import { AbilityBuilder, createMongoAbility, type MongoAbility } from '@casl/ability';
 import { query } from '../db';
+import {
+  effectOf, parseDeptFromPerms, type Effect,
+} from './grammar';
 
 export type Actions = string;
 export type Subjects = string | { [k: string]: any };
@@ -32,34 +28,40 @@ export async function loadRoleGrants(roleIds: string[]): Promise<{ allow: Set<st
   const allow = new Set<string>();
   const deny = new Set<string>();
   if (roleIds.length === 0) return { allow, deny };
-  const { rows } = await query<{ permission_id: string; effect: 'allow' | 'deny' }>(
-    `SELECT permission_id, effect FROM perm.role_permissions WHERE role_id = ANY($1)`,
+  const { rows } = await query<{ permission_id: string }>(
+    `SELECT permission_id FROM perm.role_permissions WHERE role_id = ANY($1)`,
     [roleIds],
   );
   for (const r of rows) {
-    if (r.effect === 'allow') allow.add(r.permission_id);
-    else deny.add(r.permission_id);
+    const eff: Effect | null = effectOf(r.permission_id);
+    if (eff === 'deny') deny.add(r.permission_id);
+    else allow.add(r.permission_id);
   }
   return { allow, deny };
 }
 
-function permScope(perm: string): 'self' | 'dept' | 'subtree' | 'all' | null {
-  const parts = perm.split(':');
-  if (parts.length < 4) return null;
-  const s = parts[3];
-  if (s === 'self' || s === 'dept' || s === 'subtree' || s === 'all') return s;
-  return null;
-}
-
-async function loadUserDepts(userId: number): Promise<{ primary: string | null; all: string[] }> {
-  const { rows } = await query<{ role_id: string }>(
-    `SELECT role_id FROM perm.user_roles ur
-      JOIN perm.roles r ON r.id = ur.role_id
-     WHERE ur.user_id = $1 AND r.kind = 'department'`,
+async function loadUserDirectPerms(userId: number): Promise<string[]> {
+  const { rows } = await query<{ permission_id: string }>(
+    `SELECT permission_id FROM perm.user_permissions
+      WHERE user_id = $1 AND revoked_at IS NULL
+        AND (ends_at IS NULL OR ends_at > now())`,
     [userId],
   );
-  const all = rows.map((r) => r.role_id);
-  return { primary: all[0] ?? null, all };
+  return rows.map((r) => r.permission_id);
+}
+
+function qualifierOf(perm: string): string | null {
+  const idx = perm.indexOf('::');
+  if (idx < 0) return null;
+  const head = perm.slice(0, idx);
+  const seg = head.split(':');
+  return seg.length === 4 ? seg[3] : null;
+}
+
+async function loadUserDept(userId: number, permSet: Set<string>): Promise<string | null> {
+  const fromPerms = parseDeptFromPerms(permSet);
+  if (fromPerms) return fromPerms;
+  return null;
 }
 
 async function loadDeptSubtree(deptId: string): Promise<string[]> {
@@ -76,14 +78,21 @@ async function loadDeptSubtree(deptId: string): Promise<string[]> {
   return rows.map((r) => r.id);
 }
 
-export async function buildAbilityFor(userId: number, deptGroupId: string | null): Promise<AppAbility> {
+export async function buildAbilityFor(userId: number): Promise<AppAbility> {
   const { can, cannot, build } = new AbilityBuilder<AppAbility>(createMongoAbility);
 
   const roleIds = await loadUserRoleIds(userId);
   const { allow, deny } = await loadRoleGrants(roleIds);
+  const directPerms = await loadUserDirectPerms(userId);
+  for (const p of directPerms) {
+    if (effectOf(p) === 'deny') deny.add(p);
+    else allow.add(p);
+  }
 
-  const permissions = Array.from(allow);
-  if (roleIds.includes('admin') || permissions.includes('admin:system:bypass:all')) can('manage', 'all');
+  if (allow.has('admin:system:bypass::allow')) {
+    can('manage', 'all');
+    return build();
+  }
 
   for (const p of allow) {
     const domain = p.split(':', 1)[0];
@@ -94,29 +103,22 @@ export async function buildAbilityFor(userId: number, deptGroupId: string | null
     cannot(p, domain);
   }
 
-  // Object-level conditions from scope
-  const depts = await loadUserDepts(userId);
-  const userDeptIds = depts.all;
-  const subtreeDepts = depts.primary ? new Set(await loadDeptSubtree(depts.primary)) : new Set<string>();
+  const userDept = await loadUserDept(userId, allow);
+  const subtreeDepts = userDept ? new Set(await loadDeptSubtree(userDept)) : new Set<string>();
 
   for (const p of allow) {
-    const scope = permScope(p);
-    if (!scope) continue;
+    const q = qualifierOf(p);
+    if (!q || q === '*' || q === 'all') continue;
     const domain = p.split(':', 1)[0];
     const subject = domain === 'rbac' ? 'User' : domain.charAt(0).toUpperCase() + domain.slice(1);
-
-    if (scope === 'self') {
+    if (q === 'self') {
       can(p, subject, { submitter_id: userId });
       can(p, subject, { requester_id: userId });
       can(p, subject, { owner_id: userId });
-    } else if (scope === 'dept') {
-      for (const d of userDeptIds) {
-        can(p, subject, { dept_group_id: d });
-      }
-    } else if (scope === 'subtree') {
-      for (const d of subtreeDepts) {
-        can(p, subject, { dept_group_id: d });
-      }
+    } else if (q === 'dept' && userDept) {
+      can(p, subject, { dept_group_id: userDept });
+    } else if (q === 'subtree') {
+      for (const d of subtreeDepts) can(p, subject, { dept_group_id: d });
     }
   }
 

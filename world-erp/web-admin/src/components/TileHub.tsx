@@ -17,7 +17,7 @@ import {
   type TileAccess,
 } from './tileAccess';
 import { applyOrder, clearGroupOrder, hasGroupOrder, loadOrder, type TileOrderMap } from '@/lib/tileOrder';
-import { access } from '@/lib/access/api';
+import { matchPerm } from '@erp-lib/perm';
 
 interface TileHubProps {
   currentUser: any;
@@ -34,12 +34,11 @@ export const TileHub: React.FC<TileHubProps> = ({
   activeTileId,
   onSelectTile,
 }) => {
-  const rbacRoleId = currentUser?.rbac_role_id;
+  const userPerms: string[] = currentUser?.permissions ?? [];
   const userId = currentUser?.id ?? -1;
 
   const [selfFetched, setSelfFetched] = useState<TileDef[] | null>(tilesProp ? null : null);
   const [userOrder, setUserOrder] = useState<TileOrderMap>({});
-  const [accessMap, setAccessMap] = useState<Record<string, TileAccess>>({});
 
   const tiles = tilesProp ?? selfFetched;
 
@@ -67,7 +66,7 @@ export const TileHub: React.FC<TileHubProps> = ({
             : t.request_target === 'admin' ? 'admin'
             : t.request_target === 'hr_manager' ? 'hr_manager'
             : undefined,
-          access_meta: t.access_meta ?? null,
+          access_meta: { viewPermId: t.view_perm_id } ?? null,
         })));
       })
       .catch(() => {
@@ -80,24 +79,19 @@ export const TileHub: React.FC<TileHubProps> = ({
     setUserOrder(loadOrder(userId));
   }, [userId]);
 
-  useEffect(() => {
-    if (!rbacRoleId || !tiles || tiles.length === 0) return;
-    const moduleIds = tiles.map((t) => t.module_id);
-    let cancelled = false;
-    access.canBatch(rbacRoleId, moduleIds, 'read')
-      .then((res) => {
-        if (cancelled) return;
-        setAccessMap((prev) => {
-          const next = { ...prev };
-          for (const t of tiles) {
-            next[t.id] = tileAccessFromBatchResult(t, res);
-          }
-          return next;
-        });
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [rbacRoleId, tiles]);
+  // Resolve access synchronously from the actor's permission list.
+  const accessMap = useMemo<Record<string, TileAccess>>(() => {
+    const out: Record<string, TileAccess> = {};
+    if (!tiles) return out;
+    for (const t of tiles) {
+      const viewPerm = (t as any).access_meta?.viewPermId ?? `tile:${t.id}:view::allow`;
+      const allowed = matchPerm(userPerms, viewPerm);
+      out[t.id] = allowed
+        ? { state: 'open', reason: 'Allowed by your role.', source: 'perm' }
+        : { state: 'locked', reason: 'Restricted by your role.', source: 'perm' };
+    }
+    return out;
+  }, [tiles, userPerms]);
 
   const annotated: Annotated[] = useMemo(() => {
     if (!tiles) return [];

@@ -1,5 +1,5 @@
 import React from 'react';
-import { staffLevelAccent, staffLevelBadge, staffLevelLabel, type StaffLevel } from '@/lib/permissions';
+import { staffLevelAccent, staffLevelBadge, staffLevelLabel, type StaffLevel } from '@/lib/roles/display';
 import {
   ROLE_GLYPH,
   ROLE_ACCENT,
@@ -51,11 +51,10 @@ const LEVEL_ACCENT: Record<string, string> = {
 
 export function levelAccent(level?: number | null): string | null {
   if (typeof level !== 'number') return null;
-  if (level <= 0) return LEVEL_ACCENT.root;
-  if (level === 1) return LEVEL_ACCENT.junior;
-  if (level === 2) return LEVEL_ACCENT.mid;
-  if (level === 3) return LEVEL_ACCENT.senior;
-  return LEVEL_ACCENT.elite;
+  if (level === 1 || level === 2 || level === 3 || level === 4 || level === 5) {
+    return staffLevelAccent(level);
+  }
+  return 'from-slate-500 to-slate-700';
 }
 
 function initialsOf(name?: string): string {

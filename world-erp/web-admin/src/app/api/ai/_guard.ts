@@ -2,7 +2,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadActor, requireAction } from '@/lib/server/guard';
-import type { ActionName } from '@/lib/permissions';
+import type { ActionName } from '@/lib/roles/display';
 
 export async function aiGuard(opts: {
   action?: ActionName;

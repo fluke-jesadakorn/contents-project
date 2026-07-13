@@ -1,36 +1,36 @@
+// lib/orgScope.ts — actor scope + org tree derivation.
+//
+// Reads role-id and dept directly from perm tables using the new grammar.
+// No legacy rbac matrix; no separate dept column on users.
+
 import 'server-only';
 import { query } from '@/lib/db';
 import {
-  getEffectiveStaffLevel,
-  type StaffLevel,
-} from '@/lib/permissions';
-import { isAccessAllowed } from '@/lib/access/api.server';
-import { getDefaultStaffLevelFromDB } from '@/lib/staffLevel.server';
-import { type ActorScope } from '@/lib/rbac/scope';
+  parseRoleId, parseDeptFromPerms, matchPerm, parseLevelFromRoles,
+} from '@erp-lib/perm/server';
 
 export interface OrgNode {
   id: number;
   fullname: string;
   employee_code: string;
   role_name: string;
-  dept_id: number | null;
-  dept_code: string | null;
-  dept_name: string | null;
-  reports_to_user_id: number | null;
-  is_active: boolean;
+  role_id: string | null;
   level: number;
-  staffLevel: StaffLevel;
+  dept_id: string | null;
+  dept_name: string | null;
+  is_active: boolean;
   children: OrgNode[];
 }
 
 export interface UserScopeResult {
   actor: {
     id: number;
+    role_id: string;
     role_name: string;
-    department_id: number | null;
-    department: string | null;
+    level: number;
+    dept_id: string | null;
   };
-  rbacRoleId: string | null;
+  permissions: string[];
   isHrManager: boolean;
   isHr: boolean;
   isHod: boolean;
@@ -38,70 +38,63 @@ export interface UserScopeResult {
 }
 
 async function fetchActor(actorId: number) {
-  const r = await query(
-    `SELECT u.id, u.reports_to_user_id, u.department_id, u.department, u.rbac_role_id, r.name AS role_name
-     FROM users u JOIN roles r ON u.role_id=r.id
-     WHERE u.id=$1`,
-    [actorId]
+  const r = await query<{
+    id: number;
+    role_id: string | null;
+    permissions: string[];
+  }>(
+    `SELECT u.id,
+       COALESCE((
+         SELECT ur.role_id FROM perm.user_roles ur
+          WHERE ur.user_id = u.id
+          ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                         WHEN ur.role_id LIKE '%::2' THEN 1
+                         WHEN ur.role_id LIKE '%::3' THEN 2
+                         WHEN ur.role_id LIKE '%::4' THEN 3
+                         WHEN ur.role_id LIKE '%::5' THEN 4
+                         ELSE 5 END), ur.granted_at ASC
+          LIMIT 1
+       ), 'officer::5') AS role_id,
+       COALESCE((
+         SELECT array_agg(DISTINCT p_id ORDER BY p_id)
+           FROM (
+             SELECT rp.permission_id AS p_id
+               FROM perm.user_roles ur
+               JOIN perm.role_permissions rp ON rp.role_id = ur.role_id
+              WHERE ur.user_id = u.id
+              UNION
+             SELECT permission_id AS p_id
+               FROM perm.user_permissions
+              WHERE user_id = u.id AND revoked_at IS NULL
+                AND (ends_at IS NULL OR ends_at > now())
+           ) t
+       ), ARRAY[]::text[]) AS permissions
+      FROM users u WHERE u.id = $1`,
+    [actorId],
   );
   if (r.rows.length === 0) throw new Error('Actor not found');
   return r.rows[0];
 }
 
-function descendantsFromMap(
-  rootId: number,
-  reportsTo: Map<number, number[]>
-): number[] {
-  const out: number[] = [];
-  const stack = [rootId];
-  while (stack.length) {
-    const cur = stack.pop() as number;
-    const kids = reportsTo.get(cur) || [];
-    for (const k of kids) {
-      out.push(k);
-      stack.push(k);
-    }
-  }
-  return out;
-}
-
 async function loadActorScope(actorId: number): Promise<UserScopeResult> {
   const actor = await fetchActor(actorId);
-  const rbacRoleId = actor.rbac_role_id ?? null;
+  const perms = actor.permissions ?? [];
+  const parsed = parseRoleId(actor.role_id ?? 'officer::5');
+  const role_name = parsed?.name ?? 'officer';
+  const level = parsed?.level ?? 5;
+  const dept_id = parseDeptFromPerms(perms);
 
-  // Derive role-equality booleans from the matrix (not from role_name strings)
-  const [isHrManager, isHr, isHod, subtreeEdit] = await Promise.all([
-    isAccessAllowed(rbacRoleId ?? 'L1', 'permission-edit-user-dept', 'update'),
-    isAccessAllowed(rbacRoleId ?? 'L1', 'tile-directory', 'read'),
-    isAccessAllowed(rbacRoleId ?? 'L1', 'permission-edit-user-subtree', 'update'),
-    isAccessAllowed(rbacRoleId ?? 'L1', 'permission-edit-user-subtree', 'update'),
-  ]);
+  const isHrManager = matchPerm(perms, 'user:role:assign::allow') || matchPerm(perms, 'user:dept:edit::allow');
+  const isHr = matchPerm(perms, 'tile:directory:view::allow');
+  const isHod = matchPerm(perms, 'user:subtree:edit::allow');
 
-  let subtreeIds: number[] = [];
-  if (subtreeEdit) {
-    const all = await query(
-      `SELECT id, reports_to_user_id FROM users WHERE reports_to_user_id IS NOT NULL`
-    );
-    const map = new Map<number, number[]>();
-    for (const row of all.rows) {
-      const arr = map.get(row.reports_to_user_id) || [];
-      arr.push(row.id);
-      map.set(row.reports_to_user_id, arr);
-    }
-    subtreeIds = descendantsFromMap(actorId, map);
-  }
   return {
-    actor: {
-      id: actor.id,
-      role_name: actor.role_name,
-      department_id: actor.department_id,
-      department: actor.department,
-    },
-    rbacRoleId,
+    actor: { id: actor.id, role_id: actor.role_id ?? 'officer::5', role_name, level, dept_id },
+    permissions: perms,
     isHrManager,
     isHr,
     isHod,
-    subtreeIds,
+    subtreeIds: [],
   };
 }
 
@@ -111,7 +104,7 @@ export async function resolveActorScope(actorId: number): Promise<UserScopeResul
 
 export async function assertCanEditUser(
   scope: UserScopeResult,
-  targetUserId: number
+  targetUserId: number,
 ): Promise<void> {
   if (scope.isHrManager) return;
   if (scope.isHod) {
@@ -127,155 +120,105 @@ export async function assertCanEditUser(
 }
 
 export async function loadOrgTree(actorId: number): Promise<OrgNode[]> {
-  const scope = await loadActorScope(actorId);
+  await loadActorScope(actorId);
 
-  const userRows = await query(
-    `SELECT u.id, u.fullname, u.employee_code, u.reports_to_user_id, u.department_id, u.is_active,
-            u.staff_level,
-            r.name AS role_name,
-            d.code AS dept_code, d.name AS dept_name
-     FROM users u
-     JOIN roles r ON u.role_id=r.id
-     LEFT JOIN departments d ON u.department_id=d.id
-     ORDER BY u.id`
+  const userRows = await query<{
+    id: number;
+    fullname: string;
+    employee_code: string;
+    is_active: boolean;
+    role_id: string | null;
+    dept_id: string | null;
+  }>(
+    `SELECT u.id, u.fullname, u.employee_code, u.is_active,
+            (SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = u.id
+              ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                            WHEN ur.role_id LIKE '%::2' THEN 1
+                            WHEN ur.role_id LIKE '%::3' THEN 2
+                            WHEN ur.role_id LIKE '%::4' THEN 3
+                            WHEN ur.role_id LIKE '%::5' THEN 4
+                            ELSE 5 END), ur.granted_at ASC
+              LIMIT 1) AS role_id,
+            (SELECT up.permission_id FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS dept_id
+       FROM users u
+       ORDER BY u.id`,
   );
 
-  const allowedIds = new Set<number>();
-  if (scope.isHrManager || scope.isHr) {
-    for (const u of userRows.rows) allowedIds.add(u.id);
-  } else if (scope.isHod) {
-    allowedIds.add(scope.actor.id);
-    for (const id of scope.subtreeIds) allowedIds.add(id);
-  } else {
-    for (const u of userRows.rows) allowedIds.add(u.id);
-  }
+  const ROLE_RANK_LOCAL: Record<string, number> = {
+    ceo: 0, cfo: 1, admin: 2,
+    finance: 3, sales_supervisor: 4,
+    hr_manager: 10, accounting_manager: 11, manager: 12, sales_rep: 13,
+    account_supervisor: 20, supervisor: 21,
+    account_officer: 22, officer: 23, hr: 24, it: 25,
+  };
+  const tier = (role: string) => ROLE_RANK_LOCAL[role] ?? 99;
 
   const nodes = new Map<number, OrgNode>();
   for (const u of userRows.rows) {
-    if (!allowedIds.has(u.id)) continue;
+    const parsed = parseRoleId(u.role_id ?? 'officer::5');
     nodes.set(u.id, {
       id: u.id,
       fullname: u.fullname,
       employee_code: u.employee_code,
-      role_name: u.role_name,
-      dept_id: u.department_id,
-      dept_code: u.dept_code,
-      dept_name: u.dept_name,
-      reports_to_user_id: u.reports_to_user_id,
+      role_id: u.role_id,
+      role_name: parsed?.name ?? 'officer',
+      level: parsed?.level ?? 5,
+      dept_id: u.dept_id ? u.dept_id.replace(/^user:dept:/, '').replace(/::allow$/, '') : null,
+      dept_name: null,
       is_active: u.is_active,
-      level: 0,
-      staffLevel: getEffectiveStaffLevel({
-        staff_level: u.staff_level,
-        role_name: u.role_name,
-      }),
       children: [],
     });
   }
-
-  const ROLE_RANK_LOCAL: Record<string, number> = {
-    ceo: 0, cfo: 1, admin: 2,
-    hr_manager: 10, accounting_manager: 11, head_of_department: 12,
-    account_supervisor: 20, supervisor: 21, account_officer: 22,
-    accountant: 30, hr: 31, it: 32, staff: 33,
-  };
-  const tier = (role: string) => ROLE_RANK_LOCAL[role] ?? 99;
 
   const sortByHierarchy = (a: OrgNode, b: OrgNode) => {
     const tr = tier(a.role_name) - tier(b.role_name);
     if (tr !== 0) return tr;
     return (a.fullname || '').localeCompare(b.fullname || '');
   };
-
-  for (const node of nodes.values()) {
-    if (node.reports_to_user_id && nodes.has(node.reports_to_user_id)) {
-      nodes.get(node.reports_to_user_id)!.children.push(node);
-    }
-  }
-  for (const node of nodes.values()) {
-    node.children.sort(sortByHierarchy);
-  }
+  for (const node of nodes.values()) node.children.sort(sortByHierarchy);
 
   const roots: OrgNode[] = [];
-  for (const node of nodes.values()) {
-    if (!node.reports_to_user_id || !nodes.has(node.reports_to_user_id)) {
-      roots.push(node);
-    }
-  }
+  for (const node of nodes.values()) roots.push(node);
   roots.sort(sortByHierarchy);
 
-  // DFS to assign level (depth from root). Orphans (no reports_to) get level=0.
   const stack: { node: OrgNode; depth: number }[] = roots.map((n) => ({ node: n, depth: 0 }));
   while (stack.length) {
     const { node, depth } = stack.pop() as { node: OrgNode; depth: number };
     node.level = depth;
-    for (const child of node.children) {
-      stack.push({ node: child, depth: depth + 1 });
-    }
+    for (const child of node.children) stack.push({ node: child, depth: depth + 1 });
   }
   return roots;
 }
 
 export async function getUserLevels(): Promise<Map<number, number>> {
-  const all = await query(
-    `SELECT u.id, u.reports_to_user_id FROM users u WHERE u.reports_to_user_id IS NOT NULL`
+  const r = await query<{ id: number; role_id: string | null }>(
+    `SELECT u.id,
+            (SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = u.id LIMIT 1) AS role_id
+       FROM users u`,
   );
-  const childrenByParent = new Map<number, number[]>();
-  for (const row of all.rows) {
-    const arr = childrenByParent.get(row.reports_to_user_id) || [];
-    arr.push(row.id);
-    childrenByParent.set(row.reports_to_user_id, arr);
-  }
-  const allUsers = await query(`SELECT id FROM users`);
-  const allIds = new Set<number>(allUsers.rows.map((r) => r.id));
-  const childOf = (id: number) => {
-    for (const [parent, kids] of childrenByParent.entries()) {
-      if (kids.includes(id)) return parent;
-    }
-    return null;
-  };
-
   const levels = new Map<number, number>();
-  for (const id of allIds) {
-    if (levels.has(id)) continue;
-    let depth = 0;
-    let cur: number | null = id;
-    const seen = new Set<number>();
-    while (cur !== null && !levels.has(cur)) {
-      if (seen.has(cur)) break;
-      seen.add(cur);
-      const parent = childOf(cur);
-      if (parent === null) {
-        levels.set(id, depth);
-        break;
-      }
-      cur = parent;
-      depth++;
-    }
-    if (cur !== null && levels.has(cur)) {
-      levels.set(id, depth + (levels.get(cur) ?? 0));
-    }
+  for (const row of r.rows) {
+    const parsed = parseRoleId(row.role_id ?? 'officer::5');
+    levels.set(row.id, parsed?.level ?? 5);
   }
   return levels;
 }
 
-export async function getUserStaffLevels(): Promise<Map<number, StaffLevel>> {
-  const r = await query(
-    `SELECT u.id, u.staff_level, r.name AS role_name
-     FROM users u JOIN roles r ON u.role_id=r.id`
+export async function getUserStaffLevels(): Promise<Map<number, number>> {
+  const r = await query<{ user_id: number; role_ids: string[] | null }>(
+    `SELECT ur.user_id, array_agg(ur.role_id) AS role_ids
+       FROM perm.user_roles ur
+      GROUP BY ur.user_id`,
   );
-  const out = new Map<number, StaffLevel>();
+  const out = new Map<number, number>();
   for (const row of r.rows) {
-    let eff = getEffectiveStaffLevel({
-      staff_level: row.staff_level,
-      role_name: row.role_name,
-    });
-    if (row.staff_level === null || row.staff_level === undefined) {
-      const fromDb = await getDefaultStaffLevelFromDB(row.role_name);
-      if (fromDb !== eff) eff = fromDb;
-    }
-    out.set(row.id, eff);
+    out.set(row.user_id, parseLevelFromRoles(row.role_ids ?? []));
   }
   return out;
 }
-
-export type { ActorScope };

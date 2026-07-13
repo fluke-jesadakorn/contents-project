@@ -8,8 +8,7 @@ import { query } from '../db';
 import type { ActionName } from './sessionToken.types';
 
 export interface RequireActionOpts {
-  rbacSection?: string;
-  rbacAction?: 'create' | 'read' | 'update' | 'delete';
+  perm?: string;
   stage?: string;
 }
 

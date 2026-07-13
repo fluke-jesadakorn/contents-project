@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { loadActor } from '@/lib/server/guard';
-import { isAccessAllowed } from '@/lib/access/api.server';
+import { matchPerm } from '@erp-lib/perm/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status') ?? undefined;
 
-  const canListAll = await isAccessAllowed(actor.rbac_role_id ?? 'L1', 'access-request-list', 'read');
+  const canListAll = matchPerm(actor.permissions, 'access_request:request:list::allow');
   let where = '';
   const params: any[] = [];
   if (canListAll) {
@@ -31,45 +31,68 @@ export async function GET(req: NextRequest) {
     }
   }
   const r = await query(
-    `SELECT ar.id, ar.actor_id, u.fullname AS actor_name, u.department AS actor_department,
-            u.dept_group_id AS actor_dept_group_id, dg.name AS actor_dept_group_name,
+    `SELECT ar.id, ar.actor_id, u.fullname AS actor_name,
+            (SELECT up.permission_id FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS actor_dept_perm,
             ar.tile_id, ar.tile_title, ar.note, ar.status, ar.target_user_id,
             tu.fullname AS target_name, ar.target_role,
             ar.created_at, ar.resolved_at, ar.resolved_by_user_id,
             ru.fullname AS resolver_name, ar.resolved_note
-     FROM access_requests ar
-     JOIN users u ON u.id = ar.actor_id
-     LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
-     LEFT JOIN users tu ON tu.id = ar.target_user_id
-     LEFT JOIN users ru ON ru.id = ar.resolved_by_user_id
-     ${where}
-     ORDER BY ar.created_at DESC
-     LIMIT 200`,
+       FROM access_requests ar
+       JOIN users u ON u.id = ar.actor_id
+       LEFT JOIN users tu ON tu.id = ar.target_user_id
+       LEFT JOIN users ru ON ru.id = ar.resolved_by_user_id
+       ${where}
+       ORDER BY ar.created_at DESC
+       LIMIT 200`,
     params,
   );
-  return NextResponse.json({ requests: r.rows });
+  const requests = r.rows.map((row: any) => ({
+    ...row,
+    actor_department: row.actor_dept_perm
+      ? row.actor_dept_perm.replace(/^user:dept:/, '').replace(/::allow$/, '')
+      : null,
+    actor_dept_group_id: row.actor_dept_perm
+      ? row.actor_dept_perm.replace(/^user:dept:/, '').replace(/::allow$/, '')
+      : null,
+    actor_dept_group_name: row.actor_dept_perm
+      ? row.actor_dept_perm.replace(/^user:dept:/, '').replace(/::allow$/, '')
+      : null,
+  }));
+  return NextResponse.json({ requests });
 }
 
 export async function POST(req: NextRequest) {
   const actor = await loadActor();
   if (!actor) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const body = await req.json();
-  const { tileId, tileTitle, target, note } = body as { tileId: string; tileTitle?: string; target: 'hr_manager' | 'cfo' | 'admin'; note?: string };
+  const { tileId, tileTitle, target, note } = body as {
+    tileId: string;
+    tileTitle?: string;
+    target: 'hr_manager' | 'cfo' | 'admin';
+    note?: string;
+  };
   if (!tileId || !target) return NextResponse.json({ error: 'tileId and target required' }, { status: 400 });
 
   const targetRes = await query(
-    `SELECT u.id, u.fullname
-     FROM users u JOIN roles r ON u.role_id = r.id
-     WHERE r.name = $1 AND u.is_active = TRUE
-     ORDER BY u.id LIMIT 1`,
+    `SELECT u.id, u.fullname FROM users u
+      WHERE u.is_active = TRUE
+        AND EXISTS (
+          SELECT 1 FROM perm.user_roles ur
+           WHERE ur.user_id = u.id AND split_part(ur.role_id, '::', 1) = $1
+        )
+      ORDER BY u.id LIMIT 1`,
     [target],
   );
   const targetUser = targetRes.rows[0];
 
   const existing = await query(
     `SELECT id, created_at FROM access_requests
-     WHERE actor_id = $1 AND tile_id = $2 AND status = 'pending'
-     LIMIT 1`,
+      WHERE actor_id = $1 AND tile_id = $2 AND status = 'pending'
+      LIMIT 1`,
     [actor.id, tileId],
   );
   if (existing.rows.length > 0) {

@@ -2,14 +2,14 @@ import React from 'react';
 import Link from 'next/link';
 
 export interface CategoryChip {
-  label: string;
+  label: React.ReactNode;
   icon: string;
   href?: string;
 }
 
 interface PageLayoutProps {
-  title: string;
-  subtitle?: string;
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   category?: CategoryChip;
   actions?: React.ReactNode;
   children: React.ReactNode;
@@ -43,20 +43,26 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
         )}
       </div>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight text-white leading-tight">
-            {title}
-          </h1>
+      {(title || actions) && (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          {(title || subtitle) && (
+            <div>
+              {title && (
+                <h1 className="text-[28px] font-bold tracking-tight text-white leading-tight">
+                  {title}
+                </h1>
+              )}
 
-          {subtitle && (
-            <p className="mt-1 text-[13px] text-slate-400 leading-relaxed">
-              {subtitle}
-            </p>
+              {subtitle && (
+                <p className="mt-1 text-[13px] text-slate-400 leading-relaxed">
+                  {subtitle}
+                </p>
+              )}
+            </div>
           )}
+          {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
         </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-      </div>
+      )}
 
       <div className="mt-8">{children}</div>
     </main>

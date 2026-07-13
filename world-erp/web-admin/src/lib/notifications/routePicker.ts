@@ -66,7 +66,7 @@ const FALLBACK: Candidate = {
   targetKind: null,
 };
 
-const DASHBOARD_FALLBACK = { href: '/dashboard', focus: null as string | null };
+const DASHBOARD_FALLBACK = { href: '/', focus: null as string | null };
 
 export interface NotificationInput {
   type: string;

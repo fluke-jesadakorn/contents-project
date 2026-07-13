@@ -1,98 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { loadActor } from '@/lib/server/guard';
-import { isAccessAllowed } from '@/lib/access/api.server';
-
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import { matchPerm, parseRoleId } from '@erp-lib/perm/server';
 
 export async function GET(req: NextRequest) {
   const actor = await loadActor();
   if (!actor) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
+  if (!matchPerm(actor.permissions, 'user:directory:read::allow')) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
   const { searchParams } = new URL(req.url);
-  const filterRole = searchParams.get('role') ?? undefined;
-  const filterDeptId = searchParams.get('department_id')
-    ? Number(searchParams.get('department_id'))
-    : undefined;
-  const includeInactive = searchParams.get('include_inactive') === 'true';
+  const filterDeptId = searchParams.get('dept_group_id')
+    ? String(searchParams.get('dept_group_id'))
+    : null;
+  const filterRole = searchParams.get('role') ?? null;
+  const includeInactive = searchParams.get('include_inactive') === '1';
 
-  const allowed = await isAccessAllowed(actor.rbac_role_id ?? 'L1', 'tile-directory', 'read');
-  if (!allowed) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-
+  const params: unknown[] = [];
   const where: string[] = [];
-  const params: any[] = [];
-  if (filterRole) {
-    params.push(filterRole);
-    where.push(`r.name=$${params.length}`);
-  }
-  if (filterDeptId) {
-    params.push(filterDeptId);
-    where.push(`u.department_id=$${params.length}`);
-  }
   if (!includeInactive) where.push('u.is_active=TRUE');
+  if (filterDeptId || filterRole) {
+    where.push(`EXISTS (
+      SELECT 1 FROM perm.user_permissions up
+       WHERE up.user_id = u.id AND up.revoked_at IS NULL
+         AND (up.ends_at IS NULL OR up.ends_at > now())
+         ${filterDeptId ? `AND up.permission_id = $${params.length + 1}` : ''}
+         ${filterRole ? `AND up.permission_id LIKE '%' || $${params.length + (filterDeptId ? 2 : 1)} || '%'` : ''}
+    )`);
+    if (filterDeptId) params.push(`user:dept:${filterDeptId}::allow`);
+    if (filterRole) params.push(filterRole);
+  }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   const r = await query(
-    `SELECT u.id, u.employee_code, u.fullname, u.department, u.department_id,
-            u.reports_to_user_id, u.is_active, u.line_user_id, u.created_at,
-            u.staff_level, u.dept_group_id, dg.name AS dept_group_name,
-            r.name AS role_name, d.code AS dept_code, d.name AS dept_name,
-            m.fullname AS manager_name, m.employee_code AS manager_code
-     FROM users u
-     JOIN roles r ON u.role_id=r.id
-     LEFT JOIN departments d ON u.department_id=d.id
-     LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
-     LEFT JOIN users m ON u.reports_to_user_id=m.id
-     ${whereSql}
-     ORDER BY u.id`,
+    `SELECT u.id, u.employee_code, u.fullname, u.is_active,
+            u.line_user_id, u.created_at, u.hired_at,
+            (SELECT up.permission_id FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS dept_perm,
+            (SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = u.id
+              ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                             WHEN ur.role_id LIKE '%::2' THEN 1
+                             WHEN ur.role_id LIKE '%::3' THEN 2
+                             WHEN ur.role_id LIKE '%::4' THEN 3
+                             WHEN ur.role_id LIKE '%::5' THEN 4
+                             ELSE 5 END), ur.granted_at ASC
+              LIMIT 1) AS role_id
+       FROM users u
+       ${whereSql}
+       ORDER BY u.id`,
     params,
   );
-  return NextResponse.json({ users: r.rows });
+  const users = r.rows.map((row: any) => {
+    const parsed = parseRoleId(row.role_id ?? 'officer::5');
+    const deptId = row.dept_perm ? row.dept_perm.replace(/^user:dept:/, '').replace(/::allow$/, '') : null;
+    return {
+      ...row,
+      role_name: parsed?.name ?? 'officer',
+      role_id: row.role_id,
+      level: parsed?.level ?? 5,
+      dept_id: deptId,
+      dept_group_name: deptId,
+      dept_group_id: deptId,
+      department: deptId,
+    };
+  });
+  return NextResponse.json({ users });
 }
 
 export async function POST(req: NextRequest) {
   const actor = await loadActor();
   if (!actor) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
-  const allowed = await isAccessAllowed(actor.rbac_role_id ?? 'L1', 'create_user', 'update');
-  if (!allowed) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-
+  if (!matchPerm(actor.permissions, 'user:profile:create::allow')) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
   const body = await req.json();
   const code = (body.employee_code || '').trim();
   if (!code) return NextResponse.json({ error: 'Employee code is required' }, { status: 400 });
   if (!body.fullname?.trim()) return NextResponse.json({ error: 'Full name is required' }, { status: 400 });
 
-  const roleRes = await query(`SELECT id FROM roles WHERE name=$1`, [body.role_name]);
-  if (roleRes.rows.length === 0) return NextResponse.json({ error: `Role "${body.role_name}" not found` }, { status: 400 });
-
-  let deptText: string | null = null;
-  if (body.department_id) {
-    const dRes = await query(`SELECT code FROM departments WHERE id=$1`, [body.department_id]);
-    if (dRes.rows.length === 0) return NextResponse.json({ error: 'Invalid department_id' }, { status: 400 });
-    deptText = dRes.rows[0].code;
-  }
-
-  if (body.staff_level != null && (body.staff_level < 1 || body.staff_level > 5)) {
-    return NextResponse.json({ error: 'staff_level must be between 1 and 5' }, { status: 400 });
-  }
-
   const dup = await query(`SELECT 1 FROM users WHERE employee_code=$1`, [code]);
   if (dup.rows.length > 0) return NextResponse.json({ error: 'Duplicate employee code' }, { status: 400 });
 
   const ins = await query(
-    `INSERT INTO users (employee_code, fullname, role_id, department, department_id, reports_to_user_id, is_active, staff_level)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-    [
-      code,
-      body.fullname.trim(),
-      roleRes.rows[0].id,
-      deptText,
-      body.department_id || null,
-      body.reports_to_user_id || null,
-      body.is_active === false ? false : true,
-      body.staff_level ?? null,
-    ],
+    `INSERT INTO users (employee_code, fullname, is_active, hired_at)
+     VALUES ($1, $2, TRUE, CURRENT_DATE) RETURNING id`,
+    [code, body.fullname.trim()],
   );
-  return NextResponse.json({ id: ins.rows[0].id });
+  return NextResponse.json({ ok: true, id: ins.rows[0].id });
 }

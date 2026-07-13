@@ -18,7 +18,7 @@ interface NoPermissionViewProps {
   } | null;
   tile?: TileDef | null;
   access?: TileAccess | null;
-  reason?: string;
+  reason?: React.ReactNode;
   /** Path the user tried to visit. */
   attemptedPath?: string;
 }
@@ -178,7 +178,7 @@ export const NoPermissionView: React.FC<NoPermissionViewProps> = ({
 
             {isDev() && (
               <Link
-                href="/dashboard"
+                href="/"
                 className="px-4 py-2.5 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 hover:bg-indigo-500/30 text-indigo-100 text-xs font-bold font-mono uppercase tracking-wider transition-colors"
               >
                 🧪 Switch Persona (Dev)

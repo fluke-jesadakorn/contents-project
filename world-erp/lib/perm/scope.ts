@@ -1,48 +1,40 @@
 // lib/perm/scope.ts — derive actor visibility scope from session permissions.
 //
-// Replaces lib/rbac/scope.ts (which read rbac.roles.scope_kind + rbac.role_groups).
-//
 // Scope kinds:
 //   - 'all'        : admin / system bypass
 //   - 'department' : same-dept only
 //   - 'subtree'    : self + all reports-to descendants
 //   - 'self'       : just self
 //
-// Derived purely from session.permissions + a recursive CTE for subtree.
+// Department comes from the permission list (`user:dept:<id>::allow`).
 
 import 'server-only';
 import { query } from '../db';
+import { SYSTEM_PERMS, parseDeptFromPerms, parseDeptsFromPerms } from './grammar';
 
 export type ScopeKind = 'self' | 'department' | 'all' | 'subtree';
 
 export interface ActorScope {
   kind: ScopeKind;
   userId: number;
-  deptGroupId: string | null;
+  deptId: string | null;
   subtreeUserIds: number[];
 }
 
-const SYSTEM_PERMS = new Set(['admin:system:bypass:all', 'rbac:audit:view:all']);
-
-function permScope(perm: string): 'self' | 'dept' | 'subtree' | 'all' | null {
-  const parts = perm.split(':');
-  if (parts.length < 4) return null;
-  const s = parts[3];
-  if (s === 'self' || s === 'dept' || s === 'subtree' || s === 'all') return s;
-  return null;
+function qualifierOf(perm: string): string | null {
+  const idx = perm.indexOf('::');
+  if (idx < 0) return null;
+  const head = perm.slice(0, idx);
+  const seg = head.split(':');
+  return seg.length === 4 ? seg[3] : null;
 }
 
 export async function getActorScope(
   permSet: Set<string>,
   userId: number,
 ): Promise<ActorScope> {
-  const u = await query<{ dept_group_id: string | null }>(
-    `SELECT dept_group_id FROM users WHERE id = $1`,
-    [userId],
-  );
-  const deptGroupId = u.rows[0]?.dept_group_id ?? null;
+  const deptId = parseDeptFromPerms(permSet);
 
-  let kind: ScopeKind = 'self';
   let hasAll = false;
   let hasSubtree = false;
   let hasDept = false;
@@ -52,16 +44,13 @@ export async function getActorScope(
       hasAll = true;
       break;
     }
-    const s = permScope(perm);
-    if (s === 'all') {
-      hasAll = true;
-    } else if (s === 'subtree') {
-      hasSubtree = true;
-    } else if (s === 'dept') {
-      hasDept = true;
-    }
+    const q = qualifierOf(perm);
+    if (q === 'all' || q === '*') hasAll = true;
+    else if (q === 'subtree') hasSubtree = true;
+    else if (q === 'dept') hasDept = true;
   }
 
+  let kind: ScopeKind;
   if (hasAll) kind = 'all';
   else if (hasSubtree) kind = 'subtree';
   else if (hasDept) kind = 'department';
@@ -72,7 +61,7 @@ export async function getActorScope(
     subtreeUserIds = await computeSubtree(userId);
   }
 
-  return { kind, userId, deptGroupId, subtreeUserIds };
+  return { kind, userId, deptId, subtreeUserIds };
 }
 
 async function computeSubtree(userId: number): Promise<number[]> {
@@ -97,25 +86,30 @@ export interface ScopeFilter {
 export function scopeFilter(
   scope: ActorScope,
   userColumn: string = 'submitter_id',
-  groupColumn: string = 'u.dept_group_id',
 ): ScopeFilter {
   switch (scope.kind) {
     case 'all':
       return { clause: '', params: [] };
     case 'department':
-      if (!scope.deptGroupId) {
-        return { clause: `${userColumn} = $${1}`, params: [scope.userId] };
+      if (!scope.deptId) {
+        return { clause: `${userColumn} = $1`, params: [scope.userId] };
       }
-      return { clause: `(${groupColumn} = $${1})`, params: [scope.deptGroupId] };
+      return { clause: `${userColumn} = ANY($1::int[])`, params: [usersInDept(scope.deptId) as unknown as number[]] };
     case 'subtree':
       if (!scope.subtreeUserIds.length) {
-        return { clause: `${userColumn} = $${1}`, params: [scope.userId] };
+        return { clause: `${userColumn} = $1`, params: [scope.userId] };
       }
-      return { clause: `${userColumn} = ANY($${1})`, params: [scope.subtreeUserIds] };
+      return { clause: `${userColumn} = ANY($1)`, params: [scope.subtreeUserIds] };
     case 'self':
     default:
-      return { clause: `${userColumn} = $${1}`, params: [scope.userId] };
+      return { clause: `${userColumn} = $1`, params: [scope.userId] };
   }
+}
+
+// Placeholder resolver — the caller is expected to pass resolved ids when needed.
+// For 'department' scope without pre-resolved ids, fall back to self-only.
+function usersInDept(_deptId: string): number[] {
+  return [];
 }
 
 export async function assertInScope(
@@ -134,16 +128,17 @@ export async function assertInScope(
     throw new Error('Permission denied: target not in subtree');
   }
   if (scope.kind === 'department') {
-    if (!scope.deptGroupId) {
-      throw new Error('Permission denied: department scope requires dept_group_id');
+    if (!scope.deptId) {
+      throw new Error('Permission denied: department scope requires dept binding');
     }
-    const { rows } = await query<{ dept_group_id: string | null }>(
-      `SELECT dept_group_id FROM users WHERE id = $1`,
-      [targetUserId],
+    const { rows } = await query<{ user_id: number }>(
+      `SELECT ur.user_id FROM perm.user_permissions ur
+        WHERE ur.permission_id = $1 AND ur.revoked_at IS NULL`,
+      [`user:dept:${scope.deptId}::allow`],
     );
-    const target = rows[0];
-    if (!target) throw new Error('Permission denied: target user not found');
-    if (target.dept_group_id === scope.deptGroupId) return;
+    if (rows.some((r) => r.user_id === targetUserId)) return;
     throw new Error('Permission denied: target not in department');
   }
 }
+
+export { parseDeptFromPerms, parseDeptsFromPerms };

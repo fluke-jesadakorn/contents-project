@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CommandPalette } from './CommandPalette';
-import type { RoleName } from '@/lib/permissions';
+import type { RoleName } from '@/lib/roles/display';
 
 interface NavbarSearchProps {
   role: RoleName | undefined;

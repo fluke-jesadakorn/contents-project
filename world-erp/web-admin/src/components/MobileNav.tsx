@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import type { RoleName } from '@/lib/permissions';
+import type { RoleName } from '@/lib/roles/display';
 import { UserAvatar, roleGlyph, roleAccent } from './UserAvatar';
 
 interface MobileNavProps {

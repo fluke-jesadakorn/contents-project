@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { presignedGetUrl } from '@erp-lib/slips/storage';
 import { apiGuard } from '@/lib/server/apiGuard';
 import { loadWaybill } from '@/lib/server/waybill';
 
@@ -22,11 +21,5 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   if (!key.startsWith(`waybill-attachments/${id}/`)) {
     return NextResponse.json({ error: 'key does not belong to this waybill' }, { status: 403 });
   }
-
-  try {
-    const signed = await presignedGetUrl(key, 600);
-    return NextResponse.redirect(signed, 302);
-  } catch {
-    return NextResponse.json({ error: 'not found' }, { status: 404 });
-  }
+  return NextResponse.redirect(new URL(`/api/slips/file?key=${encodeURIComponent(key)}`, req.url), 302);
 }

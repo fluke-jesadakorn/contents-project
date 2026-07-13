@@ -50,7 +50,7 @@ const QUICK_ACTIONS: Array<{
   isButton: boolean;
 }> = [
   { key: 'search',       label: 'Quick search',    hint: '⌘K',          icon: '🔍', tone: 'from-indigo-500/20 to-indigo-900/20 border-indigo-500/30', isButton: true },
-  { key: 'dashboard',    label: 'Dashboard',       hint: 'overview',    icon: '📊', tone: 'from-cyan-500/20 to-cyan-900/20 border-cyan-500/30',     isButton: false, href: '/dashboard' },
+  { key: 'dashboard',    label: 'Dashboard',       hint: 'overview',    icon: '📊', tone: 'from-cyan-500/20 to-cyan-900/20 border-cyan-500/30',     isButton: false, href: '/' },
   { key: 'persona',      label: 'Switch persona',  hint: 'dev tool',    icon: '👤', tone: 'from-purple-500/20 to-purple-900/20 border-purple-500/30', isButton: true },
   { key: 'notifications',label: 'Notifications',   hint: 'inbox',       icon: '🔔', tone: 'from-amber-500/20 to-amber-900/20 border-amber-500/30',   isButton: true },
 ];

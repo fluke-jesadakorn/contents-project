@@ -1,41 +1,34 @@
-// perm row shapes — match perm.* tables exactly.
+// perm row shapes — match perm.* tables exactly (post string-grammar rebuild).
 
 export interface Role {
-  id: string;
+  id: string;            // '<name>::<level>' e.g. 'manager::3'
   display_name: string;
   description: string | null;
   is_system: boolean;
   sort_order: number;
+  parent_role_id: string | null;
+  display_name_th: string | null;
+  display_name_de: string | null;
+  monthly_budget: number;
+  head_user_id: number | null;
 }
 
 export interface Permission {
-  id: string;
-  domain: string;
-  subject: string;
-  verb: string;
+  id: string;            // '<d>:<s>:<v>[:<q>]::<effect>'
   description: string | null;
 }
-
-export type Effect = 'allow' | 'deny';
 
 export interface RolePermission {
   role_id: string;
   permission_id: string;
-  effect: Effect;
+  granted_at: string;
+  granted_by: string;
 }
 
 export interface UserRole {
   user_id: number;
   role_id: string;
-}
-
-export interface AclRule {
-  id: number;
-  permission_id: string;
-  subject_type: string;
-  owner_field: string;
-  can_assign_to_self: boolean;
-  can_assign_to_group: boolean;
+  granted_at: string;
 }
 
 export interface AuditEntry {

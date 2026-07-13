@@ -4,9 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { query } from '@/lib/db';
 import { requireActionFor } from '@/lib/server/requireActionFor';
 import { loadActor } from '@/lib/server/guard';
-import { hasPermission, PERM, STAGE_TO_ROLE } from '@erp-lib/perm';
-import type { StageName, ActorCtx, ResolverCtx } from '@erp-lib/perm';
-import { resolveApprovalChain, canActOnStage, getApprovedStages } from '@erp-lib/perm';
+import { hasPermission, PERM, STAGE_TO_ROLE } from '@erp-lib/perm/server';
+import type { StageName, ActorCtx, ResolverCtx } from '@erp-lib/perm/server';
+import { resolveApprovalChain, canActOnStage, getApprovedStages } from '@erp-lib/perm/server';
 import { postExpenseToGL } from '@/lib/finance/postExpenseToGL';
 import { recordTransition } from '@erp-lib/approval/recordTransition';
 import { appendWaybillEvent } from '@erp-lib/waybill/append';
@@ -23,28 +23,32 @@ import { publish as publishEvent } from '@/lib/events';
 async function fetchActorCtx(userId: number): Promise<ActorCtx> {
   const r = await query<{
     role_id: string | null;
-    dept_group_id: string | null;
+    dept_id: string | null;
     level: number;
   }>(
-    `SELECT u.dept_group_id,
-            (SELECT pr.id FROM perm.user_roles ur
-              JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-              JOIN perm.role_effective_level prel ON prel.role_id = pr.id
-             WHERE ur.user_id = u.id
-             ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
-            COALESCE(
-              (SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id),
-              5
-            )::int AS level
+    `SELECT (SELECT up.permission_id FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS dept_id,
+            (SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = u.id
+              ORDER BY split_part(ur.role_id, '::', 2)::int ASC NULLS LAST
+              LIMIT 1) AS role_id,
+            COALESCE((SELECT MIN(split_part(ur.role_id, '::', 2)::int)
+                       FROM perm.user_roles ur WHERE ur.user_id = u.id), 5)::int AS level
        FROM users u
       WHERE u.id = $1`,
     [userId],
   );
   const row = r.rows[0];
+  const deptId = row?.dept_id
+    ? row.dept_id.replace(/^user:dept:/, '').replace(/::allow$/, '')
+    : null;
   return {
     userId,
     roleId: row?.role_id ?? '',
-    deptGroupId: row?.dept_group_id ?? null,
+    deptGroupId: deptId,
     level: row?.level ?? 5,
   };
 }
@@ -52,26 +56,34 @@ async function fetchActorCtx(userId: number): Promise<ActorCtx> {
 async function fetchSubmitterCtx(expenseId: number): Promise<ResolverCtx> {
   const r = await query<{
     submitter_id: number;
-    dept_group_id: string | null;
+    dept_id: string | null;
     role_id: string | null;
     level: number;
   }>(
-    `SELECT e.submitter_id, u.dept_group_id,
-            (SELECT pr.id FROM perm.user_roles ur
-              JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-              JOIN perm.role_effective_level prel ON prel.role_id = pr.id
-             WHERE ur.user_id = u.id
-             ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
-            COALESCE((SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id), 5)::int AS level
+    `SELECT e.submitter_id,
+            (SELECT up.permission_id FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS dept_id,
+            (SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = u.id
+              ORDER BY split_part(ur.role_id, '::', 2)::int ASC NULLS LAST
+              LIMIT 1) AS role_id,
+            COALESCE((SELECT MIN(split_part(ur.role_id, '::', 2)::int)
+                       FROM perm.user_roles ur WHERE ur.user_id = u.id), 5)::int AS level
 FROM expenses e
        JOIN users u ON u.id = e.submitter_id
        WHERE e.id = $1`,
     [expenseId],
   );
   const row = r.rows[0];
+  const deptId = row?.dept_id
+    ? row.dept_id.replace(/^user:dept:/, '').replace(/::allow$/, '')
+    : null;
   return {
     submitterUserId: row?.submitter_id ?? 0,
-    submitterDeptId: row?.dept_group_id ?? null,
+    submitterDeptId: deptId,
     submitterRoleId: row?.role_id ?? '',
     submitterLevel: row?.level ?? 5,
     alreadyApproved: new Set<StageName>(),
@@ -81,26 +93,34 @@ FROM expenses e
 async function fetchPrSubmitterCtx(prId: number): Promise<ResolverCtx> {
   const r = await query<{
     requester_id: number;
-    dept_group_id: string | null;
+    dept_id: string | null;
     role_id: string | null;
     level: number;
   }>(
-    `SELECT pr.requester_id, pr.dept_group_id,
-            (SELECT pr2.id FROM perm.user_roles ur
-              JOIN perm.roles pr2 ON pr2.id = ur.role_id AND pr2.kind = 'persona'
-              JOIN perm.role_effective_level prel ON prel.role_id = pr2.id
-             WHERE ur.user_id = u.id
-             ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
-            COALESCE((SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id), 5)::int AS level
+    `SELECT pr.requester_id,
+            (SELECT up.permission_id FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS dept_id,
+            (SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = u.id
+              ORDER BY split_part(ur.role_id, '::', 2)::int ASC NULLS LAST
+              LIMIT 1) AS role_id,
+            COALESCE((SELECT MIN(split_part(ur.role_id, '::', 2)::int)
+                       FROM perm.user_roles ur WHERE ur.user_id = u.id), 5)::int AS level
        FROM purchase_requisitions pr
        JOIN users u ON u.id = pr.requester_id
       WHERE pr.id = $1`,
     [prId],
   );
   const row = r.rows[0];
+  const deptId = row?.dept_id
+    ? row.dept_id.replace(/^user:dept:/, '').replace(/::allow$/, '')
+    : null;
   return {
     submitterUserId: row?.requester_id ?? 0,
-    submitterDeptId: row?.dept_group_id ?? null,
+    submitterDeptId: deptId,
     submitterRoleId: row?.role_id ?? '',
     submitterLevel: row?.level ?? 5,
     alreadyApproved: new Set<StageName>(),
@@ -321,6 +341,7 @@ export async function submitExpenseFromSlip(args: {
   draftWaybillId?: string;
   overrides?: {
     vendorName?: string;
+    createdTo?: string;
     transactionDate?: string;
     paymentMethod?: string;
     bookBankSlipId?: number;
@@ -382,6 +403,9 @@ export async function submitExpenseFromSlip(args: {
     }
 
     const vendor = args.overrides?.vendorName || parsed.vendorName || 'Unknown Vendor';
+    const vendorAddress = args.overrides?.vendorAddress || parsed.vendorAddress || '';
+    const createdTo = args.overrides?.createdTo || parsed.createdTo || '';
+    const createdToAddress = args.overrides?.createdToAddress || parsed.createdToAddress || '';
     const txnDate = args.overrides?.transactionDate || parsed.transactionDate || new Date().toISOString().split('T')[0];
     const subtotal = Number(parsed.subtotal ?? 0);
     const vatAmount = Number(parsed.vatAmount ?? 0);
@@ -402,13 +426,16 @@ export async function submitExpenseFromSlip(args: {
         `UPDATE expenses
             SET vendor_name = $1, transaction_date = $2, subtotal = $3, vat_amount = $4, total_amount = $5,
                 payment_method = $6, is_corrupted = $7, correction_notes = $8, ocr_raw_json = $9,
-                document_url = $10, status = 'submission', updated_at = CURRENT_TIMESTAMP
+                document_url = $10, status = 'submission', created_to = $12, vendor_address = $13, created_to_address = $14, updated_at = CURRENT_TIMESTAMP
           WHERE id = $11`,
         [
           vendor, txnDate, subtotal, vatAmount, totalAmount, paymentMethod,
           isCorrupted, correctionNotes, JSON.stringify(parsed),
           `/api/slips/file?key=${encodeURIComponent(slip.file_path)}`,
           expenseId,
+          createdTo || null,
+          vendorAddress || null,
+          createdToAddress || null,
         ],
       );
       await query(`DELETE FROM expense_items WHERE expense_id = $1`, [expenseId]);
@@ -421,9 +448,9 @@ export async function submitExpenseFromSlip(args: {
       await query(
         `UPDATE waybills
             SET vendor_name = $1, total_amount = $2, current_stage = 'submission',
-                currency = 'THB', updated_at = now()
+                created_to = $4, vendor_address = $5, created_to_address = $6, currency = 'THB', updated_at = now()
           WHERE id = $3`,
-        [vendor, totalAmount, draftContext.waybillId],
+        [vendor, totalAmount, draftContext.waybillId, createdTo || null, vendorAddress || null, createdToAddress || null],
       );
     } else if (preExistingExpenseId) {
       expenseId = preExistingExpenseId;
@@ -433,13 +460,16 @@ export async function submitExpenseFromSlip(args: {
         `UPDATE expenses
             SET vendor_name = $1, transaction_date = $2, subtotal = $3, vat_amount = $4, total_amount = $5,
                 payment_method = $6, is_corrupted = $7, correction_notes = $8, ocr_raw_json = $9,
-                document_url = $10, updated_at = CURRENT_TIMESTAMP
+                document_url = $10, created_to = $12, vendor_address = $13, created_to_address = $14, updated_at = CURRENT_TIMESTAMP
           WHERE id = $11`,
         [
           vendor, txnDate, subtotal, vatAmount, totalAmount, paymentMethod,
           isCorrupted, correctionNotes, JSON.stringify(parsed),
           `/api/slips/file?key=${encodeURIComponent(slip.file_path)}`,
           expenseId,
+          createdTo || null,
+          vendorAddress || null,
+          createdToAddress || null,
         ],
       );
       await query(`DELETE FROM expense_items WHERE expense_id = $1`, [expenseId]);
@@ -447,14 +477,17 @@ export async function submitExpenseFromSlip(args: {
       const headerRes = await query(
         `INSERT INTO expenses (
            submitter_id, vendor_name, transaction_date, subtotal, vat_amount, total_amount,
-           payment_method, status, is_corrupted, correction_notes, ocr_raw_json, document_url
+           payment_method, status, is_corrupted, correction_notes, ocr_raw_json, document_url, created_to, vendor_address, created_to_address
          )
-         VALUES ($1,$2,$3,$4,$5,$6,$7,'submission',$8,$9,$10,$11)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'submission',$8,$9,$10,$11,$12,$13,$14)
          RETURNING id`,
         [
           args.actorId, vendor, txnDate, subtotal, vatAmount, totalAmount, paymentMethod,
           isCorrupted, correctionNotes, JSON.stringify(parsed),
           `/api/slips/file?key=${encodeURIComponent(slip.file_path)}`,
+          createdTo || null,
+          vendorAddress || null,
+          createdToAddress || null,
         ]
       );
       expenseId = headerRes.rows[0].id;
@@ -491,7 +524,7 @@ export async function submitExpenseFromSlip(args: {
       );
     }
 
-    const items = Array.isArray(parsed.items) ? parsed.items : [];
+    const items = args.overrides?.items ?? (Array.isArray(parsed.items) ? parsed.items : []);
     for (const item of items) {
       let bestCode: string | null = null;
       let score = 0;
@@ -499,21 +532,27 @@ export async function submitExpenseFromSlip(args: {
         const match = await semanticCoaMatch(item.description);
         if (match.code) { bestCode = match.code; score = match.score; }
       } catch {}
+      const qty = Number(item.qty ?? 1.00);
+      const unitPrice = Number(item.unitPrice ?? item.amount ?? 0.00);
       await query(
-        `INSERT INTO expense_items (expense_id, description, amount, mapped_account_code, confidence_score)
-         VALUES ($1,$2,$3,$4,$5)`,
-        [expenseId, item.description, Number(item.amount) || 0, bestCode, score]
+        `INSERT INTO expense_items (expense_id, description, qty, unit_price, amount, mapped_account_code, confidence_score)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [expenseId, item.description, qty, unitPrice, Number(item.amount) || 0, bestCode, score]
       );
     }
 
     const submitterRes = await query(
-      `SELECT u.dept_group_id,
-              (SELECT pr.id FROM perm.user_roles ur
-                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-                JOIN perm.role_effective_level prel ON prel.role_id = pr.id
-               WHERE ur.user_id = u.id
-               ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
-              COALESCE((SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id), 5)::int AS level
+      `SELECT (SELECT up.permission_id FROM perm.user_permissions up
+                WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                  AND up.revoked_at IS NULL
+                  AND (up.ends_at IS NULL OR up.ends_at > now())
+                ORDER BY up.permission_id LIMIT 1) AS dept_perm,
+              (SELECT ur.role_id FROM perm.user_roles ur
+                WHERE ur.user_id = u.id
+                ORDER BY split_part(ur.role_id, '::', 2)::int ASC NULLS LAST
+                LIMIT 1) AS role_id,
+              COALESCE((SELECT MIN(split_part(ur.role_id, '::', 2)::int)
+                          FROM perm.user_roles ur WHERE ur.user_id = u.id), 5)::int AS level
        FROM users u
        WHERE u.id = $1`,
       [args.actorId]
@@ -740,11 +779,10 @@ const expRes = await query(
 
     const actorRes = await query<{ id: number; role_id: string | null }>(
       `SELECT u.id,
-              (SELECT pr.id FROM perm.user_roles ur
-                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-                JOIN perm.role_effective_level prel ON prel.role_id = pr.id
-               WHERE ur.user_id = u.id
-               ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id
+              (SELECT ur.role_id FROM perm.user_roles ur
+                WHERE ur.user_id = u.id
+                ORDER BY split_part(ur.role_id, '::', 2)::int ASC NULLS LAST
+                LIMIT 1) AS role_id
        FROM users u
        WHERE u.id = $1`,
       [args.actorId]
@@ -969,22 +1007,28 @@ export async function submitPurchaseRequisition(args: {
   try {
     await requireActionFor(args.requesterId, 'submit_pr', { perm: 'finance:pr:create' });
 
-const submitterRes = await query<{ dept_group_id: string | null; role_id: string | null; level: number }>(
-      `SELECT u.dept_group_id,
-              (SELECT pr.id FROM perm.user_roles ur
-                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-                JOIN perm.role_effective_level prel ON prel.role_id = pr.id
-               WHERE ur.user_id = u.id
-               ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id,
-              COALESCE((SELECT uel.effective_level FROM perm.user_effective_level uel WHERE uel.user_id = u.id), 5)::int AS level
+const submitterRes = await query<{ dept_perm: string | null; role_id: string | null; level: number }>(
+      `SELECT (SELECT up.permission_id FROM perm.user_permissions up
+                WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                  AND up.revoked_at IS NULL
+                  AND (up.ends_at IS NULL OR up.ends_at > now())
+                ORDER BY up.permission_id LIMIT 1) AS dept_perm,
+              (SELECT ur.role_id FROM perm.user_roles ur
+                WHERE ur.user_id = u.id
+                ORDER BY split_part(ur.role_id, '::', 2)::int ASC NULLS LAST
+                LIMIT 1) AS role_id,
+              COALESCE((SELECT MIN(split_part(ur.role_id, '::', 2)::int) FROM perm.user_roles ur WHERE ur.user_id = u.id), 5)::int AS level
        FROM users u
       WHERE u.id = $1`,
       [args.requesterId],
     );
     const submitter = submitterRes.rows[0];
+    const submitterDept = submitter?.dept_perm
+      ? submitter.dept_perm.replace(/^user:dept:/, '').replace(/::allow$/, '')
+      : null;
     const submitterCtx: ResolverCtx = {
       submitterUserId: args.requesterId,
-      submitterDeptId: submitter?.dept_group_id ?? args.deptGroupId ?? null,
+      submitterDeptId: submitterDept ?? args.deptGroupId ?? null,
       submitterRoleId: submitter?.role_id ?? '',
       submitterLevel: submitter?.level ?? 5,
       alreadyApproved: new Set<StageName>(),
@@ -1263,11 +1307,10 @@ export async function advancePurchaseOrder(args: {
 
     const actorRes = await query<{ id: number; role_id: string | null }>(
       `SELECT u.id,
-              (SELECT pr.id FROM perm.user_roles ur
-                JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-                JOIN perm.role_effective_level prel ON prel.role_id = pr.id
-               WHERE ur.user_id = u.id
-               ORDER BY prel.effective_level ASC NULLS LAST LIMIT 1) AS role_id
+              (SELECT ur.role_id FROM perm.user_roles ur
+                WHERE ur.user_id = u.id
+                ORDER BY split_part(ur.role_id, '::', 2)::int ASC NULLS LAST
+                LIMIT 1) AS role_id
        FROM users u
        WHERE u.id = $1`,
       [args.actorId]
@@ -1627,7 +1670,7 @@ export async function getExpenseLifecycle(expenseId: number) {
        FROM approval_transitions at
        LEFT JOIN users u ON u.id = at.actor_id
        LEFT JOIN perm.user_roles ur ON ur.user_id = u.id
-       LEFT JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
+       LEFT JOIN perm.user_roles ur
       WHERE at.target_type = 'expense' AND at.target_id = $1
       ORDER BY at.created_at ASC, at.id ASC`,
     [expenseId],
@@ -1637,6 +1680,9 @@ export async function getExpenseLifecycle(expenseId: number) {
 
 export interface DraftPayload {
   vendorName?: string;
+  vendorAddress?: string;
+  createdTo?: string;
+  createdToAddress?: string;
   transactionDate?: string;
   subtotal?: number;
   vatAmount?: number;
@@ -1738,15 +1784,18 @@ export async function saveDraftExpense(args: {
     const p = args.payload ?? {};
     await query(
       `UPDATE expenses SET
-         vendor_name       = COALESCE(NULLIF($1, ''), vendor_name),
-         transaction_date  = COALESCE(NULLIF($2, '')::date, transaction_date),
-         subtotal          = COALESCE($3::numeric, subtotal),
-         vat_amount        = COALESCE($4::numeric, vat_amount),
-         total_amount      = COALESCE($5::numeric, total_amount),
-         payment_method    = COALESCE(NULLIF($6, ''), payment_method),
-         correction_notes  = COALESCE(NULLIF($7, ''), correction_notes),
-         draft_updated_at  = now(),
-         updated_at        = CURRENT_TIMESTAMP
+         vendor_name        = COALESCE(NULLIF($1, ''), vendor_name),
+         transaction_date   = COALESCE(NULLIF($2, '')::date, transaction_date),
+         subtotal           = COALESCE($3::numeric, subtotal),
+         vat_amount         = COALESCE($4::numeric, vat_amount),
+         total_amount       = COALESCE($5::numeric, total_amount),
+         payment_method     = COALESCE(NULLIF($6, ''), payment_method),
+         correction_notes   = COALESCE(NULLIF($7, ''), correction_notes),
+         created_to         = COALESCE(NULLIF($9, ''), created_to),
+         vendor_address     = COALESCE(NULLIF($10, ''), vendor_address),
+         created_to_address = COALESCE(NULLIF($11, ''), created_to_address),
+         draft_updated_at   = now(),
+         updated_at         = CURRENT_TIMESTAMP
        WHERE id = $8`,
       [
         p.vendorName ?? null,
@@ -1757,16 +1806,22 @@ export async function saveDraftExpense(args: {
         p.paymentMethod ?? null,
         p.notes ?? null,
         wb.origin_id,
+        p.createdTo ?? null,
+        p.vendorAddress ?? null,
+        p.createdToAddress ?? null,
       ],
     );
 
     await query(
       `UPDATE waybills SET
-         vendor_name   = COALESCE(NULLIF($1, ''), vendor_name),
-         total_amount  = COALESCE($2::numeric, total_amount),
-         updated_at    = now()
-       WHERE id = $3`,
-      [p.vendorName ?? null, p.totalAmount ?? null, args.waybillId],
+         vendor_name        = COALESCE(NULLIF($1, ''), vendor_name),
+         total_amount       = COALESCE($2::numeric, total_amount),
+         created_to         = COALESCE(NULLIF($3, ''), created_to),
+         vendor_address     = COALESCE(NULLIF($5, ''), vendor_address),
+         created_to_address = COALESCE(NULLIF($6, ''), created_to_address),
+         updated_at         = now()
+       WHERE id = $4`,
+      [p.vendorName ?? null, p.totalAmount ?? null, p.createdTo ?? null, args.waybillId, p.vendorAddress ?? null, p.createdToAddress ?? null],
     );
 
     return { ok: true, savedAt: new Date().toISOString() };

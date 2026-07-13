@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
+import { ROLE_RANK, ROLE_LEVEL, type DisplayRoleName, type StaffLevel } from '@/lib/roles/display';
 
 interface SeedUser {
   id: number;
@@ -12,20 +13,25 @@ interface SeedUser {
   dept_group_id?: string | null;
   dept_group_name?: string | null;
   role_name: string;
-  role_id: number;
+  role_id: string;
+  staff_level?: number;
 }
 
 const ROLE_ACCENT: Record<string, string> = {
   staff:               'from-emerald-500/25 via-emerald-700/15 to-emerald-900/40 border-emerald-500/30',
+  officer:             'from-emerald-500/25 via-emerald-700/15 to-emerald-900/40 border-emerald-500/30',
+  sales_rep:           'from-emerald-500/25 via-emerald-700/15 to-emerald-900/40 border-emerald-500/30',
   accountant:          'from-cyan-500/25 via-cyan-700/15 to-cyan-900/40 border-cyan-500/30',
   account_officer:     'from-cyan-500/25 via-cyan-700/15 to-cyan-900/40 border-cyan-500/30',
   account_supervisor:  'from-cyan-500/25 via-cyan-700/15 to-cyan-900/40 border-cyan-500/30',
   accounting_manager:  'from-cyan-500/25 via-cyan-700/15 to-cyan-900/40 border-cyan-500/30',
   supervisor:          'from-amber-400/25 via-amber-700/15 to-amber-900/40 border-amber-500/40',
+  sales_supervisor:    'from-cyan-500/25 via-cyan-700/15 to-cyan-900/40 border-cyan-500/30',
   head_of_department:  'from-amber-400/25 via-amber-700/15 to-amber-900/40 border-amber-500/40',
   manager:             'from-amber-400/25 via-amber-700/15 to-amber-900/40 border-amber-500/40',
   admin:               'from-purple-500/25 via-purple-700/15 to-purple-900/40 border-purple-500/30',
   cfo:                 'from-purple-500/25 via-purple-700/15 to-purple-900/40 border-purple-500/30',
+  finance:             'from-purple-500/25 via-purple-700/15 to-purple-900/40 border-purple-500/30',
   ceo:                 'from-rose-500/25 via-rose-700/15 to-rose-900/40 border-rose-500/40',
   it:                  'from-slate-500/25 via-slate-700/15 to-slate-900/40 border-slate-500/40',
   hr:                  'from-indigo-500/25 via-indigo-700/15 to-indigo-900/40 border-indigo-500/30',
@@ -34,22 +40,43 @@ const ROLE_ACCENT: Record<string, string> = {
 
 const ROLE_LABEL: Record<string, string> = {
   staff: 'Staff',
+  officer: 'Officer',
+  sales_rep: 'Sales Rep',
   accountant: 'Accountant',
   account_officer: 'Account Officer',
   account_supervisor: 'Account Supervisor',
   accounting_manager: 'Accounting Manager',
   supervisor: 'Supervisor',
+  sales_supervisor: 'Sales Supervisor',
   head_of_department: 'Head of Department',
   manager: 'Manager',
   admin: 'Admin',
   cfo: 'CFO',
+  finance: 'Finance Lead',
   ceo: 'CEO',
-  it: 'IT',
-  hr: 'HR',
+  it: 'IT Officer',
+  hr: 'HR Officer',
   hr_manager: 'HR Manager',
 };
 
-export const SignInPanel: React.FC = () => {
+const LEVEL_ORDER: StaffLevel[] = [1, 2, 3, 4, 5];
+
+const LEVEL_META: Record<StaffLevel, { th: string; icon: string; accent: string }> = {
+  1: { th: 'P1 · Executive',         icon: '👑', accent: 'bg-rose-500/10 text-rose-200 border-rose-500/30' },
+  2: { th: 'P2 · Senior Management', icon: '🛡️', accent: 'bg-purple-500/10 text-purple-200 border-purple-500/30' },
+  3: { th: 'P3 · Middle Management', icon: '🧭', accent: 'bg-amber-500/10 text-amber-200 border-amber-500/30' },
+  4: { th: 'P4 · Senior Staff',      icon: '👥', accent: 'bg-cyan-500/10 text-cyan-200 border-cyan-500/30' },
+  5: { th: 'P5 · Staff',             icon: '📋', accent: 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30' },
+};
+
+function staffLevelOf(u: SeedUser): StaffLevel {
+  const lv = u.staff_level;
+  if (lv === 1 || lv === 2 || lv === 3 || lv === 4 || lv === 5) return lv;
+  const role = u.role_id || '';
+  return ROLE_LEVEL[role as DisplayRoleName] ?? 5;
+}
+
+export const SignInPanel: React.FC<{ next?: string }> = ({ next: _next = '/' } = {}) => {
   const router = useRouter();
   const toast = useToast();
   const [users, setUsers] = useState<SeedUser[]>([]);
@@ -78,6 +105,23 @@ export const SignInPanel: React.FC = () => {
     })();
     return () => { mounted = false; };
   }, []);
+
+  const levelBuckets = React.useMemo(() => {
+    const buckets: Record<StaffLevel, SeedUser[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+    for (const u of users) {
+      const lv = staffLevelOf(u);
+      buckets[lv].push(u);
+    }
+    for (const lv of LEVEL_ORDER) {
+      buckets[lv].sort((a, b) => {
+        const rankA = ROLE_RANK[a.role_id as DisplayRoleName] ?? 99;
+        const rankB = ROLE_RANK[b.role_id as DisplayRoleName] ?? 99;
+        if (rankA !== rankB) return rankA - rankB;
+        return (a.fullname || '').localeCompare(b.fullname || '');
+      });
+    }
+    return buckets;
+  }, [users]);
 
   async function signIn(user: SeedUser) {
     if (pinRequired && !pin.trim()) {
@@ -133,7 +177,7 @@ export const SignInPanel: React.FC = () => {
         {!loading && !error && (
           <>
             {pinRequired && (
-              <div className="glass-panel rounded-2xl p-4 border-amber-500/30 mb-4">
+              <div className="glass-panel rounded-2xl p-4 border-amber-500/30 mb-6">
                 <label className="block">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     DEV_ACTOR_PIN
@@ -149,40 +193,55 @@ export const SignInPanel: React.FC = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {users.map((u) => {
-                const tone = ROLE_ACCENT[u.role_name] || ROLE_ACCENT.staff;
+            <div className="space-y-10">
+              {LEVEL_ORDER.map((lv) => {
+                const groupUsers = levelBuckets[lv];
+                if (groupUsers.length === 0) return null;
+                const meta = LEVEL_META[lv];
                 return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    disabled={busyId !== null}
-                    onClick={() => signIn(u)}
-                    className={`group relative rounded-2xl border bg-gradient-to-br p-4 text-left transition-all hover:scale-[1.015] hover:shadow-lg hover:shadow-black/40 disabled:opacity-50 disabled:cursor-wait ${tone}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-base font-black text-white truncate">{u.fullname}</div>
-                        <div className="text-[10px] font-mono text-slate-400 mt-0.5">
-                          {u.employee_code} · {u.dept_group_name ?? u.department ?? '—'}
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-slate-950/60 border border-slate-700 text-slate-200 shrink-0">
-                        {ROLE_LABEL[u.role_name] || u.role_name}
-                      </span>
+                  <div key={lv} className="space-y-4">
+                    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold uppercase tracking-wider ${meta.accent}`}>
+                      <span>{meta.icon}</span>
+                      <span>{meta.th}</span>
                     </div>
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {busyId === u.id ? 'Signing in…' : 'Click to sign in'}
-                      </span>
-                      <span className="text-slate-400 text-xs group-hover:text-white">→</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {groupUsers.map((u) => {
+                        const tone = ROLE_ACCENT[u.role_id] || ROLE_ACCENT.staff;
+                        return (
+                          <button
+                            key={u.id}
+                            type="button"
+                            disabled={busyId !== null}
+                            onClick={() => signIn(u)}
+                            className={`group relative rounded-2xl border bg-gradient-to-br p-4 text-left transition-all hover:scale-[1.015] hover:shadow-lg hover:shadow-black/40 disabled:opacity-50 disabled:cursor-wait ${tone}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="text-base font-black text-white truncate">{u.fullname}</div>
+                                <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                                  {u.employee_code} · {u.dept_group_name ?? u.department ?? '—'}
+                                </div>
+                              </div>
+                              <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-slate-950/60 border border-slate-700 text-slate-200 shrink-0">
+                                {ROLE_LABEL[u.role_id] || u.role_name}
+                              </span>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                {busyId === u.id ? 'Signing in…' : 'Click to sign in'}
+                              </span>
+                              <span className="text-slate-400 text-xs group-hover:text-white">→</span>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
 
-            <div className="mt-6 text-[10px] font-mono text-slate-500 leading-relaxed">
+            <div className="mt-8 text-[10px] font-mono text-slate-500 leading-relaxed">
               Production replaces this with SSO / NextAuth. The dev persona switcher is gated by{' '}
               <code className="text-slate-400">NODE_ENV</code> +{' '}
               <code className="text-slate-400">DEV_ACTOR_PIN</code>.

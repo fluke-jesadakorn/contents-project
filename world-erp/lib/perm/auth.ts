@@ -1,50 +1,17 @@
-// perm/auth.ts — public guard helpers.
+// perm/auth.ts — server-side session loader + DB-backed auth helpers.
+// Pure permission check helpers live in auth-client.ts (client-safe).
 //
-// Mirrors the user's sketch exactly:
-//   hasPermission(session, 'finance:expense:approve')
-//   canManageResource(session, 'finance:expense:update', { ownerId, deptGroupId })
-//
-// Plus thin wrappers for Next.js route handlers (read session from cookie).
+//   hasPermission(session, 'finance:expense:approve::allow')
+//   canManageResource(session, 'finance:expense:update::allow', { ownerId, deptId })
 
 import 'server-only';
 import { query } from '../db';
-import { SESSION_COOKIE, verifySession, sessionFromHeaders, type SessionPayload } from '../server/sessionToken';
+import {
+  SESSION_COOKIE, verifySession, sessionFromHeaders, type SessionPayload,
+} from '../server/sessionToken';
 import type { PermSession } from './session';
 
-const ADMIN_PERM = 'admin:system:bypass:all';
-
-export function hasPermission(session: PermSession | null, permission: string): boolean {
-  if (!session) return false;
-  if (session.permissions.includes(ADMIN_PERM)) return true;
-  if (session.permissions.includes(permission)) return true;
-  const parts = permission.split(':');
-  if (parts.length === 3 && session.permissions.includes(permission + ':all')) return true;
-  if (parts.length === 4) {
-    const three = `${parts[0]}:${parts[1]}:${parts[2]}`;
-    if (session.permissions.includes(three)) return true;
-  }
-  return false;
-}
-
-export interface OwnedResource {
-  ownerId: number;
-  deptGroupId?: string | null;
-}
-
-export function canManageResource(
-  session: PermSession | null,
-  permission: string,
-  resource: OwnedResource,
-): boolean {
-  if (!session) return false;
-  if (session.permissions.includes(ADMIN_PERM)) return true;
-  if (!session.permissions.includes(permission)) return false;
-  if (resource.ownerId === session.user.id) return true;
-  if (resource.deptGroupId && resource.deptGroupId === session.user.deptGroupId) return true;
-  return false;
-}
-
-// ── Session loading ──────────────────────────────────────────────────────────
+export { hasPermission, canManageResource, sessionDept, sessionLevel, sessionRoleName, ADMIN_PERM, levelFromRoles } from './auth-client';
 
 export interface DecodedPermToken extends PermSession {
   iat: number;
@@ -74,22 +41,39 @@ export async function loadPermSessionFromCookieValue(
 }
 
 async function hydratePermSession(payload: SessionPayload): Promise<ActivePermSession | null> {
-  const profile = await query<{ fullname: string; role_name: string | null; dept_group_id: string | null; staff_level: number | null; permissions: string[] }>(
+  const profile = await query<{
+    fullname: string;
+    role_id: string | null;
+    permissions: string[];
+  }>(
     `SELECT u.fullname,
-            u.staff_level,
-            (SELECT pr.id FROM perm.user_roles ur
-              JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-             WHERE ur.user_id = u.id
-             ORDER BY pr.level ASC NULLS LAST LIMIT 1) AS role_name,
-            u.dept_group_id,
-            COALESCE(
-              (SELECT array_agg(DISTINCT permission_id ORDER BY permission_id)
-                 FROM perm.effective_user_perms
-                WHERE user_id = u.id),
-              ARRAY[]::text[]
-            ) AS permissions
-       FROM users u
-      WHERE u.id = $1`,
+       COALESCE((
+         SELECT ur.role_id FROM perm.user_roles ur
+          WHERE ur.user_id = u.id
+          ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                         WHEN ur.role_id LIKE '%::2' THEN 1
+                         WHEN ur.role_id LIKE '%::3' THEN 2
+                         WHEN ur.role_id LIKE '%::4' THEN 3
+                         WHEN ur.role_id LIKE '%::5' THEN 4
+                         ELSE 5 END), ur.granted_at ASC
+          LIMIT 1
+       ), 'officer::5') AS role_id,
+       COALESCE((
+         SELECT array_agg(DISTINCT p_id ORDER BY p_id)
+           FROM (
+             SELECT rp.permission_id AS p_id
+               FROM perm.user_roles ur
+               JOIN perm.role_permissions rp ON rp.role_id = ur.role_id
+              WHERE ur.user_id = u.id
+              UNION
+             SELECT permission_id AS p_id
+               FROM perm.user_permissions
+              WHERE user_id = u.id AND revoked_at IS NULL
+                AND (ends_at IS NULL OR ends_at > now())
+           ) t
+       ), ARRAY[]::text[]) AS permissions
+      FROM users u
+     WHERE u.id = $1`,
     [payload.sub],
   );
   if (profile.rows.length === 0) return null;
@@ -98,18 +82,11 @@ async function hydratePermSession(payload: SessionPayload): Promise<ActivePermSe
     user: {
       id: payload.sub,
       name: row.fullname,
-      role: row.role_name ?? 'staff',
+      role: row.role_id ?? 'officer::5',
     },
     permissions: row.permissions ?? [],
   };
-  const decoded: DecodedPermToken = {
-    ...session,
-    iat: payload.iat,
-    exp: payload.exp,
-  };
-  // Attach dept-group and staff_level for tile-gate checks.
-  session.user.deptGroupId = row.dept_group_id;
-  session.user.staffLevel = row.staff_level ?? null;
+  const decoded: DecodedPermToken = { ...session, iat: payload.iat, exp: payload.exp };
   return { session, decoded };
 }
 

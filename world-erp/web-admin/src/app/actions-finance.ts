@@ -38,8 +38,8 @@ export async function disbursePayment(args: {
     );
 
     await query(
-      `INSERT INTO approval_logs (expense_id, actor_id, previous_status, new_status, comments, stage, chain_index)
-       VALUES ($1, $2, $3, 'paid', $4, 'finance_review', 7)`,
+      `INSERT INTO approval_transitions (target_type, target_id, actor_id, previous_status, new_status, comments, stage, chain_index)
+       VALUES ('expense', $1, $2, $3, 'paid', $4, 'finance_review', 7)`,
       [args.expenseId, args.actorId, previousStatus, args.comment || 'Disbursed by Finance'],
     );
 
@@ -79,7 +79,7 @@ export async function disbursePayment(args: {
     );
 
     revalidatePath('/');
-    revalidatePath('/dashboard');
+    revalidatePath('/');
     return { success: true, newStatus: 'paid', journalId };
   } catch (error: any) {
     await query('ROLLBACK');
@@ -119,8 +119,8 @@ export async function rejectDisbursement(args: {
       [args.expenseId, t, args.actorId],
     );
     await query(
-      `INSERT INTO approval_logs (expense_id, actor_id, previous_status, new_status, comments, stage)
-       VALUES ($1, $2, $3, 'rejected', $4, 'finance_review')`,
+      `INSERT INTO approval_transitions (target_type, target_id, actor_id, previous_status, new_status, comments, stage)
+       VALUES ('expense', $1, $2, $3, 'rejected', $4, 'finance_review')`,
       [args.expenseId, args.actorId, previousStatus, t],
     );
     await query('COMMIT');
@@ -138,7 +138,7 @@ export async function rejectDisbursement(args: {
     );
 
     revalidatePath('/');
-    revalidatePath('/dashboard');
+    revalidatePath('/');
     return { success: true, newStatus: 'rejected', rejectionReason: t };
   } catch (error: any) {
     await query('ROLLBACK');

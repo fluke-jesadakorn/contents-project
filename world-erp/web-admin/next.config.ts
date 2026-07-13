@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      { source: '/dashboard',       destination: '/',                         permanent: true },
       { source: '/submit-expense',  destination: '/expense',                   permanent: true },
       { source: '/expense-claim',   destination: '/expense',                   permanent: true },
       { source: '/approve-expense', destination: '/expense?tab=approve',       permanent: true },

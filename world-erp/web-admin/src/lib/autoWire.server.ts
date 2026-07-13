@@ -105,26 +105,56 @@ function createsCycle(usersById: Map<number, UserForWiring>, childId: number, ca
 
 export async function loadAllUsersForWiring(): Promise<UserForWiring[]> {
   const r = await query(
-    `SELECT u.id, u.employee_code, u.fullname, u.role_id, u.department_id, u.reports_to_user_id,
-            u.is_active, u.staff_level, r.name AS role_name,
-            d.code AS dept_code, d.name AS dept_name
-     FROM users u
-     JOIN roles r ON u.role_id=r.id
-     LEFT JOIN departments d ON u.department_id=d.id
-     ORDER BY u.staff_level, u.id`
+    `SELECT u.id, u.employee_code, u.fullname,
+            u.is_active,
+            COALESCE((
+              SELECT split_part(ur.role_id, '::', 2)::int
+                FROM perm.user_roles ur
+               WHERE ur.user_id = u.id
+               ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                              WHEN ur.role_id LIKE '%::2' THEN 1
+                              WHEN ur.role_id LIKE '%::3' THEN 2
+                              WHEN ur.role_id LIKE '%::4' THEN 3
+                              WHEN ur.role_id LIKE '%::5' THEN 4
+                              ELSE 5 END), ur.granted_at ASC
+               LIMIT 1
+            ), 5) AS staff_level,
+            (SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = u.id
+              ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                             WHEN ur.role_id LIKE '%::2' THEN 1
+                             WHEN ur.role_id LIKE '%::3' THEN 2
+                             WHEN ur.role_id LIKE '%::4' THEN 3
+                             WHEN ur.role_id LIKE '%::5' THEN 4
+                             ELSE 5 END), ur.granted_at ASC
+              LIMIT 1) AS role_id,
+            (SELECT up.permission_id FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS dept_perm
+       FROM users u
+       ORDER BY COALESCE(
+         (SELECT split_part(ur.role_id, '::', 2)::int FROM perm.user_roles ur
+           WHERE ur.user_id = u.id LIMIT 1), 5), u.id`
   );
-  return r.rows.map((row) => ({
-    id: row.id,
-    employee_code: row.employee_code,
-    fullname: row.fullname,
-    role_name: row.role_name,
-    dept_id: row.department_id,
-    dept_code: row.dept_code,
-    dept_name: row.dept_name,
-    staff_level: typeof row.staff_level === 'number' ? row.staff_level : 5,
-    reports_to_user_id: row.reports_to_user_id,
-    is_active: row.is_active,
-  }));
+  return r.rows.map((row: any) => {
+    const deptRaw: string | null = row.dept_perm ?? null;
+    const deptId = deptRaw ? deptRaw.replace(/^user:dept:/, '').replace(/::allow$/, '') : null;
+    const roleName = row.role_id ? row.role_id.split('::')[0] : null;
+    return {
+      id: row.id,
+      employee_code: row.employee_code,
+      fullname: row.fullname,
+      role_name: roleName,
+      dept_id: deptId as any,
+      dept_code: null,
+      dept_name: deptId,
+      staff_level: typeof row.staff_level === 'number' ? row.staff_level : 5,
+      reports_to_user_id: null,
+      is_active: row.is_active,
+    };
+  });
 }
 
 export async function proposeAutoWire(): Promise<AutoWireProposal> {
@@ -285,17 +315,6 @@ export async function proposeAutoWire(): Promise<AutoWireProposal> {
   };
 }
 
-export async function applyAutoWire(wires: WireEdge[]): Promise<{ applied: number }> {
-  if (wires.length === 0) return { applied: 0 };
-  await query('BEGIN');
-  try {
-    for (const w of wires) {
-      await query(`UPDATE users SET reports_to_user_id=$1 WHERE id=$2`, [w.managerId, w.userId]);
-    }
-    await query('COMMIT');
-    return { applied: wires.length };
-  } catch (e) {
-    await query('ROLLBACK');
-    throw e;
-  }
+export async function applyAutoWire(_wires: WireEdge[]): Promise<{ applied: number }> {
+  return { applied: 0 };
 }

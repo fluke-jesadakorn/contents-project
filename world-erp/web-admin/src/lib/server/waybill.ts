@@ -13,7 +13,7 @@ import {
   pipsForDomain,
   type WaybillDomain,
 } from '@erp-lib/waybill/derive';
-import { STAGE_TO_ROLE } from '@erp-lib/perm';
+import { stageRoles } from '@erp-lib/perm/server';
 
 export interface WaybillRow {
   id: string;
@@ -23,6 +23,9 @@ export interface WaybillRow {
   waybill_kind: 'reimbursement' | 'procurement';
   submitter_id: number | null;
   vendor_name: string | null;
+  vendor_address: string | null;
+  created_to: string | null;
+  created_to_address: string | null;
   total_amount: string | null;
   currency: string;
   current_stage: string;
@@ -36,7 +39,7 @@ export interface WaybillRow {
 export const loadWaybill = cache(async (id: string): Promise<WaybillRow | null> => {
   const r = await query<WaybillRow>(
     `SELECT id, origin, origin_id, fiscal_year, waybill_kind, submitter_id,
-            vendor_name, total_amount, currency, current_stage,
+            vendor_name, vendor_address, created_to, created_to_address, total_amount, currency, current_stage,
             current_owner_role, current_owner_user_id, status,
             created_at, updated_at
        FROM waybills WHERE id = $1`,
@@ -51,7 +54,7 @@ export async function loadWaybillByOrigin(
 ): Promise<WaybillRow | null> {
   const r = await query<WaybillRow>(
     `SELECT id, origin, origin_id, fiscal_year, waybill_kind, submitter_id,
-            vendor_name, total_amount, currency, current_stage,
+            vendor_name, vendor_address, created_to, created_to_address, total_amount, currency, current_stage,
             current_owner_role, current_owner_user_id, status,
             created_at, updated_at
        FROM waybills WHERE origin = $1 AND origin_id = $2`,
@@ -234,6 +237,8 @@ export interface WaybillSlip {
 export interface ExpenseItemRow {
   id: number;
   description: string | null;
+  qty: string;
+  unit_price: string;
   amount: string;
   mapped_account_code: string | null;
 }
@@ -242,6 +247,9 @@ export interface ExpenseFullPicture {
   expense: {
     id: number;
     vendor_name: string | null;
+    vendor_address: string | null;
+    created_to: string | null;
+    created_to_address: string | null;
     transaction_date: Date | null;
     subtotal: string | null;
     vat_amount: string | null;
@@ -254,20 +262,23 @@ export interface ExpenseFullPicture {
   };
   items: ExpenseItemRow[];
   slips: WaybillSlip[];
+  submitter_name?: string | null;
 }
 
 export async function loadExpenseFullPicture(expenseId: number): Promise<ExpenseFullPicture | null> {
-  const e = await query<ExpenseFullPicture['expense']>(
-    `SELECT id, vendor_name, transaction_date, subtotal::text, vat_amount::text,
-            total_amount::text, payment_method, status, submitter_id,
-            rejection_reason, rejected_at
-       FROM expenses WHERE id = $1`,
+  const e = await query<ExpenseFullPicture['expense'] & { submitter_name: string | null }>(
+    `SELECT e.id, e.vendor_name, e.vendor_address, e.created_to, e.created_to_address, e.transaction_date, e.subtotal::text, e.vat_amount::text,
+            e.total_amount::text, e.payment_method, e.status, e.submitter_id,
+            e.rejection_reason, e.rejected_at, u.fullname AS submitter_name
+       FROM expenses e
+       LEFT JOIN users u ON u.id = e.submitter_id
+       WHERE e.id = $1`,
     [expenseId],
   );
   if (!e.rows.length) return null;
   const [items, slips] = await Promise.all([
     query<ExpenseItemRow>(
-      `SELECT id, description, amount::text, mapped_account_code
+      `SELECT id, description, qty::text, unit_price::text, amount::text, mapped_account_code
          FROM expense_items WHERE expense_id = $1 ORDER BY id`,
       [expenseId],
     ),
@@ -278,7 +289,8 @@ export async function loadExpenseFullPicture(expenseId: number): Promise<Expense
       [expenseId],
     ),
   ]);
-  return { expense: e.rows[0], items: items.rows, slips: slips.rows };
+  const { submitter_name, ...expense } = e.rows[0];
+  return { expense, items: items.rows, slips: slips.rows, submitter_name };
 }
 
 export async function loadSlipsForExpenses(
@@ -316,7 +328,7 @@ export async function loadSlipsForWaybill(
   const slips = await loadSlipsForExpense(wb.origin_id);
   return {
     receipt: slips.find((s) => s.kind === 'receipt') ?? null,
-    bookBank: slips.filter((s) => s.kind === 'book-bank'),
+    bookBank: slips.filter((s) => s.kind === 'book_bank' || s.kind === 'book-bank'),
   };
 }
 
@@ -348,7 +360,7 @@ export type ApproversByStage = Record<string, ApproverRow[]>;
 export type ActedUsersByStage = Record<string, ActedUserEntry[]>;
 
 // Stages whose approver pool is scoped to the submitter's own department.
-const DEPT_SCOPED_STAGES = new Set(['dept_verification', 'dept_authorization']);
+const DEPT_SCOPED_STAGES = new Set(['submission', 'dept_verification', 'dept_authorization']);
 
 export async function loadApproversByStage(waybillId: string): Promise<ApproversByStage> {
   const wb = await loadWaybill(waybillId);
@@ -360,45 +372,63 @@ export async function loadApproversByStage(waybillId: string): Promise<Approvers
   const roleToPips = new Map<string, string[]>();
   for (const pip of pips) {
     out[pip.key] = [];
-    const role = STAGE_TO_ROLE[pip.key];
-    if (!role) continue;
-    const list = roleToPips.get(role) ?? [];
-    list.push(pip.key);
-    roleToPips.set(role, list);
+    for (const role of stageRoles(pip.key)) {
+      const list = roleToPips.get(role) ?? [];
+      list.push(pip.key);
+      roleToPips.set(role, list);
+    }
   }
   const roles = Array.from(roleToPips.keys());
   if (roles.length === 0) return out;
 
   let submitterDept: string | null = null;
+  let submitterLevel = 10;
   if (wb.submitter_id != null) {
-    const s = await query<{ dept_group_id: string | null }>(
-      `SELECT dept_group_id FROM users WHERE id = $1`,
+    const s = await query<{ dept_id: string | null; level: number }>(
+      `SELECT (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+                WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                  AND up.revoked_at IS NULL
+                  AND (up.ends_at IS NULL OR up.ends_at > now())
+                ORDER BY up.permission_id LIMIT 1) AS dept_id,
+              COALESCE((SELECT MIN(split_part(ur.role_id, '::', 2)::int)
+                          FROM perm.user_roles ur WHERE ur.user_id = u.id), 10) AS level
+         FROM users u
+        WHERE u.id = $1`,
       [wb.submitter_id],
     );
-    submitterDept = s.rows[0]?.dept_group_id ?? null;
+    submitterDept = s.rows[0]?.dept_id ?? null;
+    submitterLevel = s.rows[0]?.level ?? 10;
   }
 
   const r = await query<ApproverRow>(
     `SELECT u.id AS user_id, u.fullname, ur.role_id,
-            u.dept_group_id,
-            dg.display_name     AS dept_group_name,
-            dg.display_name_th  AS dept_group_name_th,
-            dg.display_name_de  AS dept_group_name_de,
-            COALESCE(uel.effective_level, 10) AS level
+            (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS dept_group_id,
+            (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS dept_group_name,
+            NULL::text AS dept_group_name_th,
+            NULL::text AS dept_group_name_de,
+            COALESCE((SELECT MIN(split_part(ur.role_id, '::', 2)::int)
+                        FROM perm.user_roles ur WHERE ur.user_id = u.id), 10) AS level
        FROM perm.user_roles ur
-       JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
        JOIN users u ON u.id = ur.user_id AND u.is_active
-  LEFT JOIN perm.roles dg ON dg.id = u.dept_group_id
-  LEFT JOIN perm.user_effective_level uel ON uel.user_id = u.id
-      WHERE ur.role_id = ANY($1::text[])
-   ORDER BY level ASC, u.fullname`,
+       WHERE ur.role_id = ANY($1::text[])
+    ORDER BY level ASC, u.fullname`,
     [roles],
   );
 
   for (const row of r.rows) {
+    if (wb.submitter_id != null && row.user_id === wb.submitter_id) continue;
+    if (row.level > submitterLevel) continue;
     const keys = roleToPips.get(row.role_id ?? '') ?? [];
     for (const key of keys) {
-      if (DEPT_SCOPED_STAGES.has(key) && submitterDept && row.dept_group_id !== submitterDept) continue;
+      if (DEPT_SCOPED_STAGES.has(key) && row.dept_group_id !== submitterDept) continue;
       out[key].push(row);
     }
   }
@@ -418,12 +448,10 @@ export async function loadActedUsersByStage(waybillId: string): Promise<ActedUse
   }>(
     `SELECT we.stage_to, we.stage_from, we.sequence, we.kind, we.occurred_at,
             we.actor_id, u.fullname,
-            (SELECT pr.id FROM perm.user_roles ur
-              JOIN perm.roles pr ON pr.id = ur.role_id AND pr.kind = 'persona'
-             WHERE ur.user_id = we.actor_id
-             ORDER BY (SELECT effective_level FROM perm.user_effective_level
-                        WHERE user_id = ur.user_id) ASC NULLS LAST
-             LIMIT 1) AS role_id
+            (SELECT ur.role_id FROM perm.user_roles ur
+              WHERE ur.user_id = we.actor_id
+              ORDER BY split_part(ur.role_id, '::', 2)::int ASC NULLS LAST
+              LIMIT 1) AS role_id
        FROM waybill_events we
   LEFT JOIN users u ON u.id = we.actor_id
       WHERE we.waybill_id = $1 AND we.actor_id IS NOT NULL
@@ -489,12 +517,14 @@ export async function loadApproverSummariesForRows(
 export interface ActiveDraft {
   waybill_id: string;
   expense_id: number;
+  vendor_name: string | null;
+  total_amount: string | null;
   draft_updated_at: Date | null;
 }
 
 export async function loadActiveDraftForSubmitter(userId: number): Promise<ActiveDraft | null> {
-  const r = await query<{ id: string; origin_id: number; updated_at: Date }>(
-    `SELECT w.id, w.origin_id, w.updated_at
+  const r = await query<{ id: string; origin_id: number; vendor_name: string | null; total_amount: string | null; updated_at: Date }>(
+    `SELECT w.id, w.origin_id, e.vendor_name, e.total_amount, w.updated_at
        FROM waybills w
        JOIN expenses e ON e.id = w.origin_id
       WHERE w.origin = 'expense' AND e.submitter_id = $1
@@ -503,7 +533,7 @@ export async function loadActiveDraftForSubmitter(userId: number): Promise<Activ
     [userId],
   );
   if (!r.rows.length) return null;
-  return { waybill_id: r.rows[0].id, expense_id: r.rows[0].origin_id, draft_updated_at: r.rows[0].updated_at };
+  return { waybill_id: r.rows[0].id, expense_id: r.rows[0].origin_id, vendor_name: r.rows[0].vendor_name, total_amount: r.rows[0].total_amount, draft_updated_at: r.rows[0].updated_at };
 }
 
 export interface ActiveSalesDraft {

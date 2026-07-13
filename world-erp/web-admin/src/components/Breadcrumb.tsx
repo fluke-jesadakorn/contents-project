@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 
 export interface Crumb {
-  label: string;
+  label: React.ReactNode;
   href?: string;
   icon?: string;
 }

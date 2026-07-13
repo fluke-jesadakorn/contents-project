@@ -4,15 +4,25 @@
 // Edge-runtime safe (uses Web Crypto API). Works in middleware and Node server actions alike.
 
 export interface SessionPayload {
+  id: string;
   sub: number;
   role: string;
   rbacRoleId: string | null;
+  impersonatorUserId: number | null;
   iat: number;
   exp: number;
 }
 
 export const SESSION_COOKIE = 'erp_session';
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+
+export function mintSessionId(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 
 export const ENC = new TextEncoder();
 export const DEC = new TextDecoder();
@@ -108,10 +118,17 @@ export function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export function sessionFromHeaders(headers: Record<string, string | string[] | undefined>): string | null {
-  const raw = headers['x-erp-session'];
-  if (typeof raw === 'string' && raw) return raw;
-  const cookie = headers['cookie'];
+export function sessionFromHeaders(
+  headers: Record<string, string | string[] | undefined> | Headers,
+): string | null {
+  const get = (k: string): string | undefined => {
+    if (headers instanceof Headers) return headers.get(k) ?? undefined;
+    const v = headers[k];
+    return Array.isArray(v) ? v[0] : v;
+  };
+  const raw = get('x-erp-session');
+  if (raw) return raw;
+  const cookie = get('cookie');
   if (typeof cookie !== 'string') return null;
   const match = cookie.match(/(?:^|;\s*)erp_session=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;

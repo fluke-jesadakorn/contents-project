@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { minioClient } from '@erp-lib/slips/storage';
-import { config } from '@erp-lib/config';
+import { get } from '@erp-lib/slips/storage';
 import { apiSlipGuard } from '@/lib/server/apiGuard';
 
 export const runtime = 'nodejs';
@@ -16,11 +15,24 @@ export async function GET(req: Request) {
   if (guard.response) return guard.response;
 
   try {
-    const signed = await (minioClient as unknown as {
-      presignedGetObject: (b: string, k: string, e: number) => Promise<string>;
-    }).presignedGetObject(config.storage.minio.bucket, key, 600);
-    return NextResponse.redirect(signed, 302);
-  } catch {
+    const buffer = await get(key);
+
+    let contentType = 'application/octet-stream';
+    const lowerKey = key.toLowerCase();
+    if (lowerKey.endsWith('.png')) contentType = 'image/png';
+    else if (lowerKey.endsWith('.jpg') || lowerKey.endsWith('.jpeg')) contentType = 'image/jpeg';
+    else if (lowerKey.endsWith('.webp')) contentType = 'image/webp';
+    else if (lowerKey.endsWith('.pdf')) contentType = 'application/pdf';
+
+    return new Response(buffer as any, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      },
+    });
+  } catch (err) {
+    console.error('Error serving slip file:', err);
     return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
 }

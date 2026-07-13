@@ -1,10 +1,9 @@
 import React from 'react';
 import type { WaybillAttachmentRow } from '@erp-lib/waybill/attachments';
 import { WAYBILL_KINDS, type WaybillAttachmentKind } from '@erp-lib/waybill/kinds';
-import { presignedGetUrl } from '@erp-lib/slips/storage';
 import { loadActor } from '@/lib/server/guard';
 import { canActorRemoveAttachment } from '@erp-lib/waybill/permissions';
-import { removeWaybillAttachmentAction } from '@/app/waybill/[id]/_actions';
+import { removeWaybillAttachmentAction } from '@/app/(protected)/waybill/[id]/_actions';
 
 export interface AttachmentRowProps {
   waybillId: string;
@@ -33,7 +32,7 @@ export async function AttachmentRow({ waybillId, attachment }: AttachmentRowProp
   const kindMeta = WAYBILL_KINDS[attachment.kind as WaybillAttachmentKind] ?? WAYBILL_KINDS.other;
   let downloadHref = `/api/waybill/${waybillId}/pdf`;
   try {
-    downloadHref = await presignedGetUrl(attachment.storage_key, 600);
+    downloadHref = `/api/slips/file?key=${encodeURIComponent(attachment.storage_key)}`;
   } catch {
     downloadHref = '#';
   }

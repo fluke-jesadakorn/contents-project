@@ -19,16 +19,15 @@ import { NewExpensePanel } from '@/components/waybill/NewExpensePanel';
 import { PerTileChat } from '@/components/chat/PerTileChat';
 import { ApproverChip } from '@/components/waybill/ApproverChip';
 import { query } from '@/lib/db';
-import { STAGE_TO_ROLE } from '@erp-lib/waybill/derive';
+import { stageRoles } from '@erp-lib/waybill/derive';
 import { loadVisionModels } from '@/lib/ai/loadVisionModels';
 import { Bilingual } from '@/components/i18n/Bilingual';
 import { headers } from 'next/headers';
-import { loadActivePermSession, hasPermission } from '@erp-lib/perm';
+import { loadActivePermSession, hasPermission } from '@erp-lib/perm/server';
 import { NoPermissionView } from '@/components/NoPermissionView';
 import { loadSlipsForExpenses } from '@/lib/server/waybill';
 import { BookBankMini } from './_components/BookBankMini';
 import { DocList } from './_components/DocList';
-import { ManualExpenseForm } from './_components/ManualExpenseForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,10 +135,7 @@ export default async function ExpenseInboxPage({ searchParams }: PageProps) {
   const activeDraft = scope === 'mine' ? await loadActiveDraftForSubmitter(actor.id) : null;
   const draftEvents = activeDraft ? await loadWaybillEvents(activeDraft.waybill_id) : [];
   const draftEventCount = draftEvents.length;
-
-  const mode = asScope(sp.mode, 'upload');
   const tabHref = (s: string) => `/expense?scope=${s}`;
-  const modeHref = (m: string) => `/expense?scope=${scope}&mode=${m}`;
 
   return (
     <>
@@ -257,58 +253,21 @@ export default async function ExpenseInboxPage({ searchParams }: PageProps) {
 
         {scope === 'mine' && (
           <div className="mb-8">
-            <nav className="mb-4 flex gap-2 text-xs font-mono">
-              <a
-                href={modeHref('upload')}
-                aria-current={mode === 'upload' ? 'page' : undefined}
-                className={'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 transition-colors ' + (mode === 'upload' ? 'border-indigo-500 bg-indigo-500/15 text-indigo-200' : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200')}
-              >
-                <span aria-hidden>📸</span>
-                Upload receipt
-              </a>
-              <a
-                href={modeHref('manual')}
-                aria-current={mode === 'manual' ? 'page' : undefined}
-                className={'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 transition-colors ' + (mode === 'manual' ? 'border-indigo-500 bg-indigo-500/15 text-indigo-200' : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200')}
-              >
-                <span aria-hidden>✏️</span>
-                Manual entry
-              </a>
-            </nav>
-            {mode === 'upload' ? (
-              <NewExpensePanel
-                currentUserId={actor.id}
-                initialModels={await loadVisionModels()}
-                initialDraft={
-                  activeDraft
-                    ? {
-                        waybillId: activeDraft.waybill_id,
-                        expenseId: activeDraft.expense_id,
-                        savedAt: activeDraft.draft_updated_at
-                          ? new Date(activeDraft.draft_updated_at).toISOString()
-                          : null,
-                      }
-                    : null
-                }
-              />
-            ) : (
-              <section className="rounded-3xl border border-indigo-500/25 bg-gradient-to-br from-indigo-950/55 via-slate-900/55 to-cyan-950/40 p-5 sm:p-6 shadow-2xl">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 text-2xl shadow-lg shadow-indigo-500/30 sm:h-14 sm:w-14 sm:text-3xl">
-                    ✏️
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-white sm:text-xl">
-                      <Bilingual en="Manual expense entry" th="กรอกค่าใช้จ่ายด้วยตนเอง" />
-                    </h2>
-                    <p className="text-[12px] text-slate-400">
-                      <Bilingual en="Fill in the fields and submit for approval." th="กรอกรายละเอียดและส่งเพื่ออนุมัติ" />
-                    </p>
-                  </div>
-                </div>
-                <ManualExpenseForm currentUserId={actor.id} />
-              </section>
-            )}
+            <NewExpensePanel
+              currentUserId={actor.id}
+              initialModels={await loadVisionModels()}
+              initialDraft={
+                activeDraft
+                  ? {
+                      waybillId: activeDraft.waybill_id,
+                      expenseId: activeDraft.expense_id,
+                      savedAt: activeDraft.draft_updated_at
+                        ? new Date(activeDraft.draft_updated_at).toISOString()
+                        : null,
+                    }
+                  : null
+              }
+            />
           </div>
         )}
 
@@ -346,7 +305,7 @@ export default async function ExpenseInboxPage({ searchParams }: PageProps) {
                     : `PO-${row.origin_id}`;
                 const displayStage = activeStageOf(row.current_stage);
                 const summary = summaries.get(row.id) ?? null;
-                const canAct = !!role && STAGE_TO_ROLE[displayStage] === role;
+                const canAct = !!role && stageRoles(displayStage).includes(role);
                 const art = row.origin === 'expense' ? artifacts.get(row.origin_id) : null;
                 return (
                   <li

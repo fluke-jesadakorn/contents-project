@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { type RoleName } from '@/lib/permissions';
+import { type RoleName } from '@/lib/roles/display';
 import { type TileDef, tileHref } from './tile-config';
 import { roleGlyph } from './UserAvatar';
 

@@ -10,5 +10,6 @@ export {
   verifySession,
   safeEqual,
   sessionFromHeaders,
+  mintSessionId,
   type SessionPayload,
 } from '@erp-lib/server/sessionToken';

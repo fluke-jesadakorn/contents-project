@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { loadActor } from '@/lib/server/guard';
-import { isAccessAllowed } from '@/lib/access/api.server';
+import { matchPerm } from "-lib/perm";
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (decision !== 'approved' && decision !== 'denied') {
     return NextResponse.json({ error: 'invalid decision' }, { status: 400 });
   }
-  const allowed = await isAccessAllowed(actor.rbac_role_id ?? 'L1', 'access-request-resolve', 'update');
+  const allowed = matchPerm(actor.permissions, "access_request:request:resolve::allow");
   if (!allowed) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   const r = await query(
     `UPDATE access_requests

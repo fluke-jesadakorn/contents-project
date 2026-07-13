@@ -1,30 +1,25 @@
 // Centralized server-side guard for the consolidated lib.
 //
-// Functions:
-//   - loadActor():        reads session + returns full user row
-//   - requireActor():     throws if no signed session
-//   - requireAction():    actor's role + rbac matrix + optional stage check
-//   - slipOwnership():    whether the actor may read a given slip key
-//   - listScope():        self/department/all filter for list queries
-//   - apiGuard (in @erp-lib/server/apiGuard): route-handler guard
-//   - aiGuardForRequest(): deprecated — kept as a 401 stub; use apiGuard
+// All access checks go through the perm-string system via matchPerm().
+// No legacy rbac matrix; no separate dept column on users.
 
 import 'server-only';
 import { query } from '../db';
 import { sessionFromHeaders, verifySession, type SessionPayload } from './sessionToken';
-import { isAccessAllowed, type Action as RbacAction } from '../access/api.server';
-import { evaluateStage } from '../rbac/stage';
-import { getActorScope, type ActorScope } from '../rbac/scope';
+import {
+  matchPerm, parseDeptFromPerms, parseRoleId,
+} from '../perm/grammar';
+import { getActorScope, type ActorScope } from '../perm/scope';
 
 export interface SessionActor {
   id: number;
   employee_code: string;
   fullname: string;
-  department: string | null;
-  dept_group_id: string | null;
-  dept_group_name: string | null;
+  role_id: string;
   role_name: string;
-  rbac_role_id: string | null;
+  level: number;
+  dept_id: string | null;
+  permissions: string[];
 }
 
 export class GuardError extends Error {
@@ -44,9 +39,6 @@ export interface ActorWithScope extends SessionActor {
   isCeoOrAdmin: boolean;
 }
 
-// Convert a Web Fetch Headers (or Node IncomingMessage headers) into the
-// plain Record<string, string | string[] | undefined> shape our guards
-// expect. Keys are lower-cased.
 export function plainHeaders(headers: Headers | Record<string, string | string[] | undefined>): Record<string, string | string[] | undefined> {
   if (headers instanceof Headers) {
     const out: Record<string, string | string[] | undefined> = {};
@@ -59,12 +51,13 @@ export function plainHeaders(headers: Headers | Record<string, string | string[]
 }
 
 function enrichActor(a: SessionActor): ActorWithScope {
+  const perms = a.permissions ?? [];
   const role = a.role_name;
   return {
     ...a,
-    isHod: role === 'head_of_department',
-    isHr: role === 'hr',
-    isHrManager: role === 'hr_manager',
+    isHod: matchPerm(perms, 'user:subtree:edit::allow'),
+    isHr: matchPerm(perms, 'tile:directory:view::allow'),
+    isHrManager: matchPerm(perms, 'user:role:assign::allow'),
     isItOrAdmin: role === 'it' || role === 'admin',
     isCeoOrAdmin: role === 'ceo' || role === 'admin',
   };
@@ -80,17 +73,56 @@ export async function loadActorRaw(): Promise<SessionActor | null> {
   const payload = await currentSession();
   if (!payload) return null;
 
-  const res = await query<SessionActor>(
-    `SELECT u.id, u.employee_code, u.fullname, u.department,
-            u.dept_group_id, dg.name AS dept_group_name,
-            r.name AS role_name, u.rbac_role_id
-     FROM users u
-     JOIN roles r ON u.role_id = r.id
-     LEFT JOIN rbac.groups dg ON dg.id = u.dept_group_id
+  const res = await query<{
+    id: number;
+    employee_code: string;
+    fullname: string;
+    role_id: string | null;
+    permissions: string[];
+  }>(
+    `SELECT u.id, u.employee_code, u.fullname,
+       COALESCE((
+         SELECT ur.role_id FROM perm.user_roles ur
+          WHERE ur.user_id = u.id
+          ORDER BY (CASE WHEN ur.role_id LIKE '%::1' THEN 0
+                         WHEN ur.role_id LIKE '%::2' THEN 1
+                         WHEN ur.role_id LIKE '%::3' THEN 2
+                         WHEN ur.role_id LIKE '%::4' THEN 3
+                         WHEN ur.role_id LIKE '%::5' THEN 4
+                         ELSE 5 END), ur.granted_at ASC
+          LIMIT 1
+       ), 'officer::5') AS role_id,
+       COALESCE((
+         SELECT array_agg(DISTINCT p_id ORDER BY p_id)
+           FROM (
+             SELECT rp.permission_id AS p_id
+               FROM perm.user_roles ur
+               JOIN perm.role_permissions rp ON rp.role_id = ur.role_id
+              WHERE ur.user_id = u.id
+             UNION
+             SELECT permission_id AS p_id
+               FROM perm.user_permissions
+              WHERE user_id = u.id AND revoked_at IS NULL
+                AND (ends_at IS NULL OR ends_at > now())
+           ) t
+       ), ARRAY[]::text[]) AS permissions
+      FROM users u
      WHERE u.id = $1`,
     [payload.sub],
   );
-  return res.rows[0] || null;
+  const row = res.rows[0];
+  if (!row) return null;
+  const parsed = parseRoleId(row.role_id ?? 'officer::5');
+  return {
+    id: row.id,
+    employee_code: row.employee_code,
+    fullname: row.fullname,
+    role_id: row.role_id ?? 'officer::5',
+    role_name: parsed?.name ?? 'officer',
+    level: parsed?.level ?? 5,
+    dept_id: parseDeptFromPerms(row.permissions ?? []),
+    permissions: row.permissions ?? [],
+  };
 }
 
 export async function requireActor(): Promise<ActorWithScope> {
@@ -116,23 +148,23 @@ async function currentToken(): Promise<string | null> {
 
 export function requireTab(actor: ActorWithScope, tab: string): void {
   if (actor.role_name === 'it' || actor.role_name === 'admin') return;
-  const allowed: Record<string, string[]> = {
-    workbench: ['staff', 'accountant', 'account_officer', 'account_supervisor', 'accounting_manager', 'supervisor', 'head_of_department', 'cfo', 'ceo', 'hr', 'hr_manager'],
-    pr:        ['staff', 'supervisor', 'head_of_department', 'accounting_manager', 'cfo', 'ceo'],
-    ledger:    ['accountant', 'account_officer', 'account_supervisor', 'accounting_manager', 'cfo', 'ceo'],
-    cockpit:   ['cfo', 'ceo', 'admin'],
-    policy:    ['cfo', 'admin', 'accounting_manager'],
-    settings:  ['admin', 'it'],
-    hr:        ['hr', 'hr_manager'],
+  const permByTab: Record<string, string> = {
+    workbench: 'tile:inbox:view::allow',
+    pr: 'tile:pr:view::allow',
+    ledger: 'tile:ledger:view::allow',
+    cockpit: 'tile:cockpit:view::allow',
+    policy: 'tile:policy:view::allow',
+    settings: 'tile:settings:view::allow',
+    hr: 'tile:hr:view::allow',
   };
-  if (!allowed[tab]?.includes(actor.role_name)) {
+  const required = permByTab[tab];
+  if (required && !matchPerm(actor.permissions, required)) {
     throw new GuardError(`role "${actor.role_name}" cannot access tab "${tab}"`, 403);
   }
 }
 
 export interface RequireActionOpts {
-  rbacSection?: string;
-  rbacAction?: RbacAction;
+  perm?: string;
   stage?: string;
 }
 
@@ -147,35 +179,16 @@ export async function requireAction(
   _actionName: string,
   opts: RequireActionOpts = {},
 ): Promise<RequireActionResult> {
-  if (opts.stage) {
-    const stageAccess = await evaluateStage(actor.rbac_role_id ?? null, opts.stage);
-    if (!stageAccess.allow) {
-      throw new GuardError(`stage "${opts.stage}" is not allowed for role "${actor.role_name}"`, 409);
-    }
-    if (stageAccess.stageOverridable && stageAccess.source === 'admin_override') {
-      return { allowed: true, override: true, reason: 'stage_override' };
+  if (opts.perm) {
+    if (!matchPerm(actor.permissions, opts.perm)) {
+      throw new GuardError(`missing permission "${opts.perm}"`, 403);
     }
   }
-
-  if (opts.rbacSection && opts.rbacAction) {
-    if (actor.rbac_role_id) {
-      const ok = await isAccessAllowed(actor.rbac_role_id, opts.rbacSection, opts.rbacAction);
-      if (!ok) {
-        throw new GuardError(
-          `access matrix disallows ${opts.rbacAction} on ${opts.rbacSection}`,
-          403,
-        );
-      }
-    }
-  }
-
   return { allowed: true, override: false };
 }
 
 export async function slipOwnership(key: string, actor: ActorWithScope): Promise<boolean> {
-  const scope = await getActorScope(actor.rbac_role_id ?? null, actor.id);
-  if (scope.kind === 'all') return true;
-
+  if (matchPerm(actor.permissions, 'admin:system:bypass::allow')) return true;
   const r = await query<{ uploaded_by: number | null }>(
     `SELECT uploaded_by FROM slips WHERE file_path = $1 LIMIT 1`,
     [key],
@@ -183,24 +196,22 @@ export async function slipOwnership(key: string, actor: ActorWithScope): Promise
   if (r.rows.length === 0) return false;
   const uploadedBy = r.rows[0].uploaded_by;
   if (!uploadedBy) return false;
-
-  if (scope.kind === 'self') return uploadedBy === actor.id;
-
-  if (scope.kind === 'department') {
-    const u = await query<{ u_grp: string | null; a_grp: string | null; u_dept: string | null; a_dept: string | null }>(
-      `SELECT
-         (SELECT dept_group_id FROM users WHERE id = $1) AS u_grp,
-         (SELECT dept_group_id FROM users WHERE id = $2) AS a_grp,
-         (SELECT department FROM users WHERE id = $1) AS u_dept,
-         (SELECT department FROM users WHERE id = $2) AS a_dept`,
-      [uploadedBy, actor.id],
-    );
-    const row = u.rows[0];
-    if (!row) return false;
-    if (row.u_grp && row.a_grp && row.u_grp === row.a_grp) return true;
-    return row.u_dept != null && row.u_dept === row.a_dept;
-  }
-  return false;
+  if (uploadedBy === actor.id) return true;
+  if (matchPerm(actor.permissions, 'finance:expense:view_all::allow')) return true;
+  if (matchPerm(actor.permissions, 'finance:expense:view_own::allow')) return uploadedBy === actor.id;
+  const targetDept = await query<{ dept_perm: string | null }>(
+    `SELECT (SELECT up.permission_id FROM perm.user_permissions up
+              WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+                AND up.revoked_at IS NULL
+                AND (up.ends_at IS NULL OR up.ends_at > now())
+              ORDER BY up.permission_id LIMIT 1) AS dept_perm
+       FROM users u WHERE u.id = $1`,
+    [uploadedBy],
+  );
+  const tDept = targetDept.rows[0]?.dept_perm;
+  if (!tDept || !actor.dept_id) return false;
+  const targetDeptId = tDept.replace(/^user:dept:/, '').replace(/::allow$/, '');
+  return targetDeptId === actor.dept_id;
 }
 
 export interface ScopeFilter {
@@ -210,37 +221,21 @@ export interface ScopeFilter {
 }
 
 export async function listScope(actor: ActorWithScope): Promise<ScopeFilter> {
-  const scope = await getActorScope(actor.rbac_role_id ?? null, actor.id);
-  const scopeKind: string = scope.kind;
+  const scope = await getActorScope(new Set(actor.permissions), actor.id);
   const narrowed: ScopeFilter['kind'] =
-    scopeKind === 'subtree' || scopeKind === 'team' || scopeKind === 'deny'
-      ? 'department'
-      : (scopeKind === 'self' || scopeKind === 'all'
-          ? scopeKind
-          : 'self');
-  return {
-    kind: narrowed,
-    department: scope.department,
-    userId: actor.id,
-  };
+    scope.kind === 'all' ? 'all'
+    : scope.kind === 'self' ? 'self'
+    : 'department';
+  return { kind: narrowed, department: actor.dept_id, userId: actor.id };
 }
 
-// --- AI guard (consolidated from ai-svc/src/lib/guard.ts) --------------------
+// --- AI guard (deprecated stub kept for backwards callers) -------------------
 
-export interface AiGuardOk {
-  ok: true;
-  actorId: number;
-  role: string;
-  rbacRoleId: string | null;
-}
-export interface AiGuardFail {
-  ok: false;
-  status: 401 | 403;
-  error: string;
-}
+export interface AiGuardOk { ok: true; actorId: number; role: string; }
+export interface AiGuardFail { ok: false; status: 401 | 403; error: string; }
 export async function aiGuardForRequest(
   _headers: Record<string, string | string[] | undefined>,
-  _opts: { rbacSection?: string; rbacAction?: 'create' | 'read' | 'update' | 'delete' },
+  _opts: { perm?: string },
 ): Promise<AiGuardOk | AiGuardFail> {
   return { ok: false, status: 401, error: 'aiGuardForRequest is deprecated — use apiGuard from @erp-lib/server/apiGuard' };
 }

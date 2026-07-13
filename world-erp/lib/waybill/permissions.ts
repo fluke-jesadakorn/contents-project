@@ -5,7 +5,7 @@
 // form and the `attachWaybillDocumentAction`. CFO/CEO/admin always-allow.
 // Terminal stages (disbursed/rejected) are read-only.
 
-import { STAGE_TO_ROLE, normalizeStage } from '../perm/stages';
+import { normalizeStage, stageRoles } from '../perm/stages';
 
 export type ActorRole = string;
 
@@ -26,9 +26,9 @@ export function canActorAttachAt(actorRole: ActorRole, stage: string): boolean {
   const canon = normalizeStage(stage);
   if (!canon) return false;
   if (canon === 'disbursed' || canon === 'rejected') return false;
-  const required = STAGE_TO_ROLE[canon];
-  if (!required) return false;
-  return required === actorRole;
+  const required = stageRoles(canon);
+  if (required.length === 0) return false;
+  return required.includes(actorRole);
 }
 
 export function canActorRemoveAttachment(actor: ActorContext): boolean {

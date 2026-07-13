@@ -110,7 +110,7 @@ export async function listEvents(waybillId: string): Promise<WaybillEventRow[]> 
   const r = await query<WaybillEventRow>(
     `SELECT id, waybill_id, sequence, previous_event_id, kind,
             stage_from, stage_to, actor_id, actor_role,
-            actor_signature, occurred_at, payload
+            NULL::bytea AS actor_signature, occurred_at, payload
        FROM waybill_events
       WHERE waybill_id = $1
       ORDER BY sequence ASC`,

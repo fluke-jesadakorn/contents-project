@@ -26,6 +26,9 @@ export async function middleware(req: NextRequest) {
   const isPublicApi =
     pathname === '/api/actor' ||
     pathname.startsWith('/api/actor/') ||
+    pathname === '/api/auth/sign-in' ||
+    pathname.startsWith('/api/auth/sign-in/') ||
+    pathname === '/api/me/locale' ||
     PUBLIC_API.some((p) => pathname === p);
 
   const token = req.cookies.get(SESSION_COOKIE)?.value ?? req.headers.get('x-erp-session');

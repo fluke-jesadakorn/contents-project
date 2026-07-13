@@ -5,7 +5,10 @@
 //
 // Keep this file as the only place where role-name → UI metadata lives.
 
-export type StaffLevel = 1 | 2 | 3 | 4 | 5;
+export type StaffLevel = number;
+export type RoleName = string;
+export type TabName = string;
+export type ActionName = string;
 
 export type DisplayRoleName =
   | 'staff'
@@ -20,7 +23,12 @@ export type DisplayRoleName =
   | 'ceo'
   | 'it'
   | 'hr'
-  | 'hr_manager';
+  | 'hr_manager'
+  | 'manager'
+  | 'finance'
+  | 'sales_rep'
+  | 'sales_supervisor'
+  | 'officer';
 
 export const ROLE_GLYPH: Record<DisplayRoleName, string> = {
   staff:               '🧑‍💼',
@@ -173,3 +181,58 @@ export const STAFF_LEVEL_BADGE: Record<StaffLevel, string> = {
   4: 'bg-cyan-500/15 text-cyan-200 border-cyan-500/40',
   5: 'bg-emerald-500/15 text-emerald-200 border-emerald-500/40',
 };
+
+// ── Helper functions ────────────────────────────────────────────────────────
+
+export function staffLevelLabel(level: number | null | undefined): string {
+  if (level == null) return 'Unknown';
+  return STAFF_LEVEL_LABEL[level as StaffLevel] ?? `Grade ${level}`;
+}
+
+export function staffLevelAccent(level: number | null | undefined): string {
+  if (level == null) return STAFF_LEVEL_ACCENT[5];
+  return STAFF_LEVEL_ACCENT[level as StaffLevel] ?? STAFF_LEVEL_ACCENT[5];
+}
+
+export function staffLevelBadge(level: number | null | undefined): string {
+  if (level == null) return STAFF_LEVEL_BADGE[5];
+  return STAFF_LEVEL_BADGE[level as StaffLevel] ?? STAFF_LEVEL_BADGE[5];
+}
+
+export function isStaffLevel(n: unknown): n is StaffLevel {
+  return typeof n === 'number' && n >= 1 && n <= 5;
+}
+
+export function getDefaultStaffLevel(_role: string): StaffLevel {
+  return 5;
+}
+
+export function getEffectiveStaffLevel(input: { staff_level?: number | null; role_name?: string | null }): StaffLevel {
+  if (typeof input.staff_level === 'number' && isStaffLevel(input.staff_level)) return input.staff_level;
+  return 5;
+}
+
+// Deprecated — no longer role-gated; return everything.
+export function getAllowedTabs(_role: string): TabName[] {
+  return ['dashboard', 'approvals', 'expenses', 'reports', 'settings'];
+}
+
+export function getDefaultTab(_role: string): TabName {
+  return 'dashboard';
+}
+
+export function getRoleScope(_role: string): 'self' | 'dept' | 'all' {
+  return 'self';
+}
+
+export function canAccessTab(_role: string, _tab: string): boolean {
+  return true;
+}
+
+export function canPerformAction(_role: string, _action: string): boolean {
+  return true;
+}
+
+export function getChainStages(_role: string): string[] {
+  return [];
+}

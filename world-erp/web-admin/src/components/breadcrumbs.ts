@@ -30,3 +30,10 @@ export function buildCrumbs(spec: CrumbSpec): Crumb[] {
   }
   return crumbs;
 }
+
+export function tileCrumbs(tile: Pick<TileWithMeta, 'id' | 'display_name' | 'sub_view' | 'group_name'>): Crumb[] {
+  return buildCrumbs({
+    group: tile.group_name as TileGroup,
+    tile: { id: tile.id, display_name: tile.display_name, sub_view: tile.sub_view },
+  });
+}
