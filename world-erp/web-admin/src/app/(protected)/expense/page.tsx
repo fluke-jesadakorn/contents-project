@@ -23,8 +23,7 @@ import { stageRoles } from '@erp-lib/waybill/derive';
 import { loadVisionModels } from '@/lib/ai/loadVisionModels';
 import { Bilingual } from '@/components/i18n/Bilingual';
 import { headers } from 'next/headers';
-import { loadActivePermSession, hasPermission } from '@erp-lib/perm/server';
-import { NoPermissionView } from '@/components/NoPermissionView';
+import { loadActivePermSession } from '@erp-lib/perm/server';
 import { loadSlipsForExpenses } from '@/lib/server/waybill';
 import { BookBankMini } from './_components/BookBankMini';
 import { DocList } from './_components/DocList';
@@ -90,21 +89,7 @@ export default async function ExpenseInboxPage({ searchParams }: PageProps) {
   const out = await loadActivePermSession(
     new Request('http://internal', { headers: h as unknown as HeadersInit }),
   );
-  if (!out || !hasPermission(out.session, 'tile:expense:view')) {
-    return (
-      <>
-        <BreadcrumbSetter crumbs={[{ label: 'Hub', href: '/' }, { label: 'Expense', href: '/expense' }]} />
-        <PageLayout title="Expense · ใบส่งของ" subtitle="My open Waybills">
-          <NoPermissionView
-            kind="locked"
-            actor={out ? (out.session.user as any) : null}
-            attemptedPath="/expense"
-            reason={out ? 'tile:expense:view required.' : 'Sign in to view this page.'}
-          />
-        </PageLayout>
-      </>
-    );
-  }
+  if (!out) redirect('/login');
 
   const actor = await loadActor();
   if (!actor) redirect('/login');
