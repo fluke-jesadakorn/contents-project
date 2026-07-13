@@ -8,7 +8,7 @@ const STORAGE_KEY = 'worderp.lang';
 export function LangGate() {
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    const stored = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null) as 'en' | 'th' | null;
+    const stored = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null) as 'de' | 'th' | null;
     if (!stored) {
       setOpen(true);
     }

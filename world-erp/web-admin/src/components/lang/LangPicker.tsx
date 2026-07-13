@@ -3,28 +3,29 @@
 import React, { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'worderp.lang';
+type Lang = 'de' | 'th';
 
-export function useLang(): 'en' | 'th' {
-  const [lang, setLang] = useState<'en' | 'th'>('th');
+export function useLang(): Lang {
+  const [lang, setLangState] = useState<Lang>('th');
   useEffect(() => {
-    const stored = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null) as 'en' | 'th' | null;
-    if (stored === 'en' || stored === 'th') setLang(stored);
-    else setLang('th');
+    const stored = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null) as Lang | null;
+    if (stored === 'de' || stored === 'th') setLangState(stored);
+    else setLangState('th');
   }, []);
   return lang;
 }
 
-export function setLang(lang: 'en' | 'th'): void {
+export function setLang(lang: Lang): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEY, lang);
-    document.documentElement.lang = lang === 'th' ? 'th' : 'en';
+    document.documentElement.lang = lang;
     window.dispatchEvent(new CustomEvent('worderp:lang', { detail: lang }));
   }
 }
 
 interface Props {
   open: boolean;
-  onPick: (lang: 'en' | 'th') => void;
+  onPick: (lang: Lang) => void;
 }
 
 export function LangPicker({ open, onPick }: Props) {
@@ -37,7 +38,7 @@ export function LangPicker({ open, onPick }: Props) {
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm"
     >
       <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
-        <h2 className="mb-4 text-base font-bold text-white">เลือกภาษา · Pick language</h2>
+        <h2 className="mb-4 text-base font-bold text-white">เลือกภาษา · Sprache wählen</h2>
         <div className="flex gap-3">
           <button
             type="button"
@@ -50,12 +51,12 @@ export function LangPicker({ open, onPick }: Props) {
           </button>
           <button
             type="button"
-            onClick={() => onPick('en')}
+            onClick={() => onPick('de')}
             className="flex w-32 flex-col items-center gap-1 rounded-xl border border-slate-700 bg-slate-950 p-4 text-white hover:border-cyan-500"
           >
-            <span className="text-2xl" aria-hidden>🇬🇧</span>
-            <span className="text-sm font-bold">English</span>
-            <span className="text-[10px] font-mono text-slate-500">EN</span>
+            <span className="text-2xl" aria-hidden>🇩🇪</span>
+            <span className="text-sm font-bold">Deutsch</span>
+            <span className="text-[10px] font-mono text-slate-500">DE</span>
           </button>
         </div>
       </div>
@@ -68,12 +69,12 @@ interface TriggerProps {
 }
 
 export function LangPickerTrigger({ className }: TriggerProps) {
-  const [lang, setLangState] = useState<'en' | 'th' | null>(null);
+  const [lang, setLangState] = useState<Lang | null>(null);
   useEffect(() => {
-    const stored = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null) as 'en' | 'th' | null;
+    const stored = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null) as Lang | null;
     setLangState(stored);
     const handler = (e: Event) => {
-      setLangState((e as CustomEvent<'en' | 'th'>).detail);
+      setLangState((e as CustomEvent<Lang>).detail);
     };
     window.addEventListener('worderp:lang', handler);
     return () => window.removeEventListener('worderp:lang', handler);
@@ -81,7 +82,7 @@ export function LangPickerTrigger({ className }: TriggerProps) {
 
   if (!lang) return null;
   const swap = () => {
-    const next: 'en' | 'th' = lang === 'en' ? 'th' : 'en';
+    const next: Lang = lang === 'th' ? 'de' : 'th';
     setLang(next);
     setLangState(next);
   };
@@ -90,14 +91,14 @@ export function LangPickerTrigger({ className }: TriggerProps) {
     <button
       type="button"
       onClick={swap}
-      title={`${lang === 'th' ? 'Waybill · ใบส่งของ' : 'ใบส่งของ · Waybill'}`}
+      title={`${lang === 'th' ? 'Waybill · ใบส่งของ' : 'Waybill · Lieferschein'}`}
       aria-label="Toggle language"
       className={
         'rounded-lg border border-slate-700 px-2 py-1 text-[10px] font-mono uppercase text-slate-300 hover:border-cyan-500 ' +
         (className ?? '')
       }
     >
-      {lang === 'th' ? '🇹🇭 TH' : '🇬🇧 EN'}
+      {lang === 'th' ? '🇹🇭 TH' : '🇩🇪 DE'}
     </button>
   );
 }

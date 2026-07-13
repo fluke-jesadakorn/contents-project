@@ -23,7 +23,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: [
               "document.documentElement.classList.add('gl-loading');",
-              "try { var l = localStorage.getItem('worderp.lang'); document.documentElement.lang = l === 'en' ? 'en' : 'th'; } catch (e) {}",
+              "try { var l = localStorage.getItem('worderp.lang'); document.documentElement.lang = (l === 'de' || l === 'th') ? l : 'th'; } catch (e) {}",
             ].join(' '),
           }}
         />
