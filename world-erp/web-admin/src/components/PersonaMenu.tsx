@@ -266,10 +266,14 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          <div
+            className="fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
           <div
             role="menu"
-            className="absolute right-0 mt-2 w-[28rem] max-w-[92vw] glass-panel-heavy rounded-2xl shadow-2xl shadow-black p-2 z-50 animate-fade-in flex flex-col max-h-[72vh]"
+            className="absolute right-0 mt-2 w-[28rem] max-w-[92vw] bg-slate-950/98 border border-indigo-500/40 rounded-2xl shadow-2xl shadow-black/70 p-2 z-50 animate-fade-in flex flex-col max-h-[min(72vh,640px)]"
           >
             <div className="px-3 pt-2 pb-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
               <span>Switch User Role</span>
