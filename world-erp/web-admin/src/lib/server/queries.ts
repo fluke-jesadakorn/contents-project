@@ -502,14 +502,12 @@ function pickKind(role: string): DashKind | null {
 
 async function pickKindFromMatrix(_rbacRoleId: string | null, perms: string[] = []): Promise<DashKind | null> {
   const kindByPerm: Record<string, DashKind> = {
-    'tile:dash_it::allow':       'it',
-    'tile:dash_exec::allow':     'exec',
-    'tile:dash_manager::allow':  'hod',
-    'tile:dash_am::allow':       'am',
-    'tile:dash_reviewer::allow': 'reviewer',
-    'tile:dash_staff::allow':    'staff',
-    'tile:dash_hr::allow':       'hr',
-    'tile:dash_finance::allow':  'finance',
+    'tile:dash_it:view::allow':       'it',
+    'tile:dash_exec:view::allow':     'exec',
+    'tile:dash_manager:view::allow':  'hod',
+    'tile:dash_am:view::allow':       'am',
+    'tile:dash_staff:view::allow':    'staff',
+    'tile:dash_finance:view::allow':  'finance',
   };
   for (const [perm, k] of Object.entries(kindByPerm)) {
     if (perms.includes(perm)) return k;
