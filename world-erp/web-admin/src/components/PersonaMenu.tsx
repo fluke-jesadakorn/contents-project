@@ -53,6 +53,20 @@ function deptMetaFromKey(key: string): { code: string; icon: string; label: stri
   };
 }
 
+// For roles whose position name is generic (Supervisor / Officer / Manager / Staff),
+// prefix with the department so the badge reads "IT Supervisor" instead of "Supervisor".
+// Specific positions (Account Supervisor, Account Officer, etc.) keep their dedicated label.
+const GENERIC_ROLES = new Set(['supervisor', 'officer', 'manager', 'staff', 'head_of_department']);
+function positionLabel(roleName: string, deptKey: string | null): string {
+  const cleanRole = roleName.indexOf('::') >= 0 ? roleName.slice(0, roleName.indexOf('::')) : roleName;
+  const r = roleLabel(cleanRole);
+  if (deptKey && GENERIC_ROLES.has(cleanRole)) {
+    const d = deptLabelFn((deptKey || '').replace(/^dept-/, ''));
+    return `${d} ${r}`;
+  }
+  return r;
+}
+
 function staffLevelOf(u: any): StaffLevel {
   const lv = u.level;
   if (lv === 1 || lv === 2 || lv === 3 || lv === 4 || lv === 5) return lv;
@@ -416,7 +430,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
                                       roleBadge(roleKey),
                                     ].join(' ')}
                                   >
-                                    {roleLabel(roleKey)}
+                                    {positionLabel(roleKey, u.department ?? null)}
                                   </span>
                                   <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase border bg-slate-500/10 text-slate-300 border-slate-600/50">
                                     P{staffLevelOf(u)}
@@ -439,7 +453,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
               <span className="shrink-0">↑↓ Select · Enter Confirm · Esc Close</span>
               <span className="flex items-center gap-1.5">
                 <span className={['px-1.5 py-0.5 rounded border', roleBadge(curRole)].join(' ')}>
-                  ● {roleLabel(curRole)}
+                  ● {positionLabel(curRole, currentUser?.department ?? null)}
                 </span>
                 <button
                   type="button"
