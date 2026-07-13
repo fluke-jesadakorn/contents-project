@@ -70,12 +70,17 @@ export const ROLE_LABEL: Record<DisplayRoleName, string> = {
   accounting_manager:  'Accounting Manager',
   supervisor:          'Supervisor',
   head_of_department:  'Head of Department',
-  admin:               'CFO',
-  cfo:                 'CFO',
-  ceo:                 'CEO',
-  it:                  'IT Staff',
+  manager:             'Operations Manager',
+  admin:               'System Admin',
+  cfo:                 'Chief Financial Officer',
+  ceo:                 'Chief Executive Officer',
+  finance:             'Financial Officer',
+  officer:             'Operations Officer',
+  it:                  'IT Manager',
   hr:                  'HR Officer',
   hr_manager:          'HR Manager',
+  sales_rep:           'Sales Representative',
+  sales_supervisor:    'Sales Supervisor',
 };
 
 export const ROLE_LABEL_TH: Record<DisplayRoleName, string> = {

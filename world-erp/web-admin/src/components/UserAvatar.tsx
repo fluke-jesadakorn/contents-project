@@ -25,20 +25,28 @@ export function staffLevelGlyph(level: number | null | undefined): string {
   return '·';
 }
 
+export function roleNameOf(role?: string | null): string {
+  if (!role) return '';
+  const i = role.indexOf('::');
+  return i >= 0 ? role.slice(0, i) : role;
+}
+
 export function roleAccent(role?: string): string {
-  return ROLE_ACCENT[role as DisplayRoleName] || 'from-slate-500 to-slate-700';
+  return ROLE_ACCENT[roleNameOf(role) as DisplayRoleName] || 'from-slate-500 to-slate-700';
 }
 
 export function roleGlyph(role?: string): string {
-  return ROLE_GLYPH[role as DisplayRoleName] || '👤';
+  return ROLE_GLYPH[roleNameOf(role) as DisplayRoleName] || '👤';
 }
 
 export function roleLabel(role?: string): string {
-  return ROLE_LABEL[role as DisplayRoleName] || role || 'Unknown';
+  if (!role) return 'Unknown';
+  const key = roleNameOf(role);
+  return ROLE_LABEL[key as DisplayRoleName] || key || 'Unknown';
 }
 
 export function roleBadge(role?: string): string {
-  return ROLE_BADGE[role as DisplayRoleName] || 'bg-slate-500/15 text-slate-200 border-slate-500/40';
+  return ROLE_BADGE[roleNameOf(role) as DisplayRoleName] || 'bg-slate-500/15 text-slate-200 border-slate-500/40';
 }
 
 const LEVEL_ACCENT: Record<string, string> = {
