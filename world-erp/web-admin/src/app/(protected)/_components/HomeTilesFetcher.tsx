@@ -17,12 +17,15 @@ interface Props {
     role_name: string;
     rbac_role_id?: string | null;
     fullname?: string;
+    permissions?: string[] | null;
     [k: string]: unknown;
   };
+  canViewHub: boolean;
+  canViewPolicy: boolean;
   canViewExec: boolean;
 }
 
-export async function HomeTilesFetcher({ actor, canViewExec }: Props) {
+export async function HomeTilesFetcher({ actor, canViewHub, canViewPolicy, canViewExec }: Props) {
   const [{ users = [], expenses = [] }, prsRes, execRes] = await Promise.all([
     getDashboardData(),
     listPurchaseRequisitions(actor.id),
@@ -35,6 +38,11 @@ export async function HomeTilesFetcher({ actor, canViewExec }: Props) {
     Promise.resolve(timeGreeting()),
   ]);
 
+  // Global override: any signed-in user opens the Hub.
+  const globalOpen = (actor.permissions ?? []).some((p) =>
+    p === 'system:authenticated:view::allow' || p === 'admin:system:bypass::allow',
+  );
+
   return (
     <HomeClient
       users={users as any[]}
@@ -42,6 +50,7 @@ export async function HomeTilesFetcher({ actor, canViewExec }: Props) {
       expenses={expenses as any[]}
       prs={(prsRes.success ? prsRes.prs : []) as any[]}
       execReport={execRes.success ? execRes.report : null}
+      canViewHub={canViewHub || globalOpen}
       tiles={bundle.tiles}
       accessByTile={bundle.accessByTile}
       greetingKey={greetingKey}
