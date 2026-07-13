@@ -1,16 +1,16 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { CommandPalette } from '@/components/CommandPalette';
 import { TileHub } from '@/components/TileHub';
 import { HubHero } from '@/components/HubHero';
 import { AccessDenied } from '@/components/AccessDenied';
 import { PageLayout } from '@/components/PageLayout';
 import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
-import { GROUP_LABEL, type TileDef, type TileGroup, tileHref, tileFromRow } from '@/components/tile-config';
+import { type TileDef, tileHref, tileFromRow } from '@/components/tile-config';
 import { evaluateTileOptimistic } from '@/components/tileAccess';
-import { ROOT_CRUMB, groupCrumb } from '@/components/breadcrumbs';
+import { ROOT_CRUMB } from '@/components/breadcrumbs';
 
 interface HomeClientProps {
   users: any[];
@@ -24,11 +24,6 @@ interface HomeClientProps {
 
 export function HomeClient({ users, currentUser, expenses: _expenses, policies: _policies, prs, execReport: _execReport, canViewHub }: HomeClientProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const groupParam = searchParams.get('group');
-  const activeGroup: TileGroup | null = (groupParam && (groupParam in GROUP_LABEL))
-    ? (groupParam as TileGroup)
-    : null;
 
   const [openCommand, setOpenCommand] = useState(false);
   const [tiles, setTiles] = useState<TileDef[]>([]);
@@ -49,15 +44,14 @@ export function HomeClient({ users, currentUser, expenses: _expenses, policies: 
     return () => { cancelled = true; };
   }, []);
 
-  const visibleTiles = useMemo(
-    () => (activeGroup ? tiles.filter((t) => t.group === activeGroup) : tiles),
-    [tiles, activeGroup],
-  );
+  // Always render every tile in the catalog — open or locked — grouped by
+  // their native group_name. No per-page group filter.
+  const visibleTiles = tiles;
 
-  const homeTitle = activeGroup ? GROUP_LABEL[activeGroup].label.toUpperCase() : 'Hub';
-  const homeSubtitle = activeGroup
-    ? `${visibleTiles.length} tile${visibleTiles.length === 1 ? '' : 's'} in ${GROUP_LABEL[activeGroup].label}`
-    : (currentUser ? `${tiles.length} tiles in catalog — visibility filtered by RBAC` : 'Sign in to view your tiles');
+  const homeTitle = 'Hub';
+  const homeSubtitle = currentUser
+    ? `${tiles.length} tiles in catalog — locked or open per your role`
+    : 'Sign in to view your tiles';
 
   const handleSelectTile = (t: any) => {
     const access = evaluateTileOptimistic(t, currentUser);
@@ -82,7 +76,7 @@ export function HomeClient({ users, currentUser, expenses: _expenses, policies: 
 
   return (
     <>
-      <BreadcrumbSetter crumbs={activeGroup ? [ROOT_CRUMB, groupCrumb(activeGroup)] : [ROOT_CRUMB]} />
+      <BreadcrumbSetter crumbs={[ROOT_CRUMB]} />
       <CommandPalette
         role={currentUser?.role_name as any}
         onNavigate={(href) => router.push(href)}
@@ -126,11 +120,9 @@ export function HomeClient({ users, currentUser, expenses: _expenses, policies: 
           />
         )}
 
-        {currentUser && tilesLoaded && visibleTiles.length === 0 && (
-          <div className="flex justify-center items-center py-10 glass-panel rounded-2xl border-slate-800">
-            <span className="text-sm text-slate-400 font-sans">
-              {activeGroup ? `No tiles in ${GROUP_LABEL[activeGroup].label}.` : 'No tiles in catalog.'}
-            </span>
+{currentUser && tilesLoaded && visibleTiles.length === 0 && (
+          <div className="flex justify-center items-center py-10 glass-panel rounded-2xl border border-slate-800">
+            <span className="text-sm text-slate-400 font-sans">No tiles in catalog.</span>
           </div>
         )}
       </PageLayout>
