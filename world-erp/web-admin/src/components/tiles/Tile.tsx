@@ -4,9 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { TileTooltip } from '../TileTooltip';
 import { RequestAccessModal } from '../RequestAccessModal';
-import { STAFF_LEVEL_LABEL } from '@/lib/roles/display';
 import type { TileState } from '../tileAccess';
-import type { TileAccessMeta } from '../tile-config';
 
 const accentMap: Record<string, { bg: string; bar: string; text: string; glow: string; ring: string }> = {
   emerald: { bg: 'from-emerald-500/25 via-emerald-700/15 to-emerald-900/40', bar: 'bg-emerald-400', text: 'text-emerald-300', glow: 'shadow-emerald-500/40', ring: 'ring-emerald-400/40' },
@@ -42,12 +40,8 @@ export const Tile: React.FC<TileProps> = ({
 
   const [requestOpen, setRequestOpen] = useState(false);
 
-  const meta: TileAccessMeta | null = tile.access_meta ?? null;
-  const deptName = meta?.dept_name ?? null;
-  const groupName = meta?.group_name ?? null;
-  const minLevel = meta?.min_level ?? null;
-  const levelLabel = minLevel != null ? STAFF_LEVEL_LABEL[minLevel as 1 | 2 | 3 | 4 | 5] : null;
-  const hasAnyMeta = !!(deptName || groupName || minLevel != null);
+  const viewPermId = tile.access_meta?.viewPermId ?? tile.view_perm_id ?? null;
+  const hasMeta = !!viewPermId;
 
   const content = (
     <>
@@ -111,32 +105,12 @@ export const Tile: React.FC<TileProps> = ({
               {tile.subtitle}
             </p>
           )}
-          {hasAnyMeta && (
+          {hasMeta && viewPermId && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1">
-              {deptName && (
-                <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider ${locked ? 'bg-slate-900/70 text-slate-500 border-slate-800' : 'bg-slate-900/70 text-slate-300 border-slate-700/70'}`}>
-                  <span aria-hidden>🏢</span>
-                  <span className="truncate max-w-[80px]">{deptName}</span>
-                </span>
-              )}
-              {groupName && (
-                <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider ${locked ? 'bg-slate-900/70 text-slate-500 border-slate-800' : 'bg-slate-900/70 text-slate-300 border-slate-700/70'}`}>
-                  <span aria-hidden>👥</span>
-                  <span className="truncate max-w-[80px]">{groupName}</span>
-                </span>
-              )}
-              {minLevel != null && levelLabel && (
-                <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider ${locked ? 'bg-slate-900/70 text-slate-500 border-slate-800' : 'bg-slate-900/70 text-slate-300 border-slate-700/70'}`}>
-                  <span aria-hidden>🎚</span>
-                  <span>L{minLevel} · {levelLabel}</span>
-                </span>
-              )}
-              {minLevel == null && (
-                <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider ${locked ? 'bg-slate-900/70 text-slate-500 border-slate-800' : 'bg-slate-900/70 text-slate-300 border-slate-700/70'}`}>
-                  <span aria-hidden>🔒</span>
-                  <span>Locked</span>
-                </span>
-              )}
+              <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider ${locked ? 'bg-slate-900/70 text-slate-500 border-slate-800' : 'bg-slate-900/70 text-slate-300 border-slate-700/70'}`}>
+                <span aria-hidden>{locked ? '🔒' : '✓'}</span>
+                <span className="truncate max-w-[160px]">{locked ? 'Locked' : 'Open'}</span>
+              </span>
             </div>
           )}
         </div>
@@ -160,20 +134,9 @@ export const Tile: React.FC<TileProps> = ({
   const tooltipBody = (
     <div className="space-y-1.5">
       <div className="text-[11px] font-mono text-slate-100">{reason || tile.display_name}</div>
-      {hasAnyMeta && (
-        <div className="text-[10px] font-mono text-slate-400 flex flex-wrap gap-x-2">
-          {deptName && (
-            <span><span className="text-slate-500">Department:</span> {deptName}</span>
-          )}
-          {groupName && (
-            <span><span className="text-slate-500">Group:</span> {groupName}</span>
-          )}
-          {minLevel != null && levelLabel && (
-            <span><span className="text-slate-500">Level:</span> L{minLevel} · {levelLabel}</span>
-          )}
-          {minLevel == null && (
-            <span><span className="text-slate-500">Access:</span> 🔒 Locked</span>
-          )}
+      {viewPermId && (
+        <div className="text-[10px] font-mono text-slate-400">
+          <span className="text-slate-500">Perm:</span> {viewPermId}
         </div>
       )}
       {requiredRoles && requiredRoles.length > 0 && (

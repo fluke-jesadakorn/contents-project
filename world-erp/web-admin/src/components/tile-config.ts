@@ -1,6 +1,6 @@
 // Static tile types + thin re-exports.
 //
-// The catalog itself lives in rbac.tiles (db/rbac/0008_static_tile_catalog.sql).
+// The catalog itself lives in perm.tiles (db/perm/*).
 // This file exists only for:
 //   - TileDef / TileWithMeta type aliases (consumed by tile-config consumers)
 //   - tileHref() slug parser (used in client navigation)
@@ -8,28 +8,20 @@
 //   - GROUP_LABEL / GROUP_ORDER (consumed by TileHub)
 //   - targetLabel() request-target → display-name (consumed by Tile, TileHub)
 //
-// All access decisions go through rbac.permissions / rbac.group_permissions
-// via the cascade in lib/rbac/inheritance.ts → resolved by tileAccess.ts.
+// All access decisions go through perm.tiles.view_perm_id
+// via the cascade in lib/perm/* → resolved by tileAccess.ts.
 // There is no TS-side role / department gating.
+//
+// Group values must match perm.tiles.group_name in the database.
 
 export type TileGroup =
-  | 'hub'
-  | 'workflow'
-  | 'workflow-approval'
-  | 'workflow-procurement'
+  | 'work'
   | 'finance'
-  | 'cockpit'
-  | 'policy'
-  | 'it'
-  | 'hr';
+  | 'exec'
+  | 'admin';
 
 export interface TileAccessMeta {
-  min_level: number | null;
-  dept_id: string | null;
-  dept_name: string | null;
-  group_id: string | null;
-  group_name: string | null;
-  group_is_specific: boolean;
+  viewPermId?: string | null;
 }
 
 export interface TileDef {
@@ -58,39 +50,24 @@ export function tileHref(id: string): string {
 }
 
 export const GROUP_LABEL: Record<TileGroup, { label: string; icon: string }> = {
-  hub:                    { label: 'Hub',                    icon: '🗂️' },
-  workflow:               { label: 'Workflow',               icon: '🧰' },
-  'workflow-approval':    { label: 'Workflow · Approval',    icon: '✅' },
-  'workflow-procurement': { label: 'Workflow · Procurement', icon: '🛒' },
+  work:                   { label: 'Work',                   icon: '🧰' },
   finance:                { label: 'Finance',                icon: '📒' },
-  cockpit:                { label: 'Cockpit',                icon: '👑' },
-  policy:                 { label: 'Policy',                 icon: '⚙️' },
-  it:                     { label: 'IT',                     icon: '🛠️' },
-  hr:                     { label: 'HR',                     icon: '👥' },
+  exec:                   { label: 'Exec',                   icon: '👑' },
+  admin:                  { label: 'Admin',                  icon: '⚙️' },
 };
 
 const GROUP_LABEL_BI: Record<TileGroup, { en: string; th: string; de: string }> = {
-  hub:                    { en: 'Hub',                    th: 'หน้าหลัก',         de: 'Übersicht' },
-  workflow:               { en: 'Workflow',               th: 'เวิร์กโฟลว์',      de: 'Workflow' },
-  'workflow-approval':    { en: 'Workflow · Approval',    th: 'เวิร์กโฟลว์ · อนุมัติ', de: 'Workflow · Genehmigung' },
-  'workflow-procurement': { en: 'Workflow · Procurement', th: 'เวิร์กโฟลว์ · จัดซื้อ', de: 'Workflow · Beschaffung' },
+  work:                   { en: 'Work',                   th: 'งาน',               de: 'Arbeit' },
   finance:                { en: 'Finance',                th: 'การเงิน',          de: 'Finanzen' },
-  cockpit:                { en: 'Cockpit',                th: 'ห้องนักบิน',        de: 'Cockpit' },
-  policy:                 { en: 'Policy',                 th: 'นโยบาย',           de: 'Richtlinie' },
-  it:                     { en: 'IT',                     th: 'ไอที',              de: 'IT' },
-  hr:                     { en: 'HR',                     th: 'บุคคล',             de: 'Personal' },
+  exec:                   { en: 'Exec',                   th: 'ผู้บริหาร',        de: 'Geschäftsleitung' },
+  admin:                  { en: 'Admin',                  th: 'ผู้ดูแล',          de: 'Verwaltung' },
 };
 
 export const GROUP_ORDER: TileGroup[] = [
-  'hub',
-  'workflow',
-  'workflow-approval',
-  'workflow-procurement',
+  'work',
   'finance',
-  'cockpit',
-  'policy',
-  'it',
-  'hr',
+  'exec',
+  'admin',
 ];
 
 export function groupLabel(g: TileGroup, _locale: 'en' = 'en'): string {
