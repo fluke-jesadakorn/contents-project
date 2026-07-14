@@ -18,6 +18,7 @@ export function useLang(): Lang {
 export function setLang(lang: Lang): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEY, lang);
+    document.cookie = `worderp.locale=${lang}; Path=/; Max-Age=31536000; SameSite=Lax`;
     document.documentElement.lang = lang;
     window.dispatchEvent(new CustomEvent('worderp:lang', { detail: lang }));
   }
