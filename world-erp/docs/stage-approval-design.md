@@ -67,7 +67,7 @@ This matches the user's intent exactly:
 
 ## Implementation
 
-### 1. New seed migration — `db/rbac/0017_stage_broad_access.sql`
+### 1. New seed migration — `db/perm/9001-seed-new-grammar.sql`
 
 ```sql
 BEGIN;
@@ -137,7 +137,7 @@ No change required. If the product wants a separate "tier-skip" audit flag, add 
 
 ## Verification
 
-1. Apply migration: `psql … -f db/rbac/0017_stage_broad_access.sql`
+1. Apply migration: `psql … -f db/perm/9001-seed-new-grammar.sql`
 2. Check grants:
    ```sql
    SELECT role_id, count(*) FROM rbac.permissions
@@ -153,16 +153,16 @@ No change required. If the product wants a separate "tier-skip" audit flag, add 
 
 | File | Change |
 |---|---|
-| `world-erp/db/rbac/0017_stage_broad_access.sql` | **new** — broad stage grants for L3/L4/L2B |
+| `world-erp/db/perm/9001-seed-new-grammar.sql` | **existing** — broad stage grants for L3/L4/L2B |
 | `world-erp/web-admin/src/app/actions.ts` | **none** (throw stays as safety net) |
-| `world-erp/lib/rbac/stage.ts` | **none** (matrix is the source of truth) |
+| `world-erp/lib/perm/stages.ts` | **none** (matrix is the source of truth) |
 
 ## Rollback
 
 ```sql
-DELETE FROM rbac.permissions
- WHERE module_id LIKE 'stage-%'
-   AND updated_by = 'seed-0017';
+DELETE FROM perm.user_permissions
+ WHERE permission_id LIKE 'stage:%:act::allow'
+   AND granted_by = 'seed-9001';
 ```
 
 Restores the original seed-0006 grants exactly.

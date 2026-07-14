@@ -1,5 +1,11 @@
+import type { ReactNode } from 'react';
 import { GROUP_LABEL, type TileGroup, type TileWithMeta } from './tile-config';
-import type { Crumb } from './Breadcrumb';
+
+export interface Crumb {
+  label: ReactNode;
+  href?: string;
+  icon?: string;
+}
 
 export const ROOT_CRUMB: Crumb = { label: 'World ERP', href: '/', icon: '🌐' };
 

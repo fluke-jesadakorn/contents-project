@@ -94,15 +94,13 @@ PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/v2_seed.
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/seed_gl_mock.sql
 ```
 
-For RBAC schema:
+For perm schema (replaces legacy `db/rbac/`):
 
 ```bash
-PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/rbac/init.sql
-PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/rbac/seed.sql
-PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/rbac/migration_001_link_users.sql
-PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/rbac/0002_groups.sql
-PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/rbac/0003_groups_seed.sql
-PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/rbac/0004_link_dept_groups.sql
+PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/perm/9000-rebuild-string-grammar.sql
+PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/perm/9001-seed-new-grammar.sql
+PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/perm/9002-seed-user-roles-and-depts.sql
+PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -f db/migrations/2026-07-17-active-permissions-view.sql
 ```
 
 ### 2. Create MinIO bucket for slips

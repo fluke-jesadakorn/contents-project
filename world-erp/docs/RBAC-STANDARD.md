@@ -114,7 +114,7 @@ rbac:level:grant:min:6-10:all  Reserved (interns, read-only)
 > been merged into `account_officer`. Both displayed as "Accounting
 > Officer" but `accountant` held read-only review perms while
 > `account_officer` held approve/reject. The collapsed role carries
-> the union of both sets. Run `db/rbac/0027_collapse_accountant.sql`
+> the union of both sets. Run `db/perm/9001-seed-new-grammar.sql`
 > before this version.
 
 `effectiveLevel(userId) = MIN(extractMinLevel(held level perms))`.

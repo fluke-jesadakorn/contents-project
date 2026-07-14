@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { UIProvider, GlobalLoading } from "@/components/ui";
-import { AppShell } from "@/components/AppShell";
 import { LangGate } from "@/components/lang/LangGate";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +29,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased bg-slate-950 text-slate-50 min-h-screen font-sans">
         <UIProvider>
-          <AppShell>{children}</AppShell>
+          {children}
           <GlobalLoading />
           <LangGate />
         </UIProvider>
