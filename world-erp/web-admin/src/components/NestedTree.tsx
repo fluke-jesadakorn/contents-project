@@ -123,12 +123,12 @@ function NodeRow({
       } px-2.5 py-1.5 transition-all active:scale-[0.98] disabled:opacity-50`}
     >
       <div className="flex items-center gap-2">
-        <div className="w-6 h-6 shrink-0 rounded-full bg-slate-950/70 border border-slate-800 flex items-center justify-center text-[9px] font-black text-white">
+        <div className="w-6 h-6 shrink-0 rounded-full bg-slate-950/70 border border-slate-800 flex items-center justify-center text-xs font-black text-white">
           {initials(u.fullname)}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] sm:text-[12px] font-black text-white truncate leading-tight">{u.fullname}</div>
-          <div className="text-[8px] sm:text-[9px] font-mono text-slate-300/80 mt-0.5 truncate">{u.employee_code}</div>
+          <div className="text-sm sm:text-xs font-black text-white truncate leading-tight">{u.fullname}</div>
+          <div className="text-[8px] sm:text-xs font-mono text-slate-300/80 mt-0.5 truncate">{u.employee_code}</div>
         </div>
         <span className={`text-[8px] font-mono uppercase tracking-wider px-1 py-0.5 rounded shrink-0 ${tone}`}>
           P{u.effective_level}

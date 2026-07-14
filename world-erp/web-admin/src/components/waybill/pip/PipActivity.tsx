@@ -42,7 +42,7 @@ function ActedPipEvents({ events, locale }: { events: WaybillEventRow[]; locale:
       </ol>
       {rest.length > 0 && (
         <details className="mt-2">
-          <summary className="cursor-pointer list-none text-[10px] font-mono uppercase tracking-widest text-cyan-300 hover:text-cyan-200 [&::-webkit-details-marker]:hidden">
+          <summary className="cursor-pointer list-none text-xs font-mono uppercase tracking-widest text-cyan-300 hover:text-cyan-200 [&::-webkit-details-marker]:hidden">
             ▶ {locale === 'th' ? `แสดงทั้งหมด (+${rest.length})` : `Show all (+${rest.length} more)`}
           </summary>
           <ol className="mt-2 space-y-1.5">

@@ -1,6 +1,5 @@
 import Link from 'next/link';
-
-type InboxScope = 'waiting' | 'watching' | 'all';
+import type { InboxScope } from '@/lib/server/waybill';
 
 interface Props {
   current: InboxScope;
@@ -51,7 +50,7 @@ export function InboxFilters({ current, counts, lang: _lang = 'en' }: Props) {
             {typeof p.count === 'number' && (
               <span
                 className={
-                  'rounded-full px-1.5 py-0.5 text-[10px] ' +
+                  'rounded-full px-1.5 py-0.5 text-xs ' +
                   (isCurrent
                     ? 'bg-cyan-500/30 text-cyan-100'
                     : 'bg-slate-800 text-slate-400')

@@ -59,7 +59,7 @@ export const Tile: React.FC<TileProps> = ({
       )}
 
       {locked && (
-        <div className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-slate-900/80 border border-slate-700/80 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-slate-300 z-20">
+        <div className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-slate-900/80 border border-slate-700/80 px-1.5 py-0.5 text-xs font-mono uppercase tracking-wider text-slate-300 z-20">
           🔒 <span>Locked</span>
         </div>
       )}
@@ -88,7 +88,7 @@ export const Tile: React.FC<TileProps> = ({
                 {typeof tile.count === 'number' && live ? tile.count.toLocaleString() : tile.count}
               </span>
               {tile.countLabel && (
-                <span className="text-[9px] text-slate-500 font-mono uppercase tracking-wider mt-0.5 text-right max-w-[80px] leading-tight">
+                <span className="text-xs text-slate-500 font-mono uppercase tracking-wider mt-0.5 text-right max-w-[80px] leading-tight">
                   {tile.countLabel}
                 </span>
               )}
@@ -101,13 +101,13 @@ export const Tile: React.FC<TileProps> = ({
             {tile.display_name}
           </h3>
           {tile.subtitle && (
-            <p className={`mt-0.5 font-sans leading-snug text-[11px] line-clamp-1 ${locked ? 'text-slate-600' : 'text-slate-400'}`}>
+            <p className={`mt-0.5 font-sans leading-snug text-sm line-clamp-1 ${locked ? 'text-slate-600' : 'text-slate-400'}`}>
               {tile.subtitle}
             </p>
           )}
           {hasMeta && viewPermId && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1">
-              <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider ${locked ? 'bg-slate-900/70 text-slate-500 border-slate-800' : 'bg-slate-900/70 text-slate-300 border-slate-700/70'}`}>
+              <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs font-mono uppercase tracking-wider ${locked ? 'bg-slate-900/70 text-slate-500 border-slate-800' : 'bg-slate-900/70 text-slate-300 border-slate-700/70'}`}>
                 <span aria-hidden>{locked ? '🔒' : '✓'}</span>
                 <span className="truncate max-w-[160px]">{locked ? 'Locked' : 'Open'}</span>
               </span>
@@ -133,14 +133,14 @@ export const Tile: React.FC<TileProps> = ({
 
   const tooltipBody = (
     <div className="space-y-1.5">
-      <div className="text-[11px] font-mono text-slate-100">{reason || tile.display_name}</div>
+      <div className="text-sm font-mono text-slate-100">{reason || tile.display_name}</div>
       {viewPermId && (
-        <div className="text-[10px] font-mono text-slate-400">
+        <div className="text-xs font-mono text-slate-400">
           <span className="text-slate-500">Perm:</span> {viewPermId}
         </div>
       )}
       {requiredRoles && requiredRoles.length > 0 && (
-        <div className="text-[10px] font-mono text-slate-400">
+        <div className="text-xs font-mono text-slate-400">
           <span className="text-slate-500">Roles with access: </span>
           {requiredRoles.join(', ')}
         </div>
@@ -154,7 +154,7 @@ export const Tile: React.FC<TileProps> = ({
             setRequestOpen(true);
             onRequestAccess?.();
           }}
-          className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-[10px] font-mono uppercase tracking-wider text-cyan-100 hover:bg-cyan-500/30"
+          className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-xs font-mono uppercase tracking-wider text-cyan-100 hover:bg-cyan-500/30"
         >
           ✉ Request Access
         </button>

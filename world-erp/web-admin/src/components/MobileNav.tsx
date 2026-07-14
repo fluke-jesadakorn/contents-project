@@ -38,7 +38,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       />
       <aside
         className={[
-          'fixed left-0 top-0 bottom-0 z-[70] w-80 max-w-[85vw] glass-panel-heavy border-r border-slate-800/80 md:hidden transition-transform duration-300',
+          'fixed left-0 top-0 bottom-0 z-[70] w-80 max-w-[85vw] glass-panel-heavy border-r border-slate-800/80 md:hidden transition-transform duration-300 rounded-r-2xl',
           open ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
         aria-hidden={!open}
@@ -50,7 +50,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             </div>
             <div>
               <div className="text-sm font-black text-white">World ERP</div>
-              <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">
+              <div className="text-xs text-slate-500 font-mono uppercase tracking-widest">
                 {role ? (role as string).replace(/_/g, ' ') : 'No role'}
               </div>
             </div>
@@ -71,13 +71,13 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               <UserAvatar fullname={currentUser.fullname} role={currentUser.role_name} size="md" />
               <div className="min-w-0">
                 <div className="text-sm font-bold truncate text-white">{currentUser.fullname}</div>
-                <div className="text-[10px] text-slate-500 font-mono truncate">{currentUser.employee_code}</div>
+                <div className="text-xs text-slate-500 font-mono truncate">{currentUser.employee_code}</div>
               </div>
               <span className="ml-auto text-base" aria-hidden>{roleGlyph(currentUser.role_name)}</span>
             </div>
           )}
 
-          <div className="pt-3 mt-3 border-t border-slate-800/80 flex items-center gap-2 text-[10px] font-mono text-slate-400">
+          <div className="pt-3 mt-3 border-t border-slate-800/80 flex items-center gap-2 text-xs font-mono text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span>READY</span>
           </div>

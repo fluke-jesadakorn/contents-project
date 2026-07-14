@@ -60,7 +60,7 @@ export function WaybillDetailDrawer({
         </p>
 
         <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+          <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
             State
           </div>
           <div className="mt-1 flex items-center gap-2 text-sm">
@@ -72,7 +72,7 @@ export function WaybillDetailDrawer({
         </div>
 
         <div>
-          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+          <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
             Recent events touching this pip
           </div>
           {passedEvents.length === 0 ? (
@@ -96,7 +96,7 @@ export function WaybillDetailDrawer({
         </div>
 
         <div>
-          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+          <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
             Attachments at this pip ({pipAttachments.length})
           </div>
           {pipAttachments.length === 0 ? (
@@ -116,7 +116,7 @@ export function WaybillDetailDrawer({
         </div>
 
         <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-3 text-xs">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-300">
+          <div className="text-xs font-mono uppercase tracking-widest text-cyan-300">
             Acting now?
           </div>
           <div className="mt-1 text-slate-200">
@@ -128,13 +128,13 @@ export function WaybillDetailDrawer({
             <div className="mt-2 flex flex-wrap gap-2">
               <Link
                 href={`/waybill/${waybillId}?action=approve&stage=${pipKey}`}
-                className="rounded bg-emerald-500/20 px-2.5 py-1 font-mono text-[11px] text-emerald-200 hover:bg-emerald-500/30"
+                className="rounded bg-emerald-500/20 px-2.5 py-1 font-mono text-sm text-emerald-200 hover:bg-emerald-500/30"
               >
                 ✓ Approve
               </Link>
               <Link
                 href={`/waybill/${waybillId}?action=reject&stage=${pipKey}`}
-                className="rounded bg-rose-500/20 px-2.5 py-1 font-mono text-[11px] text-rose-200 hover:bg-rose-500/30"
+                className="rounded bg-rose-500/20 px-2.5 py-1 font-mono text-sm text-rose-200 hover:bg-rose-500/30"
               >
                 ✗ Reject
               </Link>
@@ -179,7 +179,7 @@ function StateBadge({ state, lang }: { state: PipState; lang: 'en' | 'th' }) {
     skipped: { en: 'Skipped', th: 'ข้าม' },
   };
   return (
-    <span className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase ${map[state]}`}>
+    <span className={`rounded-full border px-2.5 py-0.5 font-mono text-xs font-bold uppercase ${map[state]}`}>
       {lang === 'th' ? label[state].th : label[state].en}
     </span>
   );
@@ -244,7 +244,7 @@ function DrawerShell({ waybillId, heading, subheading, children }: ShellProps) {
           <div className="space-y-0.5">
             <h2 className="text-sm font-bold text-white">{heading}</h2>
             {subheading && (
-              <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+              <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
                 {subheading}
               </div>
             )}

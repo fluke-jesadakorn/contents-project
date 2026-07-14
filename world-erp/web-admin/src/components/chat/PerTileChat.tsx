@@ -185,12 +185,12 @@ export function PerTileChat({
           <button
             type="button"
             onClick={() => navigator.clipboard?.writeText(msg.content)}
-            className="text-[9px] font-mono uppercase tracking-wider text-slate-500 hover:text-slate-300"
+            className="text-xs font-mono uppercase tracking-wider text-slate-500 hover:text-slate-300"
           >
             <T value={pick('chat.copy')} />
           </button>
           {(msg.modelName || msg.latencyMs != null) && (
-            <span className="text-[9px] font-mono text-slate-500">
+            <span className="text-xs font-mono text-slate-500">
               {msg.modelName ? msg.modelName : ''}
               {msg.latencyMs != null ? ` · ${msg.latencyMs}ms` : ''}
             </span>

@@ -12,7 +12,7 @@ export function StepBadge({
   return (
     <span
       className={[
-        'shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-[12px] font-mono font-bold border transition-colors',
+        'shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-mono font-bold border transition-colors',
         done
           ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]'
           : active
@@ -111,12 +111,12 @@ export function StepCard({
               {title}
             </h3>
             {titleTh ? (
-              <span className="text-[11px] text-slate-500 font-mono">
+              <span className="text-sm text-slate-500 font-mono">
                 {titleTh}
               </span>
             ) : null}
             {accent === 'your-turn' && (
-              <span className="relative inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-cyan-400/60 bg-cyan-500/15 px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-widest text-cyan-100 shadow-[0_0_10px_-2px_rgba(6,182,212,0.5)]">
+              <span className="relative inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-cyan-400/60 bg-cyan-500/15 px-2.5 py-0.5 text-xs font-mono font-bold uppercase tracking-widest text-cyan-100 shadow-[0_0_10px_-2px_rgba(6,182,212,0.5)]">
                 <span aria-hidden className="relative inline-flex h-1.5 w-1.5">
                   <span className="absolute inset-0 animate-ping rounded-full bg-cyan-300 opacity-75" />
                   <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-cyan-200" />
@@ -125,7 +125,7 @@ export function StepCard({
               </span>
             )}
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{hint}</p>
+          <p className="text-sm text-slate-400 mt-0.5 leading-snug">{hint}</p>
         </div>
         {badge}
       </header>

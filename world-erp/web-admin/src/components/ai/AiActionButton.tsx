@@ -56,7 +56,7 @@ export const AiActionButton: React.FC<AiActionButtonProps> = ({
   const [copied, setCopied] = useState(false);
 
   const sizeCls = size === 'sm'
-    ? 'text-[11px] px-3 py-1.5'
+    ? 'text-sm px-3 py-1.5'
     : 'text-xs px-4 py-2.5';
 
   async function run() {
@@ -124,10 +124,10 @@ export const AiActionButton: React.FC<AiActionButtonProps> = ({
       {(text || error) && (
         <div className={`rounded-2xl border p-3 ${TONE_CARD[tone]}`}>
           <div className="flex items-center justify-between gap-2 mb-1.5">
-            <div className="text-[10px] font-mono font-bold uppercase tracking-wider opacity-80">
+            <div className="text-xs font-mono font-bold uppercase tracking-wider opacity-80">
               {resultTitle || sectionKey}
               {meta?.modelName && (
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-black/30 text-[9px] font-mono normal-case">
+                <span className="ml-2 px-1.5 py-0.5 rounded bg-black/30 text-xs font-mono normal-case">
                   {meta.modelName}{meta.latencyMs != null ? ` · ${meta.latencyMs}ms` : ''}
                 </span>
               )}
@@ -137,7 +137,7 @@ export const AiActionButton: React.FC<AiActionButtonProps> = ({
                 <button
                   type="button"
                   onClick={copy}
-                  className="text-[10px] px-2 py-0.5 rounded bg-black/30 hover:bg-black/50 font-mono"
+                  className="text-xs px-2 py-0.5 rounded bg-black/30 hover:bg-black/50 font-mono"
                 >
                   {copied ? '✓ Copied' : 'Copy'}
                 </button>
@@ -147,16 +147,16 @@ export const AiActionButton: React.FC<AiActionButtonProps> = ({
                 onClick={close}
                 aria-label="Close result"
                 title="Close"
-                className="text-[10px] w-5 h-5 inline-flex items-center justify-center rounded bg-black/30 hover:bg-rose-900/60 font-mono"
+                className="text-xs w-5 h-5 inline-flex items-center justify-center rounded bg-black/30 hover:bg-rose-900/60 font-mono"
               >
                 ✕
               </button>
             </div>
           </div>
           {error ? (
-            <p className="text-[11px] text-rose-300 font-mono">✗ {error}</p>
+            <p className="text-sm text-rose-300 font-mono">✗ {error}</p>
           ) : (
-            <p className="text-[12px] whitespace-pre-wrap leading-relaxed font-sans">
+            <p className="text-xs whitespace-pre-wrap leading-relaxed font-sans">
               {text || resultPlaceholder}
             </p>
           )}

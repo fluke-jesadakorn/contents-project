@@ -8,7 +8,7 @@ import {
   postProcurementAccrualAction,
   postProcurementSettlementAction,
   confirmProcurementGlAction,
-} from '@/app/(protected)/waybill/[id]/_actions';
+} from '@/app/actions';
 import { ZoneSection } from '../ZoneSection';
 import { PipArtifactPanel } from '../PipArtifactPanel';
 import { bi } from '@/components/i18n/bi';

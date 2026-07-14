@@ -86,6 +86,6 @@ psql -h localhost -U contract -d finance_db -c "DROP DATABASE finance_db;"
 createdb -h localhost -U contract finance_db
 psql -h localhost -U contract -d finance_db -f /tmp/pre-youtube-cull.sql
 # Re-run all migrations + cull inverse:
-#   db/init.sql, db/add_v2.sql, ..., db/rbac/*.sql
+#   db/init.sql, db/add_v2.sql, ..., db/perm/*.sql
 # Skip db/cull_youtube_casts.sql
 ```

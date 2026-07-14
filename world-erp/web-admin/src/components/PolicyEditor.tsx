@@ -107,7 +107,7 @@ export const PolicyEditor = ({ policies, onSave, onDelete }: { policies: any; on
     <div className="space-y-6 animate-fade-in">
       <div className="glass-panel p-6 rounded-3xl border-purple-500/30 flex justify-between items-center">
         <div>
-          <span className="text-[10px] font-mono font-black uppercase text-purple-400 block tracking-wider">
+          <span className="text-xs font-mono font-black uppercase text-purple-400 block tracking-wider">
             ⚙️ Approval Policy Engine
           </span>
           <h2 className="text-xl font-bold text-white">CFO Policy Editor</h2>
@@ -149,14 +149,14 @@ export const PolicyEditor = ({ policies, onSave, onDelete }: { policies: any; on
                         #{p.priority} — {p.name}
                       </span>
                       <span
-                        className={`text-[9px] font-mono px-2 py-0.5 rounded ${
+                        className={`text-xs font-mono px-2 py-0.5 rounded ${
                           p.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-400'
                         }`}
                       >
                         {p.is_active ? 'ACTIVE' : 'DISABLED'}
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                    <div className="text-xs text-slate-400 mt-1 font-mono">
                       target: {p.target_type} · chain: {chain}
                     </div>
                     <div className="flex gap-2 mt-2">
@@ -174,7 +174,7 @@ export const PolicyEditor = ({ policies, onSave, onDelete }: { policies: any; on
                             if (ok) onDelete(p.id);
                           })();
                         }}
-                        className="text-[10px] text-rose-300 font-mono"
+                        className="text-xs text-rose-300 font-mono"
                       >
                         Disable
                       </button>
@@ -294,7 +294,7 @@ const PolicyForm = ({ initial, onSave, onCancel }: { initial: any; onSave: any; 
             />
           ))}
           {(form.conditions_json?.all_of || []).length === 0 && (
-            <p className="text-[11px] text-slate-500 font-mono py-2">
+            <p className="text-sm text-slate-500 font-mono py-2">
               No conditions — policy will match all documents
             </p>
           )}
@@ -315,7 +315,7 @@ const PolicyForm = ({ initial, onSave, onCancel }: { initial: any; onSave: any; 
               key={idx}
               className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2"
             >
-              <span className="text-[10px] font-mono text-slate-500 w-5">{idx + 1}.</span>
+              <span className="text-xs font-mono text-slate-500 w-5">{idx + 1}.</span>
               <select
                 value={role}
                 onChange={(e: any)=> {
@@ -348,7 +348,7 @@ const PolicyForm = ({ initial, onSave, onCancel }: { initial: any; onSave: any; 
                     [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
                     updateAction({ approver_chain: next });
                   }}
-                  className="text-slate-400 hover:text-white disabled:opacity-20 text-[10px]"
+                  className="text-slate-400 hover:text-white disabled:opacity-20 text-xs"
                 >
                   ▲
                 </button>
@@ -360,7 +360,7 @@ const PolicyForm = ({ initial, onSave, onCancel }: { initial: any; onSave: any; 
                     [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
                     updateAction({ approver_chain: next });
                   }}
-                  className="text-slate-400 hover:text-white disabled:opacity-20 text-[10px]"
+                  className="text-slate-400 hover:text-white disabled:opacity-20 text-xs"
                 >
                   ▼
                 </button>
@@ -368,7 +368,7 @@ const PolicyForm = ({ initial, onSave, onCancel }: { initial: any; onSave: any; 
             </div>
           ))}
           {chain.length === 0 && (
-            <p className="text-[11px] text-rose-300 font-mono py-1">
+            <p className="text-sm text-rose-300 font-mono py-1">
               ⚠ At least 1 approver required (or enable Auto Approve)
             </p>
           )}
@@ -398,7 +398,7 @@ const PolicyForm = ({ initial, onSave, onCancel }: { initial: any; onSave: any; 
         </label>
 
         <div>
-          <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-2">
+          <label className="block text-xs uppercase tracking-wider text-slate-400 font-bold mb-2">
             Notify
           </label>
           <div className="space-y-2">
@@ -454,7 +454,7 @@ const PolicyForm = ({ initial, onSave, onCancel }: { initial: any; onSave: any; 
             >
               + Add notification recipient
             </button>
-            <p className="text-[10px] text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Domain targets fan out to every user whose (role × domain) visibility scope includes the event anchor. Legacy role names still work.
             </p>
           </div>
@@ -462,7 +462,7 @@ const PolicyForm = ({ initial, onSave, onCancel }: { initial: any; onSave: any; 
       </Section>
 
       <div className="mt-4 p-3 bg-purple-950/20 border border-purple-500/30 rounded-2xl">
-        <div className="text-[10px] font-mono font-bold uppercase text-purple-300 mb-2 tracking-wider">
+        <div className="text-xs font-mono font-bold uppercase text-purple-300 mb-2 tracking-wider">
           🤖 AI Policy Lint
         </div>
         <AiActionButton
@@ -629,7 +629,7 @@ const ValueEditor = ({ cond, fieldDef, opDef, presets, onChange }: { cond: any; 
                   if (!arr.includes(p)) arr.push(p);
                   onChange(arr);
                 }}
-                className="text-[9px] font-mono px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded"
+                className="text-xs font-mono px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded"
               >
                 + {p}
               </button>
@@ -667,7 +667,7 @@ const ValueEditor = ({ cond, fieldDef, opDef, presets, onChange }: { cond: any; 
               key={p}
               type="button"
               onClick={() => onChange(p)}
-              className="text-[9px] font-mono px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded"
+              className="text-xs font-mono px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded"
             >
               {p}
             </button>
@@ -686,7 +686,7 @@ const Section = ({ title, accent = 'slate', children }: { title: any; accent: an
   };
   return (
     <div className={`rounded-2xl border p-3 ${accents[accent]}`}>
-      <div className="text-[10px] font-mono font-black uppercase tracking-wider mb-2">
+      <div className="text-xs font-mono font-black uppercase tracking-wider mb-2">
         {title}
       </div>
       {children}
@@ -696,7 +696,7 @@ const Section = ({ title, accent = 'slate', children }: { title: any; accent: an
 
 const Field = ({ label, children }: { label: any; children: any })=> (
   <div>
-    <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">
+    <label className="block text-xs uppercase tracking-wider text-slate-400 font-bold mb-1">
       {label}
     </label>
     {children}

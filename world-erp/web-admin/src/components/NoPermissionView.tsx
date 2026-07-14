@@ -107,7 +107,7 @@ export const NoPermissionView: React.FC<NoPermissionViewProps> = ({
           </p>
 
           {attemptedPath && kind === 'not_found' && (
-            <div className="mt-4 inline-block px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 font-mono text-[11px] text-slate-400">
+            <div className="mt-4 inline-block px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 font-mono text-sm text-slate-400">
               <span className="text-slate-500">PATH </span>
               <span className="text-slate-200">{attemptedPath}</span>
             </div>
@@ -131,8 +131,8 @@ export const NoPermissionView: React.FC<NoPermissionViewProps> = ({
 
               {currentRole && (
                 <div className="flex justify-between items-center pt-2 border-t border-slate-900">
-                  <span className="text-slate-400 font-mono text-[11px]">Your Role</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold font-mono text-[10px] uppercase">
+                  <span className="text-slate-400 font-mono text-sm">Your Role</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold font-mono text-xs uppercase">
                     {ROLE_LABEL_TH[currentRole] || currentRole}
                   </span>
                 </div>
@@ -140,8 +140,8 @@ export const NoPermissionView: React.FC<NoPermissionViewProps> = ({
 
               {access?.source && (
                 <div className="flex justify-between items-center pt-2 border-t border-slate-900">
-                  <span className="text-slate-400 font-mono text-[11px]">Source</span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-800/60 text-slate-300 border border-slate-700 font-mono text-[10px]">
+                  <span className="text-slate-400 font-mono text-sm">Source</span>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-800/60 text-slate-300 border border-slate-700 font-mono text-xs">
                     {access.source}{access.inheritedFrom ? ` (${access.inheritedFrom})` : ''}
                   </span>
                 </div>
@@ -186,7 +186,7 @@ export const NoPermissionView: React.FC<NoPermissionViewProps> = ({
             )}
           </div>
 
-          <p className="text-[11px] text-slate-500 mt-6 font-sans leading-relaxed">
+          <p className="text-sm text-slate-500 mt-6 font-sans leading-relaxed">
             {kind === 'locked' && (
               <>Please switch to a role with access to this section or contact the administrator to request additional permissions.</>
             )}

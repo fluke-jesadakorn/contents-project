@@ -6,6 +6,7 @@ import { PersonaMenu } from './PersonaMenu';
 import { NavbarSearch } from './NavbarSearch';
 import { NotificationBell } from './NotificationBell';
 import { LangPickerTrigger } from './lang/LangPicker';
+import { ThemeToggle } from './theme';
 
 interface NavbarProps {
   users: any[];
@@ -30,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       role="banner"
       className={[
         'sticky top-0 z-50 flex items-center gap-2 px-3 sm:px-4 lg:px-6 py-2.5 mb-6',
-        'glass-panel-heavy border-b border-slate-800/80',
+        'glass-panel-heavy border-b border-slate-800/80 rounded-b-2xl',
         'shadow-xl shadow-black/40',
       ].join(' ')}
     >
@@ -64,11 +65,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <h1 className="text-base sm:text-lg font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-300 bg-clip-text text-transparent truncate">
               World ERP
             </h1>
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 font-mono font-bold uppercase tracking-wider">
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 font-mono font-bold uppercase tracking-wider">
               {envLabel()}
             </span>
           </div>
-          <p className="text-[10px] text-slate-500 font-sans truncate hidden sm:block">
+          <p className="text-xs text-slate-500 font-sans truncate hidden sm:block">
             AI Finance · OCR · Policy Engine · Cockpit
           </p>
         </div>
@@ -83,6 +84,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       />
 
       <LangPickerTrigger />
+
+      <ThemeToggle />
 
       <NotificationBell />
 

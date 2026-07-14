@@ -34,7 +34,7 @@ export const BreadcrumbBar: React.FC = () => {
     <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6 -mt-4 mb-6">
       <Breadcrumb
         crumbs={finalCrumbs}
-        className="!mb-0 !bg-transparent !border-0 !px-0 !py-0 !text-slate-500 text-[12px] font-mono"
+        className="!mb-0 !bg-transparent !border-0 !px-0 !py-0 !text-slate-500 text-xs font-mono"
       />
     </div>
   );

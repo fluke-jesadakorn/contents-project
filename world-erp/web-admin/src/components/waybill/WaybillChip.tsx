@@ -42,9 +42,9 @@ export function WaybillChip({
   else if (currentStage === currentStage && idx >= 0) state = 'active';
 
   const sizeClass =
-    size === 'sm' ? 'px-2 py-0.5 text-[10px]' :
+    size === 'sm' ? 'px-2 py-0.5 text-xs' :
     size === 'lg' ? 'px-3 py-1.5 text-sm' :
-    'px-2.5 py-1 text-[11px]';
+    'px-2.5 py-1 text-sm';
 
   return (
     <span

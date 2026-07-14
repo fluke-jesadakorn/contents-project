@@ -9,17 +9,21 @@ import { AccessDenied } from '@/components/AccessDenied';
 import { PageLayout } from '@/components/PageLayout';
 import { BreadcrumbSetter } from '@/components/breadcrumbs/BreadcrumbSetter';
 import { type TileDef, tileHref, tileFromRow } from '@/components/tile-config';
-import { evaluateTileOptimistic } from '@/components/tileAccess';
+import { evaluateTileOptimistic, type TileAccess } from '@/components/tileAccess';
 import { ROOT_CRUMB } from '@/components/breadcrumbs';
+import type { GreetingKey } from '@/lib/hero';
 
 interface HomeClientProps {
   users: any[];
   currentUser: any | null;
   expenses: any[];
-  policies: any[];
+  policies?: any[];
   prs: any[];
   execReport: any | null;
   canViewHub: boolean;
+  tiles?: TileDef[];
+  accessByTile?: Record<string, TileAccess>;
+  greetingKey?: GreetingKey;
 }
 
 export function HomeClient({ users, currentUser, expenses: _expenses, policies: _policies, prs, execReport: _execReport, canViewHub }: HomeClientProps) {

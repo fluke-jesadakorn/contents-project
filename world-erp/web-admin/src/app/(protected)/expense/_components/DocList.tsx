@@ -22,10 +22,10 @@ export async function DocList({ waybillId }: DocListProps) {
             className="flex items-center gap-2 rounded-lg border border-slate-800/60 bg-slate-950/40 px-2.5 py-1.5"
           >
             <span aria-hidden className="text-sm leading-none">{meta.emoji}</span>
-            <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-slate-300">
+            <span className="min-w-0 flex-1 truncate font-mono text-sm text-slate-300">
               {a.filename}
             </span>
-            <span className="shrink-0 font-mono text-[10px] text-slate-600">
+            <span className="shrink-0 font-mono text-xs text-slate-600">
               {fmtSize(a.byte_size)}
             </span>
           </div>

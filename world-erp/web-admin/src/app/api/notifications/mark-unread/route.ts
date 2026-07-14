@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireActor } from '@/lib/server/guard';
-import { markUnreadForUser } from '@/lib/server/queries';
+import { setReadState } from '@/lib/server/queries';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface Body {
   ids?: Array<string | number>;
-  all?: boolean;
 }
 
 function parseIds(raw: unknown): number[] {
@@ -29,6 +28,6 @@ export async function POST(req: Request) {
   if (ids.length === 0) {
     return NextResponse.json({ ok: true, updated: 0 });
   }
-  const updated = await markUnreadForUser(actor.id, ids);
-  return NextResponse.json({ ok: true, updated });
+  const result = await setReadState(actor.id, ids, 'unmark');
+  return NextResponse.json({ ok: true, updated: result.updated });
 }

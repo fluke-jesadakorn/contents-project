@@ -3,7 +3,7 @@ import type { WaybillAttachmentRow } from '@erp-lib/waybill/attachments';
 import { WAYBILL_KINDS, type WaybillAttachmentKind } from '@erp-lib/waybill/kinds';
 import { loadActor } from '@/lib/server/guard';
 import { canActorRemoveAttachment } from '@erp-lib/waybill/permissions';
-import { removeWaybillAttachmentAction } from '@/app/(protected)/waybill/[id]/_actions';
+import { removeWaybillAttachmentAction } from '@/app/actions';
 
 export interface AttachmentRowProps {
   waybillId: string;
@@ -30,7 +30,7 @@ export async function AttachmentRow({ waybillId, attachment }: AttachmentRowProp
     : false;
 
   const kindMeta = WAYBILL_KINDS[attachment.kind as WaybillAttachmentKind] ?? WAYBILL_KINDS.other;
-  let downloadHref = `/api/waybill/${waybillId}/pdf`;
+  let downloadHref = `/api/waybill/${waybillId}/attachments/file?key=${encodeURIComponent(attachment.storage_key)}`;
   try {
     downloadHref = `/api/slips/file?key=${encodeURIComponent(attachment.storage_key)}`;
   } catch {
@@ -45,15 +45,15 @@ export async function AttachmentRow({ waybillId, attachment }: AttachmentRowProp
           <div className="flex items-baseline justify-between gap-2">
             <a
               href={downloadHref}
-              className="break-all font-mono text-[12px] text-cyan-300 underline-offset-2 hover:underline"
+              className="break-all font-mono text-xs text-cyan-300 underline-offset-2 hover:underline"
             >
               {attachment.filename}
             </a>
-            <span className="shrink-0 font-mono text-[10px] text-slate-500">
+            <span className="shrink-0 font-mono text-xs text-slate-500">
               {fmtSize(attachment.byte_size)}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-400">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-400">
             <span className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">
               {attachment.kind}
             </span>
@@ -72,7 +72,7 @@ export async function AttachmentRow({ waybillId, attachment }: AttachmentRowProp
       <div className="flex flex-wrap items-center gap-2 pl-9">
         <a
           href={downloadHref}
-          className="rounded bg-cyan-500/15 px-2 py-1 text-[10px] font-mono text-cyan-200 hover:bg-cyan-500/30"
+          className="rounded bg-cyan-500/15 px-2 py-1 text-xs font-mono text-cyan-200 hover:bg-cyan-500/30"
         >
           ⤓ Download
         </a>
@@ -82,7 +82,7 @@ export async function AttachmentRow({ waybillId, attachment }: AttachmentRowProp
             <input type="hidden" name="attachmentId" value={attachment.id} />
             <button
               type="submit"
-              className="rounded bg-rose-500/10 px-2 py-1 text-[10px] font-mono text-rose-200 hover:bg-rose-500/30"
+              className="rounded bg-rose-500/10 px-2 py-1 text-xs font-mono text-rose-200 hover:bg-rose-500/30"
             >
               ✕ Remove
             </button>

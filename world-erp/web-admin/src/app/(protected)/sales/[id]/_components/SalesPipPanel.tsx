@@ -72,7 +72,7 @@ export async function SalesPipPanel({
       subtitle={fill(pickLocale(stageText, locale), { stage: currentStage })}
     >
       <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-        <h3 className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-3">
+        <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-3">
           <Bilingual en={customerText.en} th={customerText.th} de={customerText.de} />
         </h3>
         {artifacts.customer ? (
@@ -83,7 +83,7 @@ export async function SalesPipPanel({
             <div className="font-mono text-cyan-300">{artifacts.customer.code}</div>
             <div className="text-white">{artifacts.customer.name}</div>
             {artifacts.customer.name_th ? (
-              <div className="text-[11px] text-slate-400">{artifacts.customer.name_th}</div>
+              <div className="text-sm text-slate-400">{artifacts.customer.name_th}</div>
             ) : null}
           </a>
         ) : (
@@ -94,7 +94,7 @@ export async function SalesPipPanel({
       </section>
 
       <section className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-        <h3 className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-3">
+        <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-3">
           <Bilingual en={lineItemsText.en} th={lineItemsText.th} de={lineItemsText.de} />
         </h3>
         {artifacts.items.length === 0 ? (
@@ -103,7 +103,7 @@ export async function SalesPipPanel({
           </p>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-800 text-[10px] font-mono uppercase text-slate-500">
+            <thead className="border-b border-slate-800 text-xs font-mono uppercase text-slate-500">
               <tr>
                 <th className="px-2 py-2 text-left">
                   <Bilingual en={colDescription.en} th={colDescription.th} de={colDescription.de} />
@@ -133,7 +133,7 @@ export async function SalesPipPanel({
                 </tr>
               ))}
             </tbody>
-            <tfoot className="border-t border-slate-800 text-[11px] font-mono">
+            <tfoot className="border-t border-slate-800 text-sm font-mono">
               <tr>
                 <td colSpan={4} className="px-2 py-2 text-right text-slate-500">
                   <Bilingual en={subtotal.en} th={subtotal.th} de={subtotal.de} />
@@ -159,14 +159,14 @@ export async function SalesPipPanel({
 
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <h3 className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">
+          <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
             <Bilingual en={invoiceText.en} th={invoiceText.th} de={invoiceText.de} />
           </h3>
           {artifacts.invoice?.number ? (
             <div>
               <div className="font-mono text-emerald-300">{artifacts.invoice.number}</div>
               {artifacts.invoice.issued_at ? (
-                <div className="text-[11px] text-slate-400">
+                <div className="text-sm text-slate-400">
                   {fill(pickLocale(invoiceIssued, locale), {
                     date: fmtDate(artifacts.invoice.issued_at, locale),
                   })}
@@ -181,7 +181,7 @@ export async function SalesPipPanel({
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <h3 className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">
+          <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
             <Bilingual en={arReceiptText.en} th={arReceiptText.th} de={arReceiptText.de} />
           </h3>
           {artifacts.ar_receipt ? (

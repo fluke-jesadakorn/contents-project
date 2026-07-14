@@ -115,7 +115,7 @@ export const TilesClient: React.FC<Props> = ({ initialTiles, departments, canEdi
       {error ? <div className="text-rose-300 text-xs">{error}</div> : null}
       <table className="w-full text-sm border-separate border-spacing-y-1">
         <thead>
-          <tr className="text-[10px] uppercase tracking-wider text-slate-400">
+          <tr className="text-xs uppercase tracking-wider text-slate-400">
             <th className="text-left px-2 py-1">Tile</th>
             <th className="text-left px-2 py-1">Group</th>
             <th className="text-left px-2 py-1">view_perm_id</th>

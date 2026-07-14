@@ -147,7 +147,7 @@ export default async function ExpenseInboxPage({ searchParams }: PageProps) {
           >
             <span aria-hidden>📤</span>
             <Bilingual en="Mine" th="ของฉัน" de="Meine" />
-            {rows.length > 0 && <span className="rounded-full bg-slate-800 px-1.5 text-[10px]">{rows.length}</span>}
+            {rows.length > 0 && <span className="rounded-full bg-slate-800 px-1.5 text-xs">{rows.length}</span>}
           </a>
           <a
             href={tabHref('queue')}
@@ -274,7 +274,7 @@ export default async function ExpenseInboxPage({ searchParams }: PageProps) {
                   />
                 )}
               </h2>
-              <span className="text-[10px] font-mono text-slate-500">
+              <span className="text-xs font-mono text-slate-500">
                 <Bilingual en="click to open" th="คลิกเพื่อเปิด" de="zum Öffnen klicken" />
               </span>
             </div>
@@ -312,11 +312,11 @@ export default async function ExpenseInboxPage({ searchParams }: PageProps) {
                           />
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-sm text-slate-400">
                         {originLabel} · {row.vendor_name ?? '—'} ·{' '}
                         {(amount ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })} {row.currency}
                       </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-mono text-slate-500">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono text-slate-500">
                         <span>
                           <Bilingual en="submitter:" th="ผู้ส่ง:" de="Einreicher:" /> {row.submitter_name ?? '—'}
                         </span>

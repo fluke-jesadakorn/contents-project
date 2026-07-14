@@ -111,20 +111,20 @@ export function WaybillHeader({
         </div>
 
         <div className="text-right">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+          <div className="text-xs font-mono uppercase tracking-widest text-slate-400">
             Total amount
           </div>
           <div className="mt-0.5 font-mono text-3xl font-bold text-emerald-300 sm:text-4xl">
             {formattedAmount}
           </div>
-          <div className="mt-0.5 text-[10px] uppercase tracking-widest text-slate-500">
+          <div className="mt-0.5 text-xs uppercase tracking-widest text-slate-500">
             {wb.currency}
           </div>
         </div>
       </div>
 
       <div className="relative mt-4">
-        <div className="flex items-baseline justify-between text-[10px] font-mono uppercase tracking-widest text-slate-400">
+        <div className="flex items-baseline justify-between text-xs font-mono uppercase tracking-widest text-slate-400">
           <span>Pipeline progress</span>
           <span className="text-slate-200">
             step <span className="font-bold text-cyan-300">

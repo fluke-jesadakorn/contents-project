@@ -14,7 +14,7 @@ import {
   finalRejectWaybillAction,
   rejectWaybillAction,
   resubmitWaybillAction,
-} from '@/app/(protected)/waybill/[id]/_actions';
+} from '@/app/actions';
 import { SettleForm } from '@/app/(protected)/waybill/[id]/_components/SettleForm';
 import { ZoneSection } from '../ZoneSection';
 import { ApproversList, type ActedUserLite } from '../ApproversList';
@@ -208,7 +208,7 @@ export function PipActionPrompt({
         {showFinalRejectForm && (
           <form action={finalRejectWaybillAction} className="rounded-2xl border border-rose-500/50 bg-rose-950/30 p-5">
             <input type="hidden" name="waybillId" value={waybillId} />
-            <div className="mb-3 inline-flex items-center gap-2 rounded-md border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-rose-200">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-md border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-xs font-mono uppercase tracking-widest text-rose-200">
               🔒 {bi('Final reject · no GL post', 'ปฏิเสธขั้นสุดท้าย · ไม่บันทึกบัญชี', undefined, localeSafe)}
             </div>
             <label className="block text-sm font-medium text-rose-200">
@@ -249,7 +249,7 @@ export function PipActionPrompt({
                 <span aria-hidden className="text-2xl">✓</span>
                 <span>{bi('Final approve', 'อนุมัติขั้นสุดท้าย', undefined, localeSafe)}</span>
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-950/70 group-hover:text-emerald-950">
+              <span className="text-xs font-mono uppercase tracking-widest text-emerald-950/70 group-hover:text-emerald-950">
                 {bi('→ posts to GL', '→ บันทึกบัญชี (GL)', undefined, localeSafe)}
               </span>
             </button>
@@ -264,7 +264,7 @@ export function PipActionPrompt({
                 <span aria-hidden className="text-2xl">✗</span>
                 <span>{bi('Final reject', 'ปฏิเสธขั้นสุดท้าย', undefined, localeSafe)}</span>
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-rose-950/70 group-hover:text-rose-950">
+              <span className="text-xs font-mono uppercase tracking-widest text-rose-950/70 group-hover:text-rose-950">
                 {bi('→ no GL post', '→ ไม่บันทึกบัญชี', undefined, localeSafe)}
               </span>
             </Link>
@@ -376,7 +376,7 @@ export function PipActionPrompt({
     const eligibleNames = approverNames(approvers);
     return (
       <section className="space-y-7 rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/35 via-slate-950/40 to-slate-950/30 p-6 shadow-[0_0_0_1px_rgba(6,182,212,0.12),0_8px_28px_-10px_rgba(6,182,212,0.3)]">
-        <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono uppercase tracking-widest">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-mono uppercase tracking-widest">
           <span aria-hidden className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-300">
             ⚡
           </span>
@@ -393,7 +393,7 @@ export function PipActionPrompt({
           </span>
         </div>
         {eligibleNames.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-950/20 px-3 py-2 text-[11px] text-cyan-100">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-950/20 px-3 py-2 text-sm text-cyan-100">
             <span aria-hidden className="text-cyan-300">👤</span>
             <span className="font-mono uppercase tracking-widest text-cyan-300/80">
               {bi('Eligible approvers', 'ผู้ที่สามารถอนุมัติ', undefined, localeSafe)}
@@ -460,7 +460,7 @@ export function PipActionPrompt({
                 <span>{bi('Approve', 'อนุมัติ', undefined, localeSafe)}</span>
               </span>
               {nextStageEn ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest text-cyan-950/80 group-hover:text-cyan-950">
+                <span className="inline-flex items-center gap-1 text-xs font-mono uppercase tracking-widest text-cyan-950/80 group-hover:text-cyan-950">
                   <span>{bi('advance to', 'ไปขั้น', undefined, localeSafe)}</span>
                   <span className="text-cyan-950/90">{nextStageEn.emoji}</span>
                   <span className="text-cyan-950/90">
@@ -468,7 +468,7 @@ export function PipActionPrompt({
                   </span>
                 </span>
               ) : (
-                <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-950/80 group-hover:text-cyan-950">
+                <span className="text-xs font-mono uppercase tracking-widest text-cyan-950/80 group-hover:text-cyan-950">
                   {bi('→ close this step', '→ ปิดขั้นตอน', undefined, localeSafe)}
                 </span>
               )}
@@ -521,7 +521,7 @@ export function PipActionPrompt({
                 {actor.fullname || `#${actor.user_id}`}
                 <span className="ml-1 text-emerald-300/80">#{actor.user_id}</span>
               </div>
-                <div className="mt-0.5 text-[10px] font-mono uppercase tracking-widest text-emerald-300/80">
+                <div className="mt-0.5 text-xs font-mono uppercase tracking-widest text-emerald-300/80">
                 {actor.role_name
                   ? roleDisplayBi(actor.role_name, localeSafe)
                   : roleFallbackLabel(actor.kind, localeSafe) ?? '—'}

@@ -20,21 +20,9 @@ import {
 import type { BilingualText } from '@erp-lib/i18n/types';
 import type { TileAccess } from './tileAccess';
 
-const REASON_NO_SESSION: BilingualText = {
-  en: 'No actor session.',
-  th: 'ไม่มีเซสชันผู้ใช้',
-  de: 'Keine Benutzersitzung.',
-};
-const REASON_MET: BilingualText = {
-  en: 'Allowed by your role.',
-  th: 'บทบาทของคุณอนุญาตแล้ว',
-  de: 'Durch Ihre Rolle erlaubt.',
-};
-const REASON_RESTRICTED: BilingualText = {
-  en: 'Restricted by your role.',
-  th: 'ถูกจำกัดโดยบทบาทของคุณ',
-  de: 'Durch Ihre Rolle eingeschränkt.',
-};
+const REASON_NO_SESSION = 'No actor session.';
+const REASON_MET = 'Allowed by your role.';
+const REASON_RESTRICTED = 'Restricted by your role.';
 
 const SESSION_COOKIE = 'erp_session';
 
@@ -104,16 +92,22 @@ function gateOk(tilePerm: string | undefined, perms: string[] | null | undefined
 
 function buildSummary(tile: TileDef): TileGrantSummary {
   return {
-    required_level: null,
-    required_dept_id: null,
-    required_dept_name: null,
+    tile_id: tile.id,
+    display_name: tile.display_name,
+    module_id: tile.module_id,
+    href: tile.href,
+    group_name: tile.group,
+    is_available: false,
+    grant_reason: '',
+    grant_source_role: null,
+    grant_role_level: null,
     request_target:
       tile.request_target === 'hr_manager' ||
       tile.request_target === 'cfo' ||
       tile.request_target === 'admin'
         ? tile.request_target
         : null,
-  };
+  } as unknown as TileGrantSummary;
 }
 
 export function evaluateTileFromBundle(

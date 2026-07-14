@@ -116,7 +116,7 @@ export function UpdateCustomerForm({ customer }: { customer: CustomerRow }) {
             ? <Bilingual en="✓ Unblock" th="✓ ปลดบล็อค" de="✓ Entsperren" locale={locale} />
             : <Bilingual en="⛔ Blacklist" th="⛔ บล็อคลิสต์" de="⛔ Sperren" locale={locale} />}
         </button>
-        {msg ? <span className="text-[11px] font-mono text-slate-400">{msg}</span> : null}
+        {msg ? <span className="text-sm font-mono text-slate-400">{msg}</span> : null}
       </div>
     </form>
   );
@@ -134,7 +134,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">{label}</span>
+      <span className="text-xs font-mono uppercase tracking-wider text-slate-500">{label}</span>
       {multiline ? (
         <textarea
           name={name}

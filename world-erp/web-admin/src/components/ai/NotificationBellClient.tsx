@@ -74,7 +74,7 @@ export const NotificationBellClient: React.FC<NotificationBellClientProps> = ({
     };
   }, [hideButton, scoped]);
 
-  async function postAction(path: string, body: unknown): Promise<{ updated?: number; cleared?: number; readAt?: string | null; id?: string } | null> {
+  async function postAction(path: string, body: unknown): Promise<{ ok?: boolean; updated?: number } | null> {
     try {
       const r = await fetch(path, {
         method: 'POST',
@@ -90,32 +90,27 @@ export const NotificationBellClient: React.FC<NotificationBellClientProps> = ({
   }
 
   const onToggleRead = useCallback(async (id: string | number, currentlyRead: boolean) => {
-    const result = await postAction('/api/notifications/toggle-read', { id });
-    if (!result || result.id == null) return;
+    const result = await postAction('/api/notifications/mark-read', { ids: [id] });
+    if (!result) return;
+    const readAt = new Date().toISOString();
     setItems((prev) =>
       prev.map((it) =>
-        String(it.id) === String(result.id)
-          ? { ...it, readAt: result.readAt ?? null }
-          : it,
+        String(it.id) === String(id) ? { ...it, readAt } : it,
       ),
     );
-    setCount((c) => {
-      const nextIsRead = !!result.readAt;
-      if (!nextIsRead && currentlyRead) return c + 1;
-      if (nextIsRead && !currentlyRead) return Math.max(0, c - 1);
-      return c;
-    });
+    if (!currentlyRead) setCount((c) => Math.max(0, c - 1));
   }, []);
 
   const onClear = useCallback(async (id: string | number) => {
-    const result = await postAction('/api/notifications/clear', { ids: [id] });
+    const result = await postAction('/api/notifications/mark-read', { ids: [id] });
     if (!result) return;
-    setItems((prev) => {
-      const target = prev.find((p) => String(p.id) === String(id));
-      const next = prev.filter((p) => String(p.id) !== String(id));
-      if (target && !target.readAt) setCount((c) => Math.max(0, c - 1));
-      return next;
-    });
+    const readAt = new Date().toISOString();
+    setItems((prev) =>
+      prev.map((it) =>
+        String(it.id) === String(id) ? { ...it, readAt } : it,
+      ),
+    );
+    setCount((c) => Math.max(0, c - 1));
   }, []);
 
   const onMarkAllRead = useCallback(async () => {
@@ -137,7 +132,7 @@ export const NotificationBellClient: React.FC<NotificationBellClientProps> = ({
   }, [items]);
 
   const onClearAll = useCallback(async () => {
-    const result = await postAction('/api/notifications/clear', { all: true });
+    const result = await postAction('/api/notifications/mark-read', { all: true });
     if (result) {
       setItems([]);
       setCount(0);
@@ -158,7 +153,7 @@ export const NotificationBellClient: React.FC<NotificationBellClientProps> = ({
         >
           <span className="text-base">🔔</span>
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-rose-500 text-[10px] font-mono text-white">
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-rose-500 text-xs font-mono text-white">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
@@ -166,7 +161,7 @@ export const NotificationBellClient: React.FC<NotificationBellClientProps> = ({
       )}
 
       {hideButton && unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-rose-500 text-[10px] font-mono text-white">
+        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-rose-500 text-xs font-mono text-white">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}

@@ -134,7 +134,7 @@ export function DecisionBar({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-cyan-300">
+          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-cyan-300">
             <span aria-hidden>{stageGlyph(currentStage)}</span>
             <span>{locale === 'th' ? 'ขั้นปัจจุบัน' : 'Current stage'}</span>
             <span className="text-slate-600">·</span>
@@ -146,7 +146,7 @@ export function DecisionBar({
             </span>
           </div>
           {actorRole && (
-            <div className="text-[10px] font-mono text-slate-500">
+            <div className="text-xs font-mono text-slate-500">
               {locale === 'th' ? 'คุณคือ' : 'you are'}{' '}
               <span className="text-slate-300">{roleDisplay(actorRole, locale)}</span>
             </div>
@@ -154,12 +154,12 @@ export function DecisionBar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href={`/api/waybill/${waybillId}/pdf?include=mockups`}
+<a
+            href={`/api/waybill/${waybillId}/attachments/file?key=waybill-attachments/${waybillId}/combined&include=mockups`}
             target="_blank"
             rel="noopener"
             data-testid={`bar-step-pdf-${waybillId}`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-[11px] font-mono text-cyan-200 hover:bg-cyan-500/30"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-sm font-mono text-cyan-200 hover:bg-cyan-500/30"
             title="Download step files (PR, PO, GL, payment slip) as one PDF"
           >
             ⤓ Step PDF
@@ -170,7 +170,7 @@ export function DecisionBar({
             currentStage={currentStage}
             vendorName={vendorName}
           />
-          <span className="hidden text-[10px] font-mono uppercase tracking-widest text-slate-500 sm:inline">
+          <span className="hidden text-xs font-mono uppercase tracking-widest text-slate-500 sm:inline">
             {locale === 'th'
               ? 'อนุมัติ/ปฏิเสธทำได้ที่ขั้นนี้ด้านล่าง'
               : 'approve / reject inline at this stage below'}

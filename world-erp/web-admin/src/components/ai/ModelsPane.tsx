@@ -102,7 +102,7 @@ export const ModelsPane: React.FC<Props> = ({ providers }) => {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-sm font-black text-white uppercase tracking-wider font-mono">Models</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Each model has capabilities (embed/chat/vision) and default parameters</p>
+          <p className="text-sm text-slate-400 mt-0.5">Each model has capabilities (embed/chat/vision) and default parameters</p>
         </div>
         {!creating && !editing && (
           <button onClick={startCreate} disabled={providers.length === 0} className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:opacity-40">
@@ -116,18 +116,18 @@ export const ModelsPane: React.FC<Props> = ({ providers }) => {
           <h4 className="text-sm font-black text-white uppercase tracking-wider font-mono">{editing ? 'Edit Model' : 'Add Model'}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Provider</span>
+              <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Provider</span>
               <select value={providerId} onChange={e => setProviderId(e.target.value as any)} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
                 {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
             <label className="space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Name</span>
+              <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Name</span>
               <input value={name} onChange={e => setName(e.target.value)} placeholder="gpt-4o-mini"
                 className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono" />
             </label>
             <label className="space-y-1 md:col-span-2">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Capabilities</span>
+              <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Capabilities</span>
               <div className="flex gap-2">
                 {CAPABILITY_OPTIONS.map(c => (
                   <label key={c} className="flex items-center gap-1 text-xs text-slate-300">
@@ -138,17 +138,17 @@ export const ModelsPane: React.FC<Props> = ({ providers }) => {
               </div>
             </label>
             <label className="space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Context window</span>
+              <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Context window</span>
               <input value={context} onChange={e => setContext(e.target.value)} placeholder="8192" type="number"
                 className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
             </label>
             <label className="space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Default temperature</span>
+              <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Default temperature</span>
               <input value={temp} onChange={e => setTemp(e.target.value)} placeholder="0.7" type="number" step="0.1"
                 className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
             </label>
             <label className="space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Default max_tokens</span>
+              <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Default max_tokens</span>
               <input value={maxTok} onChange={e => setMaxTok(e.target.value)} placeholder="1024" type="number"
                 className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
             </label>
@@ -173,17 +173,17 @@ export const ModelsPane: React.FC<Props> = ({ providers }) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-white truncate">{m.name}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">{pname}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">{pname}</span>
                   </div>
                   <div className="flex gap-1 mt-1">
                     {(m.capabilities || []).map(c => (
-                      <span key={c} className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 font-mono">{c}</span>
+                      <span key={c} className="text-xs px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 font-mono">{c}</span>
                     ))}
-                    {m.context_window && <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">ctx {m.context_window}</span>}
+                    {m.context_window && <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">ctx {m.context_window}</span>}
                   </div>
                 </div>
-                <button onClick={() => startEdit(m)} className="text-[10px] px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white">Edit</button>
-                <button onClick={() => remove(m)} className="text-[10px] px-2 py-1 rounded bg-rose-950/40 text-rose-300 border border-rose-900/40">Delete</button>
+                <button onClick={() => startEdit(m)} className="text-xs px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white">Edit</button>
+                <button onClick={() => remove(m)} className="text-xs px-2 py-1 rounded bg-rose-950/40 text-rose-300 border border-rose-900/40">Delete</button>
               </div>
             );
           })}

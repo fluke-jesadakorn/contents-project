@@ -27,7 +27,7 @@ export function GlVisibilityGate({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-800/60 bg-slate-950/40 p-2 font-mono text-[11px]">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-800/60 bg-slate-950/40 p-2 font-mono text-sm">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-slate-500">
             <T value={{ en: 'total debit', th: 'รวมเดบิต', de: 'Soll gesamt' }} />
@@ -62,7 +62,7 @@ export function GlVisibilityGate({
             type="button"
             onClick={() => setShow((v) => !v)}
             aria-expanded={show}
-            className="rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-slate-300 hover:bg-slate-800"
+            className="rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-slate-300 hover:bg-slate-800"
           >
             <T
               value={

@@ -39,7 +39,7 @@ export function ExportPdfButton({ waybillId, attachments, defaultSections }: Pro
   }
 
   function download(): void {
-    let url = `/api/waybill/${waybillId}/pdf?`;
+    let url = `/api/waybill/${waybillId}/attachments/file?key=`;
     const params: string[] = [];
     if (!sections.cover) params.push('section=cover:0');
     if (!sections.rail) params.push('section=rail:0');
@@ -81,7 +81,7 @@ export function ExportPdfButton({ waybillId, attachments, defaultSections }: Pro
                 <h2 className="text-sm font-bold text-white">
                   Export Waybill PDF
                 </h2>
-                <p className="mt-0.5 font-mono text-[10px] text-slate-500">
+                <p className="mt-0.5 font-mono text-xs text-slate-500">
                   {waybillId}_combined.pdf
                 </p>
               </div>
@@ -97,7 +97,7 @@ export function ExportPdfButton({ waybillId, attachments, defaultSections }: Pro
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+                <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
                   Sections
                 </div>
                 <div className="mt-2 space-y-1.5 text-xs text-slate-200">
@@ -114,7 +114,7 @@ export function ExportPdfButton({ waybillId, attachments, defaultSections }: Pro
                 </div>
 
                 <div className="mt-3">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+                  <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
                     Page size
                   </div>
                   <select
@@ -129,7 +129,7 @@ export function ExportPdfButton({ waybillId, attachments, defaultSections }: Pro
               </div>
 
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+                <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
                   Attachments ({includedIds.size}/{attachments.length})
                 </div>
                 {attachments.length === 0 && (
@@ -138,7 +138,7 @@ export function ExportPdfButton({ waybillId, attachments, defaultSections }: Pro
                 <ul className="mt-2 max-h-64 space-y-1.5 overflow-y-auto pr-2">
                   {attachments.map((a) => (
                     <li key={a.id}>
-                      <label className="flex items-start gap-2 rounded border border-slate-800 bg-slate-950/40 p-2 text-[11px] hover:border-cyan-500/40">
+                      <label className="flex items-start gap-2 rounded border border-slate-800 bg-slate-950/40 p-2 text-sm hover:border-cyan-500/40">
                         <input
                           type="checkbox"
                           checked={includedIds.has(String(a.id))}
@@ -150,7 +150,7 @@ export function ExportPdfButton({ waybillId, attachments, defaultSections }: Pro
                             <span aria-hidden>{kindMeta(a.kind).emoji}</span>{' '}
                             <span className="font-mono text-cyan-200">{a.filename}</span>
                           </span>
-                          <span className="block font-mono text-[10px] text-slate-500">
+                          <span className="block font-mono text-xs text-slate-500">
                             {a.kind} · {fmtSize(a.byte_size)} · stage: {a.stage_key}
                           </span>
                         </span>

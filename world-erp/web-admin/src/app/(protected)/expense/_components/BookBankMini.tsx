@@ -20,7 +20,7 @@ export async function BookBankMini({ slips }: BookBankMiniProps) {
   const slip = slips.find((s) => s.kind === 'book-bank' || s.kind === 'book_bank') ?? null;
   if (!slip) {
     return (
-      <span className="text-[11px] font-mono text-slate-600 italic">
+      <span className="text-sm font-mono text-slate-600 italic">
         no book bank
       </span>
     );
@@ -34,14 +34,14 @@ export async function BookBankMini({ slips }: BookBankMiniProps) {
   return (
     <div className="inline-flex items-center gap-2 rounded-lg border border-slate-800/60 bg-slate-950/40 px-2.5 py-1.5">
       <span aria-hidden className="text-sm leading-none">🏦</span>
-      <span className="truncate font-mono text-[11px] text-slate-300">
+      <span className="truncate font-mono text-sm text-slate-300">
         {slip.bank_name && <span className="text-slate-100">{slip.bank_name}</span>}
         {slip.bank_name && slip.account_number && <span className="text-slate-600 mx-0.5">·</span>}
         {slip.account_number && <span className="text-cyan-300 font-bold">#{slip.account_number}</span>}
         {(slip.bank_name || slip.account_number) && slip.account_name && <span className="text-slate-600 mx-0.5">·</span>}
         {slip.account_name && <span className="text-slate-300">{slip.account_name}</span>}
       </span>
-      <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest ${statusColor}`}>
+      <span className={`rounded-full border px-1.5 py-0.5 text-xs font-mono uppercase tracking-widest ${statusColor}`}>
         {statusOk ? '✓ confirmed' : slip.status ?? 'pending'}
       </span>
     </div>

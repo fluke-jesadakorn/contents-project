@@ -15,13 +15,31 @@ export type WaybillEventKind =
   | 'corrected'
   | 'settled'
   | 'posted-to-gl'
+  | 'gl-confirmed'
   | 'slip-attached'
   | 'attached'
   | 'signed-off'
   | 'reversed'
   | 'authorization-overridden'
   | 'resubmitted'
-  | 'superseded';
+  | 'superseded'
+  | 'so-submitted'
+  | 'so-reviewed'
+  | 'so-credit-checked'
+  | 'so-auto-approved'
+  | 'so-invoiced'
+  | 'so-rejected'
+  | 'so-paid'
+  | 'posted-to-gl-sales-vat'
+  | 'posted-to-gl-sales-accrual'
+  | 'posted-to-gl-sales-settlement'
+  | 'posted-to-gl-accrual'
+  | 'posted-to-gl-settlement'
+  | 'gl-confirmed-accrual'
+  | 'gl-confirmed-settlement'
+  | 'gl-confirmed-sales-vat'
+  | 'gl-confirmed-sales-accrual'
+  | 'gl-confirmed-sales-settlement';
 
 export interface RecordEventInput {
   waybillId: string;

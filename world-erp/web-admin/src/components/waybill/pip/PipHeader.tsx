@@ -19,7 +19,7 @@ export function PipHeader({ pip, state, locale }: Props) {
 
   return (
     <>
-      <header className="flex flex-wrap items-center gap-2 text-[10px]">
+      <header className="flex flex-wrap items-center gap-2 text-xs">
         <span
           className={
             'inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono uppercase tracking-wider ' +
@@ -36,7 +36,7 @@ export function PipHeader({ pip, state, locale }: Props) {
           <span className="text-cyan-300/80">role:</span>
           <span className="text-cyan-100">{roleText}</span>
         </span>
-        <span className="ml-auto font-mono text-[9px] uppercase text-slate-500">
+        <span className="ml-auto font-mono text-xs uppercase text-slate-500">
           <T value={{ en: pip.en, th: pip.th, de: pip.de }} />
         </span>
       </header>

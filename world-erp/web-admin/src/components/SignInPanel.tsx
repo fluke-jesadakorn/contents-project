@@ -179,7 +179,7 @@ export const SignInPanel: React.FC<{ next?: string }> = ({ next: _next = '/' } =
             {pinRequired && (
               <div className="glass-panel rounded-2xl p-4 border-amber-500/30 mb-6">
                 <label className="block">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
                     DEV_ACTOR_PIN
                   </span>
                   <input
@@ -218,16 +218,16 @@ export const SignInPanel: React.FC<{ next?: string }> = ({ next: _next = '/' } =
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
                                 <div className="text-base font-black text-white truncate">{u.fullname}</div>
-                                <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                                <div className="text-xs font-mono text-slate-400 mt-0.5">
                                   {u.employee_code} · {u.dept_group_name ?? u.department ?? '—'}
                                 </div>
                               </div>
-                              <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-slate-950/60 border border-slate-700 text-slate-200 shrink-0">
+                              <span className="text-xs font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-slate-950/60 border border-slate-700 text-slate-200 shrink-0">
                                 {ROLE_LABEL[u.role_id] || u.role_name}
                               </span>
                             </div>
                             <div className="mt-3 flex items-center justify-between">
-                              <span className="text-[10px] text-slate-500 font-mono">
+                              <span className="text-xs text-slate-500 font-mono">
                                 {busyId === u.id ? 'Signing in…' : 'Click to sign in'}
                               </span>
                               <span className="text-slate-400 text-xs group-hover:text-white">→</span>
@@ -241,7 +241,7 @@ export const SignInPanel: React.FC<{ next?: string }> = ({ next: _next = '/' } =
               })}
             </div>
 
-            <div className="mt-8 text-[10px] font-mono text-slate-500 leading-relaxed">
+            <div className="mt-8 text-xs font-mono text-slate-500 leading-relaxed">
               Production replaces this with SSO / NextAuth. The dev persona switcher is gated by{' '}
               <code className="text-slate-400">NODE_ENV</code> +{' '}
               <code className="text-slate-400">DEV_ACTOR_PIN</code>.

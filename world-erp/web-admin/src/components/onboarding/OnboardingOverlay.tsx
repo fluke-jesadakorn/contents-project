@@ -113,7 +113,7 @@ export const OnboardingOverlay: React.FC = () => {
             <span className="text-2xl">✨</span>
             <div>
               <h2 className="text-lg font-bold text-white"><T value={pick(t, 'onboarding.title')} /></h2>
-              <p className="text-[11px] text-slate-400"><T value={pick(t, 'onboarding.subtitle')} /></p>
+              <p className="text-sm text-slate-400"><T value={pick(t, 'onboarding.subtitle')} /></p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -129,7 +129,7 @@ export const OnboardingOverlay: React.FC = () => {
         {step === 0 && (
           <div className="space-y-3">
             <h3 className="text-base font-bold text-purple-200"><T value={pick(t, 'onboarding.s1.heading')} /></h3>
-            <p className="text-[12px] text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-300 leading-relaxed">
               <T value={pick(t, 'onboarding.s1.body')} />
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -140,46 +140,46 @@ export const OnboardingOverlay: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{tt.glyph}</span>
-                    <span className="text-[12px] font-bold"><T value={tt.name} /></span>
+                    <span className="text-xs font-bold"><T value={tt.name} /></span>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed"><T value={tt.hint} /></p>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed"><T value={tt.hint} /></p>
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-purple-200/80 italic"><T value={rc} /></p>
+            <p className="text-sm text-purple-200/80 italic"><T value={rc} /></p>
           </div>
         )}
 
         {step === 1 && (
           <div className="space-y-3">
             <h3 className="text-base font-bold text-purple-200"><T value={pick(t, 'onboarding.s2.heading')} /></h3>
-            <p className="text-[12px] text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-300 leading-relaxed">
               <T value={pick(t, 'onboarding.s2.body')} />
             </p>
             <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-base">🔔</span>
-                  <span className="text-[11px] font-bold text-white"><T value={pick(t, 'onboarding.s2.waiting')} /></span>
+                  <span className="text-sm font-bold text-white"><T value={pick(t, 'onboarding.s2.waiting')} /></span>
                 </div>
-                <span className="text-[10px] font-mono text-rose-300"><T value={pick(t, 'onboarding.s2.urgent')} /></span>
+                <span className="text-xs font-mono text-rose-300"><T value={pick(t, 'onboarding.s2.urgent')} /></span>
               </div>
               <div className="border-t border-slate-800 pt-2 space-y-1.5">
-                <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-200">EXP-2026-0142 · Coffee Club ฿1,240</span>
                   <span className="text-amber-300 font-mono">awaiting you</span>
                 </div>
-                <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-200">PR-2026-0089 · Office supplies ฿4,800</span>
                   <span className="text-amber-300 font-mono">awaiting you</span>
                 </div>
-                <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-200">Daily digest · 5 events</span>
                   <span className="text-emerald-300 font-mono">✓ reviewed</span>
                 </div>
               </div>
             </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               <T value={pick(t, 'onboarding.s2.tip')} />
             </p>
           </div>
@@ -188,15 +188,15 @@ export const OnboardingOverlay: React.FC = () => {
         {step === 2 && (
           <div className="space-y-3">
             <h3 className="text-base font-bold text-purple-200"><T value={pick(t, 'onboarding.s3.heading')} /></h3>
-            <p className="text-[12px] text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-300 leading-relaxed">
               <T value={pick(t, 'onboarding.s3.body')} />
             </p>
             <div className="rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 p-4 text-center">
               <div className="text-2xl mb-1">📸</div>
-              <p className="text-[11px] text-emerald-200 font-mono"><T value={pick(t, 'onboarding.s3.dropHere')} /></p>
-              <p className="text-[10px] text-slate-400 mt-1"><T value={pick(t, 'onboarding.s3.flow')} /></p>
+              <p className="text-sm text-emerald-200 font-mono"><T value={pick(t, 'onboarding.s3.dropHere')} /></p>
+              <p className="text-xs text-slate-400 mt-1"><T value={pick(t, 'onboarding.s3.flow')} /></p>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-2.5 text-[11px] text-slate-300 leading-relaxed">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-2.5 text-sm text-slate-300 leading-relaxed">
               <span className="text-emerald-300 font-mono"><T value={pick(t, 'onboarding.s3.ocr')} />:</span>{' '}
               <span className="text-slate-100">Coffee Club</span> ·{' '}
               <span className="text-slate-100">12 Jul 2026</span> ·{' '}
@@ -209,27 +209,27 @@ export const OnboardingOverlay: React.FC = () => {
         {step === 3 && (
           <div className="space-y-3">
             <h3 className="text-base font-bold text-purple-200"><T value={pick(t, 'onboarding.s4.heading')} /></h3>
-            <p className="text-[12px] text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-300 leading-relaxed">
               <T value={pick(t, 'onboarding.s4.body')} />
             </p>
             <div className="rounded-xl border border-indigo-500/40 bg-slate-950/70 p-3">
               <div className="flex items-center gap-2 border border-slate-700 rounded-lg px-3 py-2 bg-slate-900/60">
                 <span className="text-slate-500">🔍</span>
-                <span className="text-[12px] font-mono text-white">cockpit</span>
+                <span className="text-xs font-mono text-white">cockpit</span>
                 <span className="ml-auto h-3 w-1 bg-indigo-300 animate-pulse" />
               </div>
               <div className="mt-2 space-y-1">
                 <div className="rounded-md bg-indigo-500/15 border border-indigo-500/30 px-2.5 py-1.5 flex items-center justify-between">
-                  <span className="text-[11px] text-indigo-100"><T value={pick(t, 'onboarding.s4.goCockpit')} /></span>
-                  <span className="text-[10px] font-mono text-indigo-300">↵</span>
+                  <span className="text-sm text-indigo-100"><T value={pick(t, 'onboarding.s4.goCockpit')} /></span>
+                  <span className="text-xs font-mono text-indigo-300">↵</span>
                 </div>
                 <div className="rounded-md px-2.5 py-1.5 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-300"><T value={pick(t, 'onboarding.s4.cockpitAi')} /></span>
-                  <span className="text-[10px] font-mono text-slate-500">⌘2</span>
+                  <span className="text-sm text-slate-300"><T value={pick(t, 'onboarding.s4.cockpitAi')} /></span>
+                  <span className="text-xs font-mono text-slate-500">⌘2</span>
                 </div>
               </div>
             </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               <T value={pick(t, 'onboarding.s4.tip')} />
             </p>
           </div>
@@ -240,14 +240,14 @@ export const OnboardingOverlay: React.FC = () => {
             type="button"
             onClick={back}
             disabled={step === 0}
-            className="text-[11px] px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed font-mono font-bold"
+            className="text-sm px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed font-mono font-bold"
           >
             <T value={pick(t, 'onboarding.back')} />
           </button>
           <button
             type="button"
             onClick={dismiss}
-            className="text-[11px] px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-rose-900/40 hover:border-rose-500/40 hover:text-rose-200 font-mono font-bold"
+            className="text-sm px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-rose-900/40 hover:border-rose-500/40 hover:text-rose-200 font-mono font-bold"
           >
             <T value={pick(t, 'onboarding.dismiss')} /> ✕
           </button>
@@ -255,7 +255,7 @@ export const OnboardingOverlay: React.FC = () => {
             <button
               type="button"
               onClick={dismiss}
-              className="text-[11px] px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/50 text-purple-100 hover:bg-purple-500/30 font-mono font-bold"
+              className="text-sm px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/50 text-purple-100 hover:bg-purple-500/30 font-mono font-bold"
             >
               <T value={pick(t, 'onboarding.gotIt')} />
             </button>
@@ -263,7 +263,7 @@ export const OnboardingOverlay: React.FC = () => {
             <button
               type="button"
               onClick={next}
-              className="text-[11px] px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-500/50 text-indigo-100 hover:bg-indigo-500/30 font-mono font-bold"
+              className="text-sm px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-500/50 text-indigo-100 hover:bg-indigo-500/30 font-mono font-bold"
             >
               <T value={pick(t, 'onboarding.next')} />
             </button>

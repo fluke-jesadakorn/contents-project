@@ -48,7 +48,7 @@ export function LangPicker({ open, onPick }: Props) {
           >
             <span className="text-2xl" aria-hidden>🇹🇭</span>
             <span className="text-sm font-bold">ไทย</span>
-            <span className="text-[10px] font-mono text-slate-500">TH</span>
+            <span className="text-xs font-mono text-slate-500">TH</span>
           </button>
           <button
             type="button"
@@ -57,7 +57,7 @@ export function LangPicker({ open, onPick }: Props) {
           >
             <span className="text-2xl" aria-hidden>🇩🇪</span>
             <span className="text-sm font-bold">Deutsch</span>
-            <span className="text-[10px] font-mono text-slate-500">DE</span>
+            <span className="text-xs font-mono text-slate-500">DE</span>
           </button>
         </div>
       </div>
@@ -95,7 +95,7 @@ export function LangPickerTrigger({ className }: TriggerProps) {
       title={`${lang === 'th' ? 'Waybill · ใบส่งของ' : 'Waybill · Lieferschein'}`}
       aria-label="Toggle language"
       className={
-        'rounded-lg border border-slate-700 px-2 py-1 text-[10px] font-mono uppercase text-slate-300 hover:border-cyan-500 ' +
+        'inline-flex items-center justify-center h-9 px-2.5 rounded-md border border-rule text-sm font-mono uppercase tracking-wider text-ink-2 hover:bg-paper-2 hover:text-ink transition-colors ' +
         (className ?? '')
       }
     >

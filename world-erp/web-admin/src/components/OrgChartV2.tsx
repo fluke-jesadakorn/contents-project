@@ -181,14 +181,14 @@ function AnchorNodeCard({
       <div className="flex items-center gap-2.5">
         <div
           className={`${
-            compact ? 'w-7 h-7 text-[10px]' : 'w-9 h-9 text-[11px]'
+            compact ? 'w-7 h-7 text-xs' : 'w-9 h-9 text-sm'
           } shrink-0 rounded-full bg-slate-950/70 border border-slate-800 flex items-center justify-center font-black text-white`}
         >
           {initials(u.fullname)}
         </div>
         <div className="min-w-0 flex-1">
-          <div className={`${compact ? 'text-[12px]' : 'text-sm'} font-black text-white truncate leading-tight`}>{u.fullname}</div>
-          <div className="text-[9px] sm:text-[10px] font-mono text-slate-300/80 mt-0.5 truncate">{u.employee_code}</div>
+          <div className={`${compact ? 'text-xs' : 'text-sm'} font-black text-white truncate leading-tight`}>{u.fullname}</div>
+          <div className="text-xs sm:text-xs font-mono text-slate-300/80 mt-0.5 truncate">{u.employee_code}</div>
         </div>
       </div>
     </button>
@@ -315,14 +315,14 @@ export const OrgChartV2: React.FC<OrgChartV2Props> = ({ users, onPick, selectedI
 
       <div className="org-anchor -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-slate-950/85 backdrop-blur supports-[backdrop-filter]:bg-slate-950/65 border-b border-slate-800">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 shrink-0">CEO</div>
+          <div className="text-xs font-mono uppercase tracking-widest text-slate-500 shrink-0">CEO</div>
           {anchor.ceo && (
             <div className="flex-1 min-w-0">
               <AnchorNodeCard u={anchor.ceo} selected={selectedId === anchor.ceo.id} busy={busyId === anchor.ceo.id} onPick={onPick} />
             </div>
           )}
           {anchor.ceo && (
-            <div className="text-[10px] font-mono text-slate-400 shrink-0 hidden sm:block">{anchor.ceo.employee_code}</div>
+            <div className="text-xs font-mono text-slate-400 shrink-0 hidden sm:block">{anchor.ceo.employee_code}</div>
           )}
         </div>
       </div>
@@ -333,7 +333,7 @@ export const OrgChartV2: React.FC<OrgChartV2Props> = ({ users, onPick, selectedI
           style={chainHasCeo ? undefined : dimmedSlotStyle}
         >
           <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 shrink-0">
+            <div className="text-xs font-mono uppercase tracking-widest text-slate-500 shrink-0">
               C-LEVEL {!chainHasCeo && currentDept && <span className="text-amber-400/80 ml-1">· OUT OF SCOPE</span>}
             </div>
             <div className="flex-1 min-w-0">
@@ -350,11 +350,11 @@ export const OrgChartV2: React.FC<OrgChartV2Props> = ({ users, onPick, selectedI
               ) : cLevelRing.length > 0 ? (
                 <AnchorNodeCard u={cLevelRing[0]} selected={selectedId === cLevelRing[0].id} busy={busyId === cLevelRing[0].id} onPick={onPick} compact />
               ) : (
-                <span className="text-[11px] text-slate-500 font-mono">—</span>
+                <span className="text-sm text-slate-500 font-mono">—</span>
               )}
             </div>
             {currentChain.find((c) => c.level === 2) && (
-              <div className="text-[10px] font-mono text-slate-400 shrink-0 hidden sm:block">
+              <div className="text-xs font-mono text-slate-400 shrink-0 hidden sm:block">
                 {currentChain.find((c) => c.level === 2)!.user.employee_code}
               </div>
             )}
@@ -364,7 +364,7 @@ export const OrgChartV2: React.FC<OrgChartV2Props> = ({ users, onPick, selectedI
 
       <div className="current-hod-slot sticky -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-slate-950/60 backdrop-blur border-b border-slate-800/40">
         <div className="flex items-center gap-3">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 shrink-0">HEAD</div>
+          <div className="text-xs font-mono uppercase tracking-widest text-slate-500 shrink-0">HEAD</div>
           <div className="flex-1 min-w-0">
             {currentDept ? (
               <div
@@ -372,7 +372,7 @@ export const OrgChartV2: React.FC<OrgChartV2Props> = ({ users, onPick, selectedI
                 style={chainHasCeo && chainHasCLevel ? fadeInStyle : dimmedSlotStyle}
                 className="flex items-center gap-2"
               >
-                <span className={`text-[10px] font-mono uppercase tracking-wider text-${currentDept.color}-200 shrink-0`}>
+                <span className={`text-xs font-mono uppercase tracking-wider text-${currentDept.color}-200 shrink-0`}>
                   {currentDept.name}
                 </span>
                 <span className="text-slate-500">·</span>
@@ -385,7 +385,7 @@ export const OrgChartV2: React.FC<OrgChartV2Props> = ({ users, onPick, selectedI
                 />
               </div>
             ) : (
-              <span className="text-[11px] text-slate-500 font-mono">
+              <span className="text-sm text-slate-500 font-mono">
                 scroll into a department to see its head
               </span>
             )}

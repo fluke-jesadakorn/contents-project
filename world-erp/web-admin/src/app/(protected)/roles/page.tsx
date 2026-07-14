@@ -82,7 +82,7 @@ export default async function RolesPage() {
       <div className="space-y-3">
         <table className="w-full text-sm border-separate border-spacing-y-1">
           <thead>
-            <tr className="text-[10px] uppercase tracking-wider text-slate-400">
+            <tr className="text-xs uppercase tracking-wider text-slate-400">
               <th className="text-left px-2 py-1">Role</th>
               <th className="text-left px-2 py-1">Level</th>
               <th className="text-right px-2 py-1">Allow</th>
@@ -98,7 +98,7 @@ export default async function RolesPage() {
                 <tr key={r.id} className="bg-slate-900/50 border border-slate-700">
                   <td className="px-2 py-1.5 text-slate-100">
                     {r.display_name}
-                    <span className="ml-2 font-mono text-[10px] text-slate-500">{r.id}</span>
+                    <span className="ml-2 font-mono text-xs text-slate-500">{r.id}</span>
                   </td>
                   <td className="px-2 py-1.5 text-slate-400 text-xs">{parsed?.level ?? '—'}</td>
                   <td className="px-2 py-1.5 text-right text-emerald-300">{r.allow_count}</td>

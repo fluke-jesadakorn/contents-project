@@ -41,7 +41,7 @@ export function PinToCockpitButton({ spec, tileId }: { spec: ChartSpec; tileId: 
       type="button"
       onClick={pin}
       disabled={busy}
-      className="text-[10px] px-2 py-1 rounded bg-amber-500/15 text-amber-200 border border-amber-500/30 hover:bg-amber-500/25 font-mono"
+      className="text-xs px-2 py-1 rounded bg-amber-500/15 text-amber-200 border border-amber-500/30 hover:bg-amber-500/25 font-mono"
       title={plain('chat.pin.title')}
     >
       <T value={pinned ? pick('chat.pin.pinned') : pick('chat.pin.action')} />

@@ -16,7 +16,6 @@ import type { PipState, WaybillDomain } from '@erp-lib/waybill/derive';
 import { pipsForDomain, pipIndex, domainForOrigin } from '@erp-lib/waybill/derive';
 import type { VisionModel } from '@/lib/ai/loadVisionModels';
 import { PipCard } from './pip/PipCard';
-import { StepContext } from './StepContext';
 import { Bilingual } from '@/components/i18n/Bilingual';
 import type { BilingualText } from '@erp-lib/i18n/types';
 
@@ -145,8 +144,8 @@ export function WaybillStepCards({
   attachments: _attachments,
   approversByStage,
   actedUsersByStage,
-  expensePicture,
-  hasGlConfirmed,
+  expensePicture: _expensePicture,
+  hasGlConfirmed: _hasGlConfirmed,
   artifacts,
   actorCanSeeGlLines,
   originId,
@@ -169,10 +168,6 @@ export function WaybillStepCards({
         const approvers = approversByStage[pip.key] ?? [];
         const actedUsers = actedUsersByStage[pip.key] ?? [];
         const focusedIsThisRejected = state === 'rejected';
-        const showContext =
-          expensePicture != null &&
-          wb.origin === 'expense' &&
-          (state === 'active' || state === 'passed');
 
         const isCurrentStage = idx === curIdx;
         const hasAnyPerm: boolean =
@@ -215,7 +210,7 @@ export function WaybillStepCards({
                 !(state === 'active' && hasAnyPerm) ? (
                   <span
                     className={[
-                      'rounded-full border px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider',
+                      'rounded-full border px-2 py-0.5 text-xs font-mono font-bold uppercase tracking-wider',
                       state === 'passed'
                         ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
                         : state === 'active'
@@ -231,15 +226,6 @@ export function WaybillStepCards({
               }
             >
               <div className="space-y-10">
-                {showContext ? (
-                  <StepContext
-                    pipKey={pip.key}
-                    picture={expensePicture}
-                    hasGlConfirmed={hasGlConfirmed}
-                    origin={wb.origin as 'expense' | 'pr' | 'po'}
-                    locale={locale}
-                  />
-                ) : null}
                 <PipCard
                   waybillId={waybillId}
                   pip={pip}

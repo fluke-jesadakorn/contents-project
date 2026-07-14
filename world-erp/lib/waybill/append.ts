@@ -9,7 +9,7 @@ import { query } from '../db';
 import { recordEvent, type WaybillEventKind } from './events';
 
 export interface AppendEventInput {
-  origin: 'expense' | 'pr' | 'po';
+  origin: 'expense' | 'pr' | 'po' | 'so';
   originId: number;
   kind: WaybillEventKind;
   stageFrom?: string | null;
@@ -20,7 +20,7 @@ export interface AppendEventInput {
 }
 
 async function resolveWaybill(
-  origin: 'expense' | 'pr' | 'po',
+  origin: 'expense' | 'pr' | 'po' | 'so',
   originId: number,
 ): Promise<string | null> {
   const r = await query<{ id: string }>(
@@ -31,7 +31,7 @@ async function resolveWaybill(
 }
 
 async function ensureWaybillExists(
-  origin: 'expense' | 'pr' | 'po',
+  origin: 'expense' | 'pr' | 'po' | 'so',
   originId: number,
 ): Promise<string | null> {
   const existing = await resolveWaybill(origin, originId);
@@ -53,7 +53,9 @@ async function ensureWaybillExists(
     [
       origin,
       originId,
-      origin === 'expense' ? 'reimbursement' : 'procurement',
+      origin === 'expense' ? 'reimbursement'
+        : origin === 'so' ? 'sales'
+          : 'procurement',
     ],
   );
   return r.rows[0]?.id ?? null;

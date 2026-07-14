@@ -24,6 +24,7 @@ interface TileHubProps {
   tiles?: TileDef[];
   activeTileId: string;
   onSelectTile: (t: any) => void;
+  accessByTile?: Record<string, TileAccess>;
 }
 
 type Annotated = { tile: TileWithMeta; access: TileAccess };
@@ -33,6 +34,7 @@ export const TileHub: React.FC<TileHubProps> = ({
   tiles: tilesProp,
   activeTileId,
   onSelectTile,
+  accessByTile,
 }) => {
   const userPerms: string[] = currentUser?.permissions ?? [];
   const userId = currentUser?.id ?? -1;
@@ -66,7 +68,7 @@ export const TileHub: React.FC<TileHubProps> = ({
             : t.request_target === 'admin' ? 'admin'
             : t.request_target === 'hr_manager' ? 'hr_manager'
             : undefined,
-          access_meta: { viewPermId: t.view_perm_id } ?? null,
+          access_meta: { viewPermId: t.view_perm_id },
         })));
       })
       .catch(() => {
@@ -84,6 +86,8 @@ export const TileHub: React.FC<TileHubProps> = ({
     const out: Record<string, TileAccess> = {};
     if (!tiles) return out;
     for (const t of tiles) {
+      const override = accessByTile?.[t.id];
+      if (override) { out[t.id] = override; continue; }
       const viewPerm = (t as any).access_meta?.viewPermId ?? `tile:${t.id}:view::allow`;
       const allowed = matchPerm(userPerms, viewPerm);
       out[t.id] = allowed
@@ -91,7 +95,7 @@ export const TileHub: React.FC<TileHubProps> = ({
         : { state: 'locked', reason: 'Restricted by your role.', source: 'perm' };
     }
     return out;
-  }, [tiles, userPerms]);
+  }, [tiles, userPerms, accessByTile]);
 
   const annotated: Annotated[] = useMemo(() => {
     if (!tiles) return [];
@@ -143,7 +147,7 @@ export const TileHub: React.FC<TileHubProps> = ({
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-base">🗂</span>
           <h3 className="text-sm font-black uppercase tracking-wider text-slate-100">Your Tiles</h3>
-          <span className="text-[10px] font-mono text-slate-500">
+          <span className="text-xs font-mono text-slate-500">
             {openCount} accessible · {lockedCount} locked · request access
           </span>
         </div>
@@ -188,14 +192,14 @@ const Section: React.FC<SectionProps> = ({
           <div key={group} className="space-y-2">
             <div className="flex items-center gap-1.5">
               <span aria-hidden className="text-sm">{GROUP_LABEL[group].icon}</span>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
+              <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-500">
                 {GROUP_LABEL[group].label}
               </span>
               {custom ? (
                 <button
                   type="button"
                   onClick={() => onResetGroup(group)}
-                  className="ml-auto text-[10px] font-mono uppercase tracking-widest text-slate-500 hover:text-amber-400 px-2 py-0.5 rounded border border-transparent hover:border-slate-700 transition-colors"
+                  className="ml-auto text-xs font-mono uppercase tracking-widest text-slate-500 hover:text-amber-400 px-2 py-0.5 rounded border border-transparent hover:border-slate-700 transition-colors"
                   title="Reset to default order (open tiles left, locked tiles right)"
                 >
                   ↺ reset

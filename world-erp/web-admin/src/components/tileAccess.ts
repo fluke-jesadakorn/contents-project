@@ -19,6 +19,7 @@ export interface TileAccess {
   reason: string;
   source?: string;
   inheritedFrom?: string | null;
+  summary?: unknown;
 }
 
 export interface BatchAllowResult {

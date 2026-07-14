@@ -23,20 +23,21 @@ export type WaybillAttachmentKind =
 export interface WaybillKindMeta {
   en: string;
   th: string;
+  de: string;
   emoji: string;
 }
 
 export const WAYBILL_KINDS: Record<WaybillAttachmentKind, WaybillKindMeta> = {
-  slip:            { en: 'Slip / receipt',        th: 'ใบเสร็จ',                  emoji: '🧾' },
-  pr_doc:          { en: 'PR document',           th: 'เอกสาร PR',                emoji: '📄' },
-  po_doc:          { en: 'PO document',           th: 'เอกสาร PO',                emoji: '📎' },
-  payment_receipt: { en: 'Payment receipt',       th: 'หลักฐานจ่ายเงิน',           emoji: '💸' },
-  signoff_memo:    { en: 'Sign-off memo',         th: 'หนังสืออนุมัติ',            emoji: '🛡️' },
-  invoice:         { en: 'Tax invoice',           th: 'ใบกำกับภาษี',              emoji: '🧮' },
-  wht_cert:        { en: 'WHT certificate',       th: 'หนังสือรับรองหัก ณ ที่จ่าย', emoji: '📑' },
-  photo:           { en: 'Photo evidence',        th: 'ภาพประกอบ',                emoji: '🖼' },
-  memo:            { en: 'Internal memo',         th: 'บันทึกภายใน',              emoji: '📝' },
-  other:           { en: 'Other',                 th: 'อื่น ๆ',                   emoji: '📄' },
+  slip:            { en: 'Slip / receipt',        th: 'ใบเสร็จ',                  de: 'Beleg',                   emoji: '🧾' },
+  pr_doc:          { en: 'PR document',           th: 'เอกสาร PR',                de: 'PR-Dokument',             emoji: '📄' },
+  po_doc:          { en: 'PO document',           th: 'เอกสาร PO',                de: 'PO-Dokument',             emoji: '📎' },
+  payment_receipt: { en: 'Payment receipt',       th: 'หลักฐานจ่ายเงิน',           de: 'Zahlungsbeleg',           emoji: '💸' },
+  signoff_memo:    { en: 'Sign-off memo',         th: 'หนังสืออนุมัติ',            de: 'Genehmigungsschreiben',   emoji: '🛡️' },
+  invoice:         { en: 'Tax invoice',           th: 'ใบกำกับภาษี',              de: 'Steuerrechnung',          emoji: '🧮' },
+  wht_cert:        { en: 'WHT certificate',       th: 'หนังสือรับรองหัก ณ ที่จ่าย', de: 'Quellensteuerbescheinigung', emoji: '📑' },
+  photo:           { en: 'Photo evidence',        th: 'ภาพประกอบ',                de: 'Foto',                    emoji: '🖼' },
+  memo:            { en: 'Internal memo',         th: 'บันทึกภายใน',              de: 'Internes Memo',           emoji: '📝' },
+  other:           { en: 'Other',                 th: 'อื่น ๆ',                   de: 'Sonstiges',               emoji: '📄' },
 };
 
 export const WAYBILL_KIND_ORDER: WaybillAttachmentKind[] = [

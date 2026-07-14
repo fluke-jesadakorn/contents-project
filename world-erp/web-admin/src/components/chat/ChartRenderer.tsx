@@ -32,7 +32,7 @@ export function ChartRenderer({ spec }: { spec: ChartSpec }) {
   const renderingLabel = t('chat.chart.rendering');
 
   if (!mounted) {
-    return <div className="text-[10px] text-slate-500 font-mono py-2"><T value={renderingLabel} /></div>;
+    return <div className="text-xs text-slate-500 font-mono py-2"><T value={renderingLabel} /></div>;
   }
 
   const xLabels = spec.axes?.x;
@@ -73,7 +73,7 @@ export function ChartRenderer({ spec }: { spec: ChartSpec }) {
   return (
     <div className="my-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
       {spec.title && (
-        <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">
+        <div className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
           {spec.title}
         </div>
       )}

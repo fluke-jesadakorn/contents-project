@@ -19,6 +19,7 @@ interface Props {
 }
 
 function normalizeScope(raw: string | undefined): InboxScope {
+  if (raw === 'waiting') return 'waiting';
   if (raw === 'watching') return 'watching';
   if (raw === 'all') return 'all';
   return 'waiting';
@@ -52,9 +53,9 @@ export default async function InboxPage({ searchParams }: Props) {
   const scope: InboxScope = normalizeScope(sp.scope);
 
   const [items, waitingItems, watchingItems] = await Promise.all([
-    loadInboxForUser(actor.id, scope, 100),
-    loadInboxForUser(actor.id, 'waiting', 100),
-    loadInboxForUser(actor.id, 'watching', 100),
+    loadInboxForUser(actor.id, scope),
+    loadInboxForUser(actor.id, 'waiting'),
+    loadInboxForUser(actor.id, 'watching'),
   ]);
 
   const waitingLen = waitingItems.length;
@@ -70,14 +71,14 @@ export default async function InboxPage({ searchParams }: Props) {
 
   return (
     <>
-      <BreadcrumbSetter crumbs={tileCrumbs({ display_name: 'Inbox' })} />
+      <BreadcrumbSetter crumbs={tileCrumbs({ id: 'inbox', display_name: 'Inbox', sub_view: null, group_name: 'work' })} />
       <PageLayout
         title="Inbox"
         subtitle={subtitle}
         category={{
-          label: GROUP_LABEL.workflow.label,
-          icon: GROUP_LABEL.workflow.icon,
-          href: '/group/workflow',
+          label: GROUP_LABEL.work.label,
+          icon: GROUP_LABEL.work.icon,
+          href: '/group/work',
         }}
       >
         <InboxFilters current={scope} counts={counts} />

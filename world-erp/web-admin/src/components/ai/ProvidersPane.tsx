@@ -42,7 +42,7 @@ export const ProvidersPane: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-sm font-black text-white uppercase tracking-wider font-mono">Providers & Models</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Manage AI providers (Ollama, OpenAI-compat, MiniMax) and the models they use</p>
+          <p className="text-sm text-slate-400 mt-0.5">Manage AI providers (Ollama, OpenAI-compat, MiniMax) and the models they use</p>
         </div>
         {!creating && !editing && (
           <button onClick={() => setCreating(true)} className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-500">+ Add Provider</button>
@@ -64,20 +64,20 @@ export const ProvidersPane: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="text-sm font-bold text-white">{p.name}</h4>
-                    {p.preset && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 font-bold">{p.preset}</span>}
-                    {!p.enabled && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-500 border border-slate-700 font-bold">DISABLED</span>}
+                    {p.preset && <span className="text-xs px-1.5 py-0.5 rounded-full bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 font-bold">{p.preset}</span>}
+                    {!p.enabled && <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-500 border border-slate-700 font-bold">DISABLED</span>}
                   </div>
-                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">{p.type} · {p.base_url}</p>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">{p.type} · {p.base_url}</p>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => setEditing(p)} className="text-[10px] px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white">Edit</button>
-                  <button onClick={() => remove(p)} className="text-[10px] px-2 py-1 rounded bg-rose-950/40 text-rose-300 border border-rose-900/40 hover:bg-rose-900/60">Delete</button>
+                  <button onClick={() => setEditing(p)} className="text-xs px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white">Edit</button>
+                  <button onClick={() => remove(p)} className="text-xs px-2 py-1 rounded bg-rose-950/40 text-rose-300 border border-rose-900/40 hover:bg-rose-900/60">Delete</button>
                 </div>
               </div>
-              <div className="text-[10px] text-slate-500">
+              <div className="text-xs text-slate-500">
                 API Key: {p.has_api_key ? '•••••••• (encrypted)' : '—'}
               </div>
-              {p.notes && <p className="text-[10px] text-slate-500 italic">{p.notes}</p>}
+              {p.notes && <p className="text-xs text-slate-500 italic">{p.notes}</p>}
             </div>
           ))}
         </div>

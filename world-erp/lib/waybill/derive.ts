@@ -120,8 +120,12 @@ export function inferActionStage(_domain: WaybillDomain, currentStage: string): 
 export type PipState = 'passed' | 'active' | 'pending' | 'rejected' | 'skipped';
 
 export function isTerminalStage(stage: string): boolean {
-  const canon = normalizeStage(stage);
-  return canon === 'disbursed' || canon === 'rejected' || canon === 'so_paid' || canon === 'gl_confirmed';
+  const canon = normalizeStage(stage) ?? stage;
+  return canon === 'disbursed'
+    || canon === 'rejected'
+    || canon === 'so_paid'
+    || canon === 'gl_confirmed'
+    || canon === 'so_invoiced';
 }
 
 export function computePipState(

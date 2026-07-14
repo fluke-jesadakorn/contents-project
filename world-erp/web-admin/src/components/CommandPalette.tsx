@@ -271,7 +271,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             placeholder="Search tiles, features, or pages — type “as …” to switch user"
             className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-slate-500"
           />
-          <kbd className="hidden sm:inline-flex text-[9px] font-mono px-1.5 py-0.5 rounded border border-slate-700 text-slate-400 bg-slate-900">
+          <kbd className="hidden sm:inline-flex text-xs font-mono px-1.5 py-0.5 rounded border border-slate-700 text-slate-400 bg-slate-900">
             ESC
           </kbd>
         </div>
@@ -288,7 +288,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             grouped.map(([group, items]) => {
               return (
                 <div key={group} className="px-1 mb-1">
-                  <div className="px-2 py-1 text-[9px] uppercase tracking-widest font-mono text-slate-500">
+                  <div className="px-2 py-1 text-xs uppercase tracking-widest font-mono text-slate-500">
                     {group}
                   </div>
                   {items.map((a) => {
@@ -313,9 +313,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate">{a.label}</div>
-                          {a.hint && <div className="text-[10px] text-slate-500 font-mono truncate">{a.hint}</div>}
+                          {a.hint && <div className="text-xs text-slate-500 font-mono truncate">{a.hint}</div>}
                         </div>
-                        {focused && <span className="text-[9px] font-mono text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">↵</span>}
+                        {focused && <span className="text-xs font-mono text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">↵</span>}
                       </button>
                     );
                   })}
@@ -325,7 +325,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           )}
         </div>
 
-        <div className="px-3 py-2 border-t border-slate-800/80 text-[10px] text-slate-500 font-mono flex items-center justify-between">
+        <div className="px-3 py-2 border-t border-slate-800/80 text-xs text-slate-500 font-mono flex items-center justify-between">
           <span>
             {finalList.length} matches
             {aiBusy && <span className="ml-2 text-indigo-300">✨ AI thinking…</span>}

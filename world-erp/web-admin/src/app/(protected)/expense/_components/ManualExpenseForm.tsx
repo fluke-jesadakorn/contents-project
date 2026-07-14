@@ -116,7 +116,7 @@ export function ManualExpenseForm({ currentUserId }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {waybillId && (
-        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500">
+        <div className="flex items-center gap-2 text-sm font-mono text-slate-500">
           <span className="text-cyan-300">{waybillId}</span>
           <span>·</span>
           {savedAt
@@ -125,7 +125,7 @@ export function ManualExpenseForm({ currentUserId }: Props) {
           <button
             type="button"
             onClick={handleDiscard}
-            className="ml-auto rounded border border-rose-500/30 bg-rose-950/20 px-2 py-0.5 text-[10px] text-rose-200 hover:bg-rose-950/40"
+            className="ml-auto rounded border border-rose-500/30 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-200 hover:bg-rose-950/40"
           >
             🗑
           </button>
@@ -134,7 +134,7 @@ export function ManualExpenseForm({ currentUserId }: Props) {
 
       <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-[11px] font-mono uppercase tracking-wider text-slate-400">
+          <label className="mb-1 block text-sm font-mono uppercase tracking-wider text-slate-400">
             <Bilingual en="Vendor *" th="ผู้ขาย *" />
           </label>
           <input
@@ -146,7 +146,7 @@ export function ManualExpenseForm({ currentUserId }: Props) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] font-mono uppercase tracking-wider text-slate-400">
+          <label className="mb-1 block text-sm font-mono uppercase tracking-wider text-slate-400">
             <Bilingual en="Date *" th="วันที่ *" />
           </label>
           <input
@@ -157,7 +157,7 @@ export function ManualExpenseForm({ currentUserId }: Props) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] font-mono uppercase tracking-wider text-slate-400">
+          <label className="mb-1 block text-sm font-mono uppercase tracking-wider text-slate-400">
             <Bilingual en="Payment" th="การชำระ" />
           </label>
           <select
@@ -171,7 +171,7 @@ export function ManualExpenseForm({ currentUserId }: Props) {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-[11px] font-mono uppercase tracking-wider text-slate-400">
+          <label className="mb-1 block text-sm font-mono uppercase tracking-wider text-slate-400">
             <Bilingual en="Subtotal" th="ยอดก่อน VAT" />
           </label>
           <input
@@ -185,7 +185,7 @@ export function ManualExpenseForm({ currentUserId }: Props) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] font-mono uppercase tracking-wider text-slate-400">
+          <label className="mb-1 block text-sm font-mono uppercase tracking-wider text-slate-400">
             <Bilingual en="VAT" th="VAT" />
           </label>
           <input
@@ -199,7 +199,7 @@ export function ManualExpenseForm({ currentUserId }: Props) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] font-mono uppercase tracking-wider text-slate-400">
+          <label className="mb-1 block text-sm font-mono uppercase tracking-wider text-slate-400">
             <Bilingual en="Total *" th="รวม *" />
           </label>
           <input
@@ -215,7 +215,7 @@ export function ManualExpenseForm({ currentUserId }: Props) {
       </div>
 
       {error && (
-        <p className="rounded-lg border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-[12px] text-rose-200">{error}</p>
+        <p className="rounded-lg border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">{error}</p>
       )}
 
       <button

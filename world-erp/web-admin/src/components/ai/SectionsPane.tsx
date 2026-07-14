@@ -57,7 +57,7 @@ export const SectionsPane: React.FC = () => {
     <div className="space-y-4">
       <div>
         <h3 className="text-sm font-black text-white uppercase tracking-wider font-mono">Section Matrix</h3>
-        <p className="text-[11px] text-slate-400 mt-0.5">Choose provider+model per section — each part of the system can use a different model</p>
+        <p className="text-sm text-slate-400 mt-0.5">Choose provider+model per section — each part of the system can use a different model</p>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-800">
@@ -122,9 +122,9 @@ const SectionRow: React.FC<RowProps> = ({ sectionKey, label, task, providers, mo
     <tr className="border-t border-slate-800/80 hover:bg-slate-950/40">
       <td className="px-3 py-2.5">
         <div className="font-mono text-slate-300">{sectionKey}</div>
-        <div className="text-[10px] text-slate-500">{label}</div>
+        <div className="text-xs text-slate-500">{label}</div>
       </td>
-      <td className="px-3 py-2.5"><span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 font-mono">{task}</span></td>
+      <td className="px-3 py-2.5"><span className="text-xs px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 font-mono">{task}</span></td>
       <td className="px-3 py-2.5">
         <select value={providerId} onChange={e => setProviderId(e.target.value)}
           className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-white">
@@ -141,12 +141,12 @@ const SectionRow: React.FC<RowProps> = ({ sectionKey, label, task, providers, mo
       </td>
       <td className="px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-500 font-mono">{currentLabel}</span>
+          <span className="text-xs text-slate-500 font-mono">{currentLabel}</span>
           <button
             type="button"
             onClick={() => onAssign(providerId ? parseInt(providerId, 10) : null, modelId ? parseInt(modelId, 10) : null)}
             disabled={busy || (!providerId && !modelId)}
-            className="text-[10px] px-2 py-1 rounded bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:opacity-40"
+            className="text-xs px-2 py-1 rounded bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:opacity-40"
           >
             {busy ? '…' : 'Save'}
           </button>

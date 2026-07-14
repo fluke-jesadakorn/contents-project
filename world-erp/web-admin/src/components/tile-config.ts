@@ -22,6 +22,8 @@ export type TileGroup =
 
 export interface TileAccessMeta {
   viewPermId?: string | null;
+  dept_name?: string | null;
+  group_name?: string | null;
 }
 
 export interface TileDef {
@@ -43,6 +45,8 @@ export interface TileWithMeta extends TileDef {
   count?: number | string;
   countLabel?: string;
   access_meta?: TileAccessMeta | null;
+  group_name?: string | null;
+  view_perm_id?: string | null;
 }
 
 export function tileHref(id: string): string {
@@ -94,6 +98,39 @@ export function requestAccessTargetToEnum(
   if (rt === 'admin') return 'admin';
   if (rt === 'hr_manager') return 'hr_manager';
   return undefined;
+}
+
+export interface TileGrantSummary {
+  tile_id: string;
+  display_name: string;
+  module_id: string;
+  href: string;
+  group_name: string;
+  is_available: boolean;
+  grant_reason: string;
+  grant_source_role?: string | null;
+  grant_role_level?: number | null;
+}
+
+export function tileAccentToTone(accent: string | null | undefined): {
+  leftRule: string;
+  bar: string;
+  border: string;
+  text: string;
+} {
+  const cls = (accent || '').toLowerCase();
+  if (cls.includes('rose') || cls.includes('pink')) return { leftRule: 'border-l-rose-500',     bar: 'bg-rose-500',     border: 'border-rose-500/40',  text: 'text-rose-200' };
+  if (cls.includes('purple') || cls.includes('fuchsia')) return { leftRule: 'border-l-purple-500', bar: 'bg-purple-500',   border: 'border-purple-500/40', text: 'text-purple-200' };
+  if (cls.includes('amber') || cls.includes('yellow')) return { leftRule: 'border-l-amber-500',  bar: 'bg-amber-500',    border: 'border-amber-500/40', text: 'text-amber-200' };
+  if (cls.includes('cyan')  || cls.includes('sky'))    return { leftRule: 'border-l-cyan-500',   bar: 'bg-cyan-500',     border: 'border-cyan-500/40',  text: 'text-cyan-200' };
+  if (cls.includes('indigo')|| cls.includes('violet')) return { leftRule: 'border-l-indigo-500', bar: 'bg-indigo-500',   border: 'border-indigo-500/40', text: 'text-indigo-200' };
+  if (cls.includes('green') || cls.includes('emerald'))return { leftRule: 'border-l-emerald-500',bar: 'bg-emerald-500',  border: 'border-emerald-500/40',text: 'text-emerald-200' };
+  return { leftRule: 'border-l-slate-500', bar: 'bg-slate-500', border: 'border-slate-500/40', text: 'text-slate-200' };
+}
+
+export function tileIconFromEmoji(emoji: string | null | undefined): string {
+  if (!emoji) return 'square';
+  return 'square';
 }
 
 export interface TileRow {

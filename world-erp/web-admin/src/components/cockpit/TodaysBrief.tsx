@@ -153,7 +153,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
         <div className="flex items-center gap-3">
           <span className="text-3xl">👑</span>
           <div>
-            <div className="text-[10px] font-mono font-black uppercase text-purple-300 tracking-wider">
+            <div className="text-xs font-mono font-black uppercase text-purple-300 tracking-wider">
               <T value={{ en: `Today's Brief · ${audience.toUpperCase()}`, th: `บรีฟวันนี้ · ${audience.toUpperCase()}`, de: `Heutiges Briefing · ${audience.toUpperCase()}` }} />
             </div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight">
@@ -162,7 +162,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
           </div>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-[10px] font-mono text-slate-400">
+          <span className="text-xs font-mono text-slate-400">
             <T
               value={{
                 en: 'Last updated',
@@ -174,7 +174,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
           </span>
           <Link
             href="/cockpit"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/40 bg-purple-500/20 px-3 py-1.5 text-[11px] font-bold text-purple-200 hover:bg-purple-500/30 transition-all"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/40 bg-purple-500/20 px-3 py-1.5 text-sm font-bold text-purple-200 hover:bg-purple-500/30 transition-all"
           >
             <span>↻</span>
             <span>
@@ -190,40 +190,40 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 2xl:gap-6 mb-6">
         <div className="rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-4">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-indigo-300 mb-1">
+          <div className="text-xs font-mono uppercase tracking-wider text-indigo-300 mb-1">
             <T value={{ en: '🏛️ Cash Position', th: '🏛️ สถานะเงินสด', de: '🏛️ Cash-Position' }} />
           </div>
           <div className="text-xl sm:text-2xl lg:text-3xl font-black text-white font-mono">
             {formatTHB(brief.kpis.totalCash)}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">
+          <div className="text-xs text-slate-500 font-mono">
             <T value={{ en: 'THB · 110100+110200+110300', th: 'THB · 110100+110200+110300', de: 'THB · 110100+110200+110300' }} />
           </div>
         </div>
         <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1">
+          <div className="text-xs font-mono uppercase tracking-wider text-amber-300 mb-1">
             <T value={{ en: '⏳ Unpaid Liabilities', th: '⏳ หนี้สินที่ยังไม่จ่าย', de: '⏳ Unbezahlte Verbindlichkeiten' }} />
           </div>
           <div className="text-xl sm:text-2xl lg:text-3xl font-black text-white font-mono">
             {formatTHB(brief.kpis.outstandingLiabilities)}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">
+          <div className="text-xs text-slate-500 font-mono">
             <T value={{ en: 'THB · outstanding AP', th: 'THB · เจ้าหนี้คงค้าง', de: 'THB · offene Kreditoren' }} />
           </div>
         </div>
         <div className="rounded-2xl border border-purple-500/30 bg-purple-950/20 p-4">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-purple-300 mb-1">
+          <div className="text-xs font-mono uppercase tracking-wider text-purple-300 mb-1">
             <T value={{ en: '📅 MTD Expenses', th: '📅 ค่าใช้จ่าย MTD', de: '📅 MTD-Ausgaben' }} />
           </div>
           <div className="text-xl sm:text-2xl lg:text-3xl font-black text-white font-mono">
             {formatTHB(brief.kpis.mtdExpenses)}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">
+          <div className="text-xs text-slate-500 font-mono">
             <T value={{ en: 'THB · 5xxxxx this month', th: 'THB · 5xxxxx เดือนนี้', de: 'THB · 5xxxxx diesen Monat' }} />
           </div>
         </div>
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 mb-1">
+          <div className="text-xs font-mono uppercase tracking-wider text-emerald-300 mb-1">
             <T value={{ en: '📈 Net Income', th: '📈 รายได้สุทธิ', de: '📈 Nettogewinn' }} />
           </div>
           <div
@@ -231,29 +231,29 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
           >
             {formatTHB(brief.kpis.netIncome)}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">
+          <div className="text-xs text-slate-500 font-mono">
             <T value={{ en: 'Revenue − Expense', th: 'รายได้ − ค่าใช้จ่าย', de: 'Ertrag − Aufwand' }} />
           </div>
         </div>
         <div className="rounded-2xl border border-fuchsia-500/30 bg-fuchsia-950/20 p-4">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-fuchsia-300 mb-1">
+          <div className="text-xs font-mono uppercase tracking-wider text-fuchsia-300 mb-1">
             <T value={{ en: '💰 MTD Sales Revenue', th: '💰 รายได้จากการขาย MTD', de: '💰 MTD-Umsatzerlöse' }} />
           </div>
           <div className="text-xl sm:text-2xl lg:text-3xl font-black text-white font-mono">
             {formatTHB(brief.kpis.salesRevenueMtd ?? 0)}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">
+          <div className="text-xs text-slate-500 font-mono">
             <T value={{ en: 'THB · 410100+410200+410300 this month', th: 'THB · 410100+410200+410300 เดือนนี้', de: 'THB · 410100+410200+410300 diesen Monat' }} />
           </div>
         </div>
         <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-4">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-cyan-300 mb-1">
+          <div className="text-xs font-mono uppercase tracking-wider text-cyan-300 mb-1">
             <T value={{ en: '📤 Open Sales Orders', th: '📤 คำสั่งขายที่เปิดอยู่', de: '📤 Offene Verkaufsaufträge' }} />
           </div>
           <div className="text-xl sm:text-2xl lg:text-3xl font-black text-white font-mono">
             {brief.kpis.openSalesOrders ?? 0}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">
+          <div className="text-xs text-slate-500 font-mono">
             <T value={{ en: 'excluding so_draft', th: 'ไม่รวม so_draft', de: 'ohne so_draft' }} />
           </div>
         </div>
@@ -262,17 +262,17 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300">
+            <div className="text-xs font-mono uppercase tracking-wider text-amber-300">
               <T value={{ en: '📊 AR Aging (0-30 / 31-60 / 61-90 / 90+ days)', th: '📊 อายุลูกหนี้ (0-30 / 31-60 / 61-90 / 90+ วัน)', de: '📊 Forderungsalter (0-30 / 31-60 / 61-90 / 90+ Tage)' }} />
             </div>
-            <div className="text-[10px] font-mono text-slate-500">
+            <div className="text-xs font-mono text-slate-500">
               {brief.arAging?.length ?? 0}{' '}
               <T value={{ en: 'buckets', th: 'ช่วง', de: 'Buckets' }} />
             </div>
           </div>
           <div className="space-y-1.5 mt-2">
             {(brief.arAging ?? []).length === 0 && (
-              <p className="text-[10px] font-mono text-slate-500">
+              <p className="text-xs font-mono text-slate-500">
                 <T value={{ en: 'no overdue AR 🎉', th: 'ไม่มี AR ค้างชำระ 🎉', de: 'keine überfälligen Forderungen 🎉' }} />
               </p>
             )}
@@ -288,7 +288,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
               return (
                 <div
                   key={b.bucket}
-                  className="flex items-center justify-between text-[10px] font-mono"
+                  className="flex items-center justify-between text-xs font-mono"
                 >
                   <span className="text-slate-400">
                     {b.bucket}{' '}
@@ -306,7 +306,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
               );
             })}
           </div>
-          <div className="mt-2 pt-2 border-t border-amber-900/30 flex items-center justify-between text-[10px] font-mono">
+          <div className="mt-2 pt-2 border-t border-amber-900/30 flex items-center justify-between text-xs font-mono">
             <span className="text-rose-300">
               <T value={{ en: 'Total overdue', th: 'ยอดค้างรวม', de: 'Überfällig gesamt' }} />
             </span>
@@ -317,16 +317,16 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
         </div>
         <div className="rounded-2xl border border-fuchsia-500/30 bg-fuchsia-950/20 p-4">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-fuchsia-300">
+            <div className="text-xs font-mono uppercase tracking-wider text-fuchsia-300">
               <T value={{ en: '🛒 Sales · 7-day rolling', th: '🛒 ยอดขาย · 7 วันล่าสุด', de: '🛒 Umsatz · rollierend 7 Tage' }} />
             </div>
-            <div className="text-[10px] font-mono text-slate-500">
+            <div className="text-xs font-mono text-slate-500">
               {salesTrend.length}{' '}
               <T value={salesTrend.length === 1 ? { en: 'day', th: 'วัน', de: 'Tag' } : { en: 'days', th: 'วัน', de: 'Tage' }} />
             </div>
           </div>
           {salesTrend.length === 0 ? (
-            <p className="text-[10px] font-mono text-slate-500">
+            <p className="text-xs font-mono text-slate-500">
               <T value={{ en: 'no revenue yet', th: 'ยังไม่มีรายได้', de: 'noch kein Umsatz' }} />
             </p>
           ) : (
@@ -336,7 +336,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
                 const h = Math.max(4, Math.round((d.total / max) * 80));
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-mono text-slate-400 tabular-nums">
+                    <span className="text-xs font-mono text-slate-400 tabular-nums">
                       {(d.total / 1000).toFixed(0)}k
                     </span>
                     <div
@@ -345,7 +345,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
                       aria-hidden
                       title={`${d.day} · ${formatTHB(d.total)} THB`}
                     />
-                    <span className="text-[9px] font-mono text-slate-500">
+                    <span className="text-xs font-mono text-slate-500">
                       {d.day.slice(5)}
                     </span>
                   </div>
@@ -361,7 +361,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
       </div>
 
       <div className="mb-6">
-        <div className="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider mb-2">
+        <div className="text-xs font-mono font-bold uppercase text-slate-400 tracking-wider mb-2">
           <T value={{ en: '📈 7-day trend', th: '📈 แนวโน้ม 7 วัน', de: '📈 7-Tage-Trend' }} />
         </div>
         <SparklineTrends cash={brief.kpis.cashTrend} mtd={brief.kpis.mtdTrend} />
@@ -374,10 +374,10 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider">
+            <div className="text-xs font-mono font-bold uppercase text-slate-400 tracking-wider">
               <T value={{ en: '🏢 Department Budget Burn', th: '🏢 การเบิกงบประมาณแผนก', de: '🏢 Abteilungsbudget-Verbrauch' }} />
             </div>
-            <div className="text-[10px] font-mono text-slate-500">
+            <div className="text-xs font-mono text-slate-500">
               {brief.deptBudgets.filter((d) => d.is_over_threshold).length}{' '}
               <T value={{ en: 'over 90%', th: 'เกิน 90%', de: 'über 90%' }} />
             </div>
@@ -386,17 +386,17 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
         </div>
         <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-[10px] font-mono font-bold uppercase text-rose-300 tracking-wider">
+            <div className="text-xs font-mono font-bold uppercase text-rose-300 tracking-wider">
               <T value={{ en: '⚠ Stuck & Anomalies', th: '⚠ ค้างและความผิดปกติ', de: '⚠ Hänger & Anomalien' }} />
             </div>
-            <div className="text-[10px] font-mono text-slate-500">
+            <div className="text-xs font-mono text-slate-500">
               {brief.stuckCount}{' '}
               <T value={{ en: 'stuck ≥ 24h', th: 'ค้าง ≥ 24 ชม.', de: 'Hänger ≥ 24 Std.' }} />
             </div>
           </div>
           <div className="space-y-2">
             {stuck.length === 0 ? (
-              <p className="text-[10px] font-mono text-slate-500">
+              <p className="text-xs font-mono text-slate-500">
                 <T value={{ en: 'No stuck items 🎉', th: 'ไม่มีรายการค้าง 🎉', de: 'Keine Hänger 🎉' }} />
               </p>
             ) : (
@@ -406,11 +406,11 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
                   href={`/waybill/${s.waybill_id}`}
                   className="block min-w-0 rounded-xl border border-amber-500/30 bg-amber-950/20 px-3 py-2 hover:bg-amber-950/40 transition-all"
                 >
-                  <div className="flex items-center justify-between text-[11px] font-mono gap-2 min-w-0">
+                  <div className="flex items-center justify-between text-sm font-mono gap-2 min-w-0">
                     <span className="text-amber-200 font-bold truncate min-w-0">{s.waybill_id}</span>
                     <span className="text-amber-300 flex-shrink-0 whitespace-nowrap">{formatTHB(Number(s.total_amount))} THB</span>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5 gap-2 min-w-0">
+                  <div className="flex items-center justify-between text-xs text-slate-400 mt-0.5 gap-2 min-w-0">
                     <span className="truncate min-w-0">{s.vendor_name}</span>
                     <span className="flex-shrink-0 whitespace-nowrap">{Number(s.age_hours).toFixed(0)}{' '}
                       <T value={{ en: 'h old', th: 'ชม. ที่ค้าง', de: 'Std. alt' }} />
@@ -424,9 +424,9 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
                 {anomalies.map((a) => (
                   <div
                     key={a.id}
-                    className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-300"
+                    className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-300"
                   >
-                    <span className="font-mono text-[10px] text-slate-500 mr-1">#{a.id}</span>
+                    <span className="font-mono text-xs text-slate-500 mr-1">#{a.id}</span>
                     {a.message}
                   </div>
                 ))}
@@ -434,7 +434,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
             )}
             {stuckSales.length > 0 && (
               <div className="pt-2 mt-2 border-t border-slate-900 space-y-1.5">
-                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-fuchsia-300">
+                <div className="text-xs font-mono font-bold uppercase tracking-wider text-fuchsia-300">
                   🛒 <T value={stuckSalesBi} />
                 </div>
                 {stuckSales.map((s) => (
@@ -443,7 +443,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
                     href={`/waybill/${s.waybill_id}`}
                     className="block min-w-0 rounded-xl border border-fuchsia-500/30 bg-fuchsia-950/20 px-3 py-2 hover:bg-fuchsia-950/40 transition-all"
                   >
-                    <div className="flex items-center justify-between text-[11px] font-mono gap-2 min-w-0">
+                    <div className="flex items-center justify-between text-sm font-mono gap-2 min-w-0">
                       <span className="text-fuchsia-200 font-bold truncate min-w-0">
                         {s.waybill_id}
                       </span>
@@ -451,7 +451,7 @@ export async function TodaysBrief({ actor }: TodaysBriefProps) {
                         {formatTHB(Number(s.total_amount))} THB
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5 gap-2 min-w-0">
+                    <div className="flex items-center justify-between text-xs text-slate-400 mt-0.5 gap-2 min-w-0">
                       <span className="truncate min-w-0">
                         {s.customer_code ? `${s.customer_code} · ` : ''}
                         {s.customer_name ?? '—'}

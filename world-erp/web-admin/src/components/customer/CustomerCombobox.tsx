@@ -210,17 +210,17 @@ export function CustomerCombobox({
     <div ref={rootRef} className={['relative w-full', className ?? ''].join(' ')}>
       {selected ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-950/30 px-3 py-2">
-          <span className="font-mono text-[11px] uppercase tracking-wider text-cyan-200">
+          <span className="font-mono text-sm uppercase tracking-wider text-cyan-200">
             {selected.code}
           </span>
           <span className="min-w-0 flex-1 truncate text-sm text-white">{selected.name}</span>
           {selected.blacklist && (
-            <span className="rounded-full border border-rose-500/50 bg-rose-950/40 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-rose-200">
+            <span className="rounded-full border border-rose-500/50 bg-rose-950/40 px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-rose-200">
               <Bilingual en={blacklistPill.en} th={blacklistPill.th} de={blacklistPill.de} locale={locale} />
             </span>
           )}
           {selected.payment_terms && (
-            <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-mono text-slate-300">
+            <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-xs font-mono text-slate-300">
               {selected.payment_terms}
             </span>
           )}
@@ -228,7 +228,7 @@ export function CustomerCombobox({
             type="button"
             onClick={clear}
             disabled={disabled}
-            className="ml-auto rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[10px] font-mono text-slate-300 hover:border-rose-500/50 hover:text-rose-200 disabled:opacity-50"
+            className="ml-auto rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs font-mono text-slate-300 hover:border-rose-500/50 hover:text-rose-200 disabled:opacity-50"
             aria-label={t('customers.combo.clear', locale)}
             title={t('customers.combo.clear', locale)}
           >
@@ -258,19 +258,19 @@ export function CustomerCombobox({
           role="listbox"
         >
           {loading && (
-            <li className="px-3 py-2 text-[11px] font-mono text-slate-400">
+            <li className="px-3 py-2 text-sm font-mono text-slate-400">
               <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent align-middle" />{' '}
               <Bilingual en={searchingText.en} th={searchingText.th} de={searchingText.de} locale={locale} />
             </li>
           )}
           {error && !loading && (
-            <li className="px-3 py-2 text-[11px] text-rose-300">
+            <li className="px-3 py-2 text-sm text-rose-300">
               <Bilingual en={errorText.en} th={errorText.th} de={errorText.de} locale={locale} />
               {error && ` (${error})`}
             </li>
           )}
           {!loading && !error && results.length === 0 && (
-            <li className="px-3 py-2 text-[11px] font-mono text-slate-500">
+            <li className="px-3 py-2 text-sm font-mono text-slate-500">
               <Bilingual en={emptyText.en} th={emptyText.th} de={emptyText.de} locale={locale} />
             </li>
           )}
@@ -283,17 +283,17 @@ export function CustomerCombobox({
                 role="option"
                 aria-selected={false}
               >
-                <span className="font-mono text-[11px] text-cyan-300">{c.code}</span>
+                <span className="font-mono text-sm text-cyan-300">{c.code}</span>
                 <span className="min-w-0 flex-1 truncate text-sm text-white">{c.name}</span>
                 {c.blacklist && (
-                  <span className="rounded-full border border-rose-500/50 bg-rose-950/40 px-1.5 py-0.5 text-[9px] font-mono text-rose-200">
+                  <span className="rounded-full border border-rose-500/50 bg-rose-950/40 px-1.5 py-0.5 text-xs font-mono text-rose-200">
                     🚫
                   </span>
                 )}
                 {c.outstanding_ar_thb != null && c.credit_limit_thb != null && c.credit_limit_thb > 0 && (
                   <span
                     className={[
-                      'rounded-full px-1.5 py-0.5 text-[10px] font-mono',
+                      'rounded-full px-1.5 py-0.5 text-xs font-mono',
                       c.outstanding_ar_thb / c.credit_limit_thb > 0.8
                         ? 'border border-rose-500/50 bg-rose-950/40 text-rose-200'
                         : 'border border-slate-700 bg-slate-900/60 text-slate-300',
@@ -314,7 +314,7 @@ export function CustomerCombobox({
       )}
 
       {selected && creditLimit != null && (
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-mono text-slate-400">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-slate-400">
           <span>
             <Bilingual en={creditLimitText.en} th={creditLimitText.th} de={creditLimitText.de} locale={locale} />{' '}
             <span className="text-slate-200 tabular-nums">

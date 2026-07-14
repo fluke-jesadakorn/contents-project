@@ -538,6 +538,8 @@ export async function loadActiveDraftForSubmitter(userId: number): Promise<Activ
 
 export interface ActiveSalesDraft {
   waybill_id: string;
+  sales_order_id: number | null;
+  customer_id: number | null;
   so_number: string | null;
   customer_name: string | null;
   total_amount: string | null;
@@ -545,8 +547,8 @@ export interface ActiveSalesDraft {
 }
 
 export async function loadActiveSalesDraftForRep(userId: number): Promise<ActiveSalesDraft | null> {
-  const r = await query<{ id: string; so_number: string | null; customer_name: string | null; total_amount: string | null; updated_at: Date }>(
-    `SELECT w.id, so.so_number, c.name AS customer_name, so.total_amount::text, w.updated_at
+  const r = await query<{ id: string; so_id: number; customer_id: number | null; so_number: string | null; customer_name: string | null; total_amount: string | null; updated_at: Date }>(
+    `SELECT w.id, so.id AS so_id, so.customer_id, so.so_number, c.name AS customer_name, so.total_amount::text, w.updated_at
        FROM waybills w
        JOIN sales_orders so ON so.id = w.origin_id
        LEFT JOIN customers c ON c.id = so.customer_id
@@ -556,12 +558,15 @@ export async function loadActiveSalesDraftForRep(userId: number): Promise<Active
     [userId],
   );
   if (!r.rows.length) return null;
+  const row = r.rows[0];
   return {
-    waybill_id: r.rows[0].id,
-    so_number: r.rows[0].so_number,
-    customer_name: r.rows[0].customer_name,
-    total_amount: r.rows[0].total_amount,
-    draft_updated_at: r.rows[0].updated_at,
+    waybill_id: row.id,
+    sales_order_id: row.so_id,
+    customer_id: row.customer_id,
+    so_number: row.so_number,
+    customer_name: row.customer_name,
+    total_amount: row.total_amount,
+    draft_updated_at: row.updated_at,
   };
 }
 
@@ -577,17 +582,81 @@ export async function loadSalesArtifacts(_wb: WaybillRow): Promise<SalesArtifact
   return null;
 }
 
-export type InboxScope = 'mine' | 'queue' | 'all';
+export type InboxScope = 'mine' | 'queue' | 'all' | 'waiting' | 'watching';
+
+export interface InboxItemRow {
+  waybill_id: string;
+  current_stage: string;
+  origin: 'expense' | 'pr' | 'po' | 'so';
+  stage_key?: string | null;
+  vendor_name?: string | null;
+  total_amount?: string | null;
+  currency?: string | null;
+  submitter_name?: string | null;
+  required_role?: string | null;
+  notified_at?: string | null;
+  age_hours: number;
+}
 
 export async function loadInboxForUser(userId: number, scope: InboxScope): Promise<WaybillInboxRow[]> {
   if (scope === 'all') return listAllOpenWaybills();
-  if (scope === 'queue') return listAwaitingForActor(userId, null);
+  if (scope === 'queue' || scope === 'waiting' || scope === 'watching') {
+    return listAwaitingForActor(userId, null);
+  }
   return listMyWaybills(userId);
+}
+
+export interface JournalEntryLike {
+  journal_id: number;
+  entry_date: string | Date;
+  description?: string | null;
+  lines: JournalLineRow[];
+  finalized_by_name?: string | null;
+  finalized_by?: number | null;
+  finalized_at?: string | null;
+}
+
+export interface JournalEventLike {
+  actor_id?: number | null;
+  actor_name?: string | null;
+  occurred_at: string | Date;
+}
+
+export interface ExpenseJournalView {
+  draft: JournalEntryLike | null;
+  posted: JournalEntryLike | null;
+  posted_event: JournalEventLike | null;
+  confirmed_event: JournalEventLike | null;
+}
+
+export interface ProcurementJournalStepView {
+  stepKey: 'accrual' | 'settlement';
+  draft: JournalEntryLike | null;
+  posted: JournalEntryLike | null;
+  posted_event: JournalEventLike | null;
+  confirmed_event: JournalEventLike | null;
+}
+
+export interface ProcurementJournalView {
+  accrual: ProcurementJournalStepView;
+  settlement: ProcurementJournalStepView;
+}
+
+export interface SalesJournalView {
+  vat: ProcurementJournalStepView;
+  accrual: ProcurementJournalStepView;
+  settlement: ProcurementJournalStepView;
 }
 
 export interface JournalView {
   kind: 'expense' | 'procurement' | 'sales';
 }
+
+export type WaybillJournalView =
+  | { kind: 'expense';        journal: ExpenseJournalView }
+  | { kind: 'procurement';    journal: ProcurementJournalView }
+  | { kind: 'sales';          journal: SalesJournalView }
+  | JournalView;
 
 export async function loadJournalForWaybill(_waybillId: string): Promise<JournalView | null> {
   return null;

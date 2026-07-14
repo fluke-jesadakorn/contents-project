@@ -44,6 +44,11 @@ export const ROLE_GLYPH: Record<DisplayRoleName, string> = {
   it:                  '💻',
   hr:                  '🤝',
   hr_manager:          '🪪',
+  manager:             '📈',
+  finance:             '💰',
+  officer:             '🪖',
+  sales_rep:           '🛒',
+  sales_supervisor:    '🛍️',
 };
 
 export const ROLE_ACCENT: Record<DisplayRoleName, string> = {
@@ -60,6 +65,11 @@ export const ROLE_ACCENT: Record<DisplayRoleName, string> = {
   it:                  'from-slate-500 to-slate-700',
   hr:                  'from-pink-500 to-rose-700',
   hr_manager:          'from-fuchsia-500 to-pink-700',
+  manager:             'from-cyan-500 to-blue-700',
+  finance:             'from-emerald-500 to-green-700',
+  officer:             'from-slate-500 to-slate-700',
+  sales_rep:           'from-orange-500 to-amber-700',
+  sales_supervisor:    'from-amber-500 to-yellow-700',
 };
 
 export const ROLE_LABEL: Record<DisplayRoleName, string> = {
@@ -97,6 +107,11 @@ export const ROLE_LABEL_TH: Record<DisplayRoleName, string> = {
   it:                  'เจ้าหน้าที่ไอที',
   hr:                  'เจ้าหน้าที่ HR',
   hr_manager:          'ผู้จัดการ HR',
+  manager:             'ผู้จัดการ',
+  finance:             'เจ้าหน้าที่การเงิน',
+  officer:             'เจ้าหน้าที่ระดับปฏิบัติการ',
+  sales_rep:           'เซลล์',
+  sales_supervisor:    'หัวหน้าทีมขาย',
 };
 
 export const ROLE_BADGE: Record<DisplayRoleName, string> = {
@@ -113,6 +128,11 @@ export const ROLE_BADGE: Record<DisplayRoleName, string> = {
   it:                  'bg-slate-500/15 text-slate-200 border-slate-500/40',
   hr:                  'bg-pink-500/15 text-pink-200 border-pink-500/40',
   hr_manager:          'bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-500/40',
+  manager:             'bg-cyan-500/15 text-cyan-200 border-cyan-500/40',
+  finance:             'bg-emerald-500/15 text-emerald-200 border-emerald-500/40',
+  officer:             'bg-slate-500/15 text-slate-200 border-slate-500/40',
+  sales_rep:           'bg-orange-500/15 text-orange-200 border-orange-500/40',
+  sales_supervisor:    'bg-amber-500/15 text-amber-200 border-amber-500/40',
 };
 
 export const ROLE_RANK: Record<DisplayRoleName, number> = {
@@ -129,6 +149,11 @@ export const ROLE_RANK: Record<DisplayRoleName, number> = {
   hr:                  11,
   it:                  12,
   staff:               13,
+  manager:             4,
+  finance:             5,
+  officer:             5,
+  sales_rep:           9,
+  sales_supervisor:    8,
 };
 
 export const ROLE_LEVEL: Record<DisplayRoleName, StaffLevel> = {
@@ -145,6 +170,11 @@ export const ROLE_LEVEL: Record<DisplayRoleName, StaffLevel> = {
   it:                  5,
   hr:                  5,
   hr_manager:          3,
+  manager:             3,
+  finance:             5,
+  officer:             5,
+  sales_rep:           5,
+  sales_supervisor:    4,
 };
 
 export const ROLE_DOMAIN: Record<DisplayRoleName, string> = {
@@ -161,6 +191,11 @@ export const ROLE_DOMAIN: Record<DisplayRoleName, string> = {
   it:                  'it',
   hr:                  'hr',
   hr_manager:          'hr',
+  manager:             'general',
+  finance:             'finance',
+  officer:             'general',
+  sales_rep:           'sales',
+  sales_supervisor:    'sales',
 };
 
 export const STAFF_LEVEL_LABEL: Record<StaffLevel, string> = {

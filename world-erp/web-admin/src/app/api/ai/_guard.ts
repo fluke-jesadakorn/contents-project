@@ -14,7 +14,7 @@ export async function aiGuard(opts: {
   }
   if (opts.perm || opts.stage) {
     const { hasPermission } = await import('@erp-lib/perm/server');
-    const session = { user: actor, perms: [] as string[] };
+    const session = { user: actor, permissions: actor.permissions };
     if (!hasPermission(session, opts.perm || opts.stage!)) {
       return { ok: false, response: NextResponse.json({ error: 'forbidden' }, { status: 403 }) };
     }

@@ -53,24 +53,24 @@ export function ExtractApplyButton({
   return (
     <div className="my-2 rounded-xl border border-emerald-700/40 bg-emerald-950/20 p-3">
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300">
+        <div className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-300">
           <T value={interpolate(pick('chat.extract.title'), { pct: (fields.confidence * 100).toFixed(0) })} />
         </div>
         <button
           type="button"
           onClick={apply_}
           disabled={busy}
-          className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-500 disabled:opacity-50"
+          className="text-xs px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-500 disabled:opacity-50"
         >
           <T value={waybillId ? pick('chat.extract.applyActive') : pick('chat.extract.saveNew')} />
         </button>
       </div>
       {lowConf && (
-        <div className="text-[10px] text-amber-300 mb-1.5">
+        <div className="text-xs text-amber-300 mb-1.5">
           <T value={pick('chat.extract.lowConf')} />
         </div>
       )}
-      <div className="grid grid-cols-2 gap-1 text-[11px] font-mono">
+      <div className="grid grid-cols-2 gap-1 text-sm font-mono">
         {fields.vendor && (
           <>
             <span className="text-slate-500"><T value={pick('chat.extract.vendor')} /></span>
@@ -106,7 +106,7 @@ export function ExtractApplyButton({
           </>
         )}
       </div>
-      {result && <div className="text-[10px] text-slate-300 mt-1.5"><T value={result} /></div>}
+      {result && <div className="text-xs text-slate-300 mt-1.5"><T value={result} /></div>}
     </div>
   );
 }

@@ -106,7 +106,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
 
         <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-800 text-[10px] font-mono uppercase tracking-wider text-slate-500">
+            <thead className="border-b border-slate-800 text-xs font-mono uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-3 py-3 text-left">{t('customers.col.code', locale)}</th>
                 <th className="px-3 py-3 text-left">{t('customers.col.name', locale)}</th>
@@ -134,9 +134,9 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2 text-right font-mono text-slate-300">{formatTHB(ar?.total_invoiced ?? 0)}</td>
                   <td className="px-3 py-2 text-right font-mono text-emerald-300">{formatTHB(ar?.total_paid ?? 0)}</td>
                   <td className="px-3 py-2 text-center">
-                    {c.blacklist ? <span className="rounded-full border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-[10px] font-mono text-rose-300">{t('customers.status.blacklist', locale)}</span>
-                      : c.is_active ? <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-mono text-emerald-300">{t('customers.status.active', locale)}</span>
-                        : <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-slate-400">{t('customers.status.inactive', locale)}</span>}
+                    {c.blacklist ? <span className="rounded-full border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-xs font-mono text-rose-300">{t('customers.status.blacklist', locale)}</span>
+                      : c.is_active ? <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-xs font-mono text-emerald-300">{t('customers.status.active', locale)}</span>
+                        : <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-400">{t('customers.status.inactive', locale)}</span>}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-slate-500">{ar?.so_count ?? 0}</td>
                 </tr>

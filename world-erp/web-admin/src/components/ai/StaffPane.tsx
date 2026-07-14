@@ -75,7 +75,7 @@ export const StaffPane: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-sm font-black text-white uppercase tracking-wider font-mono">AI Staff</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Agent with a defined system prompt + default provider/model</p>
+          <p className="text-sm text-slate-400 mt-0.5">Agent with a defined system prompt + default provider/model</p>
         </div>
         {!creating && !editing && (
           <button onClick={() => { setCreating(true); setEditing(null); }}
@@ -111,23 +111,23 @@ export const StaffPane: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-sm font-bold text-white">{s.name}</h4>
-                      {s.role_label && <p className="text-[10px] text-indigo-300 font-mono uppercase">{s.role_label}</p>}
+                      {s.role_label && <p className="text-xs text-indigo-300 font-mono uppercase">{s.role_label}</p>}
                     </div>
-                    {!s.enabled && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-500 border border-slate-700 font-bold">DISABLED</span>}
+                    {!s.enabled && <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-500 border border-slate-700 font-bold">DISABLED</span>}
                   </div>
-                  {s.description && <p className="text-[10px] text-slate-400">{s.description}</p>}
+                  {s.description && <p className="text-xs text-slate-400">{s.description}</p>}
                   <div className="flex flex-wrap gap-1">
                     {(s.capabilities || []).map(c => (
-                      <span key={c} className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 font-mono">{c}</span>
+                      <span key={c} className="text-xs px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 font-mono">{c}</span>
                     ))}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">
+                  <div className="text-xs text-slate-500 font-mono">
                     Default: {providers.find(p => p.id === s.default_provider_id)?.name || '—'} / {models.find(m => m.id === s.default_model_id)?.name || '—'}
                   </div>
-                  <pre className="text-[10px] text-slate-400 bg-slate-900 rounded-lg p-2 line-clamp-3 font-mono whitespace-pre-wrap">{s.system_prompt}</pre>
+                  <pre className="text-xs text-slate-400 bg-slate-900 rounded-lg p-2 line-clamp-3 font-mono whitespace-pre-wrap">{s.system_prompt}</pre>
                   <div className="flex gap-1">
-                    <button onClick={() => { setEditing(s); setCreating(false); setTestOutput(null); setTestInput(''); }} className="text-[10px] px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white">Edit / Test</button>
-                    <button onClick={() => remove(s)} className="text-[10px] px-2 py-1 rounded bg-rose-950/40 text-rose-300 border border-rose-900/40">Delete</button>
+                    <button onClick={() => { setEditing(s); setCreating(false); setTestOutput(null); setTestInput(''); }} className="text-xs px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white">Edit / Test</button>
+                    <button onClick={() => remove(s)} className="text-xs px-2 py-1 rounded bg-rose-950/40 text-rose-300 border border-rose-900/40">Delete</button>
                   </div>
                 </div>
               ))}
@@ -183,27 +183,27 @@ const StaffEditor: React.FC<EditorProps> = ({ initial, providers, models, onSave
       <h4 className="text-sm font-black text-white uppercase tracking-wider font-mono">{initial ? 'Edit Staff' : 'Add Staff'}</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Name</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Name</span>
           <input value={name} onChange={e => setName(e.target.value)} placeholder="OCR Clerk"
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Role label</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Role label</span>
           <input value={roleLabel} onChange={e => setRoleLabel(e.target.value)} placeholder="Receipt OCR Specialist"
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
         </label>
         <label className="space-y-1 md:col-span-2">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Description</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Description</span>
           <input value={description} onChange={e => setDescription(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
         </label>
         <label className="space-y-1 md:col-span-2">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">System prompt</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">System prompt</span>
           <textarea value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} rows={6}
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono whitespace-pre-wrap" />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Default provider</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Default provider</span>
           <select value={providerId} onChange={e => { setProviderId(e.target.value); setModelId(''); }}
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
             <option value="">— pick —</option>
@@ -211,7 +211,7 @@ const StaffEditor: React.FC<EditorProps> = ({ initial, providers, models, onSave
           </select>
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Default model</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Default model</span>
           <select value={modelId} onChange={e => setModelId(e.target.value)} disabled={!providerId}
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white disabled:opacity-40">
             <option value="">— pick —</option>
@@ -219,7 +219,7 @@ const StaffEditor: React.FC<EditorProps> = ({ initial, providers, models, onSave
           </select>
         </label>
         <label className="space-y-1 md:col-span-2">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Capabilities</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Capabilities</span>
           <div className="flex gap-2">
             {['embed', 'chat', 'vision'].map(c => (
               <label key={c} className="flex items-center gap-1 text-xs text-slate-300">
@@ -234,7 +234,7 @@ const StaffEditor: React.FC<EditorProps> = ({ initial, providers, models, onSave
 
       {onTest && (
         <div className="border-t border-slate-800 pt-4 space-y-2">
-          <h5 className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Test run</h5>
+          <h5 className="text-xs text-slate-400 uppercase tracking-wider font-mono">Test run</h5>
           <textarea value={testInput} onChange={e => setTestInput(e.target.value)} rows={3} placeholder="Try sending a message to test this staff"
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
           <div className="flex justify-end">
@@ -244,7 +244,7 @@ const StaffEditor: React.FC<EditorProps> = ({ initial, providers, models, onSave
             </button>
           </div>
           {testOutput && (
-            <pre className="text-[10px] bg-slate-900 rounded-lg p-3 text-slate-200 font-mono whitespace-pre-wrap max-h-64 overflow-auto">
+            <pre className="text-xs bg-slate-900 rounded-lg p-3 text-slate-200 font-mono whitespace-pre-wrap max-h-64 overflow-auto">
               {JSON.stringify(testOutput, null, 2)}
             </pre>
           )}

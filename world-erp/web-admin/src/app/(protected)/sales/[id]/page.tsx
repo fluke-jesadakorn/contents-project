@@ -8,6 +8,8 @@ import {
   loadActedUsersByStage,
   loadJournalForWaybill,
   loadSalesArtifacts,
+  loadWaybillEvents,
+  type WaybillJournalView,
 } from '@/lib/server/waybill';
 import { loadActor } from '@/lib/server/guard';
 import { loadVisionModels } from '@/lib/ai/loadVisionModels';
@@ -15,10 +17,11 @@ import { loadActivePermSession, hasPermission, matchPerm, PERM } from '@erp-lib/
 import { STAGE_TO_PERM, stageRoles } from '@erp-lib/perm';
 import { getSecondaryLocale } from '@erp-lib/server/locale';
 import { pipsForDomain, pipIndex, domainForOrigin } from '@erp-lib/waybill/derive';
+import { verifyEventChain } from '@erp-lib/waybill/events';
 import { WaybillStepCards } from '@/components/waybill/WaybillStepCards';
 import { WaybillGlSection } from '@/components/waybill/WaybillGlSection';
-import { WaybillTimelineBlock } from '@/components/waybill/WaybillTimelineBlock';
-import { WaybillAuditSectionBlock } from '@/components/waybill/WaybillAuditSectionBlock';
+import { WaybillTimelineBigPicture } from '@/components/waybill/WaybillTimelineBigPicture';
+import { WaybillAuditSection } from '@/components/waybill/WaybillAuditSection';
 import { WaybillHeader } from '@/components/waybill/WaybillHeader';
 import { InlineActionForm } from '@/components/waybill/InlineActionForm';
 import { ExportPdfButton } from '@/components/waybill/ExportPdfButton';
@@ -83,12 +86,14 @@ export default async function SalesDetailPage({ params, searchParams }: PageProp
 
   const salesArtifacts = await loadSalesArtifacts(wb);
 
-  const [approversByStage, actedUsersByStage, visionModels, locale, salesJournal] = await Promise.all([
+  const [approversByStage, actedUsersByStage, visionModels, locale, salesJournal, events, integrity] = await Promise.all([
     loadApproversByStage(wb.id),
     loadActedUsersByStage(wb.id),
     loadVisionModels(),
     getSecondaryLocale(),
     loadJournalForWaybill(wb.id),
+    loadWaybillEvents(wb.id),
+    verifyEventChain(wb.id),
   ]);
 
   const perms = actor.permissions;
@@ -171,19 +176,26 @@ export default async function SalesDetailPage({ params, searchParams }: PageProp
             <InlineActionForm kind="reject" waybillId={wb.id} stage={wb.current_stage} locale={locale} />
           )}
 
-          <Suspense fallback={<div className="h-32 animate-pulse rounded-2xl border border-slate-800/60 bg-slate-950/40" aria-hidden />}>
-            <WaybillTimelineBlock
-              waybillId={wb.id}
-              domain="sales"
-              currentStage={wb.current_stage}
-              status={wb.status as 'open' | 'completed' | 'rejected' | 'reversed' | 'superseded'}
-              activeActorName={ctx.activeActorName}
-              activeRole={actor.role_name ?? null}
-              rejectionReason={rejectionReason}
-              rejectionActorName={null}
-              rejectedAt={null}
-            />
-          </Suspense>
+          <WaybillTimelineBigPicture
+            waybillId={wb.id}
+            domain="sales"
+            currentStage={wb.current_stage}
+            status={wb.status as 'open' | 'completed' | 'rejected' | 'reversed' | 'superseded'}
+            events={ctx.events}
+            attachments={ctx.attachments}
+            amountTHB={wb.total_amount ? Number(wb.total_amount) : null}
+            locale={locale}
+            canAct={canAct && wb.status !== 'rejected'}
+            canAttach={false}
+            canSettle={canSettle}
+            canFinalApprove={false}
+            originId={wb.origin_id}
+            approversByStage={approversByStage}
+            currentUserId={actor.id}
+            visionModels={visionModels}
+            canConfirmGl={canConfirmSalesGl}
+            hasGlConfirmed={false}
+          />
 
           <Suspense fallback={<div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -239,7 +251,7 @@ export default async function SalesDetailPage({ params, searchParams }: PageProp
           <WaybillGlSection
             waybillId={wb.id}
             origin="so"
-            journal={salesJournal}
+            journal={(salesJournal as unknown as WaybillJournalView)}
             actorRole={actor.role_name ?? null}
             actorCanSeeLines={actorCanSeeGlLines}
             lang={locale}
@@ -249,9 +261,12 @@ export default async function SalesDetailPage({ params, searchParams }: PageProp
             canConfirmSalesGl={canConfirmSalesGl}
           />
 
-          <Suspense fallback={<div className="h-24 animate-pulse rounded-2xl border border-slate-800/60 bg-slate-950/40" aria-hidden />}>
-            <WaybillAuditSectionBlock waybillId={wb.id} />
-          </Suspense>
+          <WaybillAuditSection
+          waybillId={wb.id}
+          events={events}
+          integrity={integrity}
+          locale={locale}
+        />
         </section>
       </PageLayout>
     </>

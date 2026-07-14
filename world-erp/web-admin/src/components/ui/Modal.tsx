@@ -116,7 +116,7 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Card */}
       <div
         ref={cardRef}
-        className={`relative w-full ${WIDTH[width]} glass-panel-heavy rounded-3xl border ${TONE_RING[tone]} shadow-2xl shadow-black overflow-hidden animate-fade-in`}
+        className={`relative w-full ${WIDTH[width]} glass-panel rounded-3xl border ${TONE_RING[tone]} overflow-hidden animate-fade-in`}
       >
         {/* Header */}
         {(title || subtitle || header || !hideCloseButton) && !bareHeader && (
@@ -131,7 +131,7 @@ export const Modal: React.FC<ModalProps> = ({
                     </h3>
                   )}
                   {subtitle && (
-                    <p className="text-[11px] text-slate-400 mt-1 font-sans">{subtitle}</p>
+                    <p className="text-sm text-slate-400 mt-1 font-sans">{subtitle}</p>
                   )}
                 </>
               )}

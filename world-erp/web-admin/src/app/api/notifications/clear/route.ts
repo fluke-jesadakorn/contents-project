@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireActor } from '@/lib/server/guard';
-import { clearForUser } from '@/lib/server/queries';
+import { setReadState } from '@/lib/server/queries';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,6 +32,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, cleared: 0 });
   }
 
-  const cleared = await clearForUser(actor.id, ids, all);
-  return NextResponse.json({ ok: true, cleared });
+  const result = await setReadState(actor.id, ids, 'clear', all);
+  return NextResponse.json({ ok: true, cleared: result.updated });
 }

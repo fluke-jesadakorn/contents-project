@@ -38,6 +38,7 @@ interface HubHeroProps {
   onOpenPersona?: () => void;
   onOpenNotifications?: () => void;
   unreadCount?: number;
+  initialGreetingKey?: GreetingKey;
 }
 
 const QUICK_ACTIONS: Array<{
@@ -64,12 +65,13 @@ export const HubHero: React.FC<HubHeroProps> = ({
   onOpenPersona,
   onOpenNotifications,
   unreadCount,
+  initialGreetingKey,
 }) => {
   const kpis = kpiSummary(tiles, isLocked);
   const pending = pickPendingApprovals(pendingPrs ?? []);
 
   const fullname = (actor?.fullname || '').trim() || 'there';
-  const greetingKey: GreetingKey = timeGreeting();
+  const greetingKey: GreetingKey = initialGreetingKey ?? timeGreeting();
   const greet = greetingLine(fullname, greetingKey);
   const role = actor?.role_name ?? undefined;
   const dept = actor?.dept_group_name || actor?.department || null;
@@ -93,24 +95,24 @@ export const HubHero: React.FC<HubHeroProps> = ({
         <div className="relative z-10 p-5 sm:p-7 lg:p-9 space-y-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-widest text-indigo-200">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-xs font-mono font-bold uppercase tracking-widest text-indigo-200">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_currentcolor] animate-pulse" />
               Live · World ERP
             </span>
             {role && (
-              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-widest ${roleBadge(role)}`}>
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-mono font-bold uppercase tracking-widest ${roleBadge(role)}`}>
                 <span aria-hidden>{roleGlyph(role)}</span>
                 <span>{roleLabel(role)}</span>
               </span>
             )}
             {level != null && levelLabel && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-slate-300">
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-xs font-mono font-bold uppercase tracking-widest text-slate-300">
                 <span aria-hidden>{levelGlyph}</span>
                 <span>L{level} · {levelLabel}</span>
               </span>
             )}
           </div>
-          <div className="text-[10px] font-mono text-slate-500 hidden sm:flex items-center gap-1.5">
+          <div className="text-xs font-mono text-slate-500 hidden sm:flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_currentcolor]" />
             <span>RBAC-aware · {kpis.open} of {kpis.total} accessible</span>
           </div>
@@ -178,7 +180,7 @@ export const HubHero: React.FC<HubHeroProps> = ({
                 <div className={`relative h-full rounded-2xl border bg-gradient-to-br p-3.5 sm:p-4 transition-all hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/40 ${a.tone}`}>
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-2xl drop-shadow" aria-hidden>{a.icon}</span>
-                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest ${accentText}`}>
+                    <span className={`text-xs font-mono font-bold uppercase tracking-widest ${accentText}`}>
                       {a.hint}
                     </span>
                   </div>
@@ -186,7 +188,7 @@ export const HubHero: React.FC<HubHeroProps> = ({
                     <div className="text-[13px] font-black text-white leading-tight">{a.label}</div>
                   </div>
                   {a.key === 'notifications' && typeof unreadCount === 'number' && unreadCount > 0 && (
-                    <span className="absolute top-2 right-2 min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-black font-mono px-1 shadow-md">
+                    <span className="absolute top-2 right-2 min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full bg-rose-500 text-white text-xs font-black font-mono px-1 shadow-md">
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
@@ -278,12 +280,12 @@ const PendingApprovals: React.FC<PendingApprovalsProps> = ({ prs }) => {
       className="group relative block w-full h-full rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950/50 transition-all hover:border-slate-700 hover:shadow-2xl hover:shadow-black/60"
     >
       <div className="flex items-center justify-between gap-2 px-4 sm:px-5 pt-4 sm:pt-5">
-        <div className="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-widest text-indigo-200">
+        <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-widest text-indigo-200">
           <span aria-hidden>🛒</span>
           Pending approvals
         </div>
-        <div className="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-widest text-slate-400">
-          <span className={`min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5 text-[9px] font-black ${items.length === 0 ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40' : 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/40'}`}>
+        <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-widest text-slate-400">
+          <span className={`min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5 text-xs font-black ${items.length === 0 ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40' : 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/40'}`}>
             {items.length}
           </span>
         </div>
@@ -293,7 +295,7 @@ const PendingApprovals: React.FC<PendingApprovalsProps> = ({ prs }) => {
         <div className="flex flex-col items-center justify-center text-center px-5 py-8 min-h-[160px]">
           <div className="text-3xl mb-2 opacity-70" aria-hidden>✅</div>
           <div className="text-sm font-bold text-slate-200">All clear</div>
-          <div className="text-[11px] text-slate-500 font-mono mt-1 max-w-[28ch]">
+          <div className="text-sm text-slate-500 font-mono mt-1 max-w-[28ch]">
             No purchase requests waiting on your approval.
           </div>
         </div>
@@ -306,10 +308,10 @@ const PendingApprovals: React.FC<PendingApprovalsProps> = ({ prs }) => {
               <li key={pr.id} className="flex items-center gap-3 px-4 sm:px-5 py-2.5 transition-colors hover:bg-slate-900/40">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-[10px] text-slate-500 shrink-0">PR-{pr.id}</span>
+                    <span className="font-mono text-xs text-slate-500 shrink-0">PR-{pr.id}</span>
                     <span className="truncate text-[13px] font-bold text-white">{vendor}</span>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-500 font-mono truncate">
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 font-mono truncate">
                     <span className="truncate">{pr.requester_name ?? '—'}</span>
                     {pr.requester_dept_group_name && (
                       <>
@@ -322,10 +324,10 @@ const PendingApprovals: React.FC<PendingApprovalsProps> = ({ prs }) => {
                   </div>
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1">
-                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-widest ${pill.tone}`}>
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-mono font-bold uppercase tracking-widest ${pill.tone}`}>
                     {pill.label}
                   </span>
-                  <span className="text-[11px] font-mono font-bold text-slate-200 tabular-nums">
+                  <span className="text-sm font-mono font-bold text-slate-200 tabular-nums">
                     {fmtMoney(pr.total_estimate, pr.currency)}
                   </span>
                 </div>
@@ -336,12 +338,12 @@ const PendingApprovals: React.FC<PendingApprovalsProps> = ({ prs }) => {
       )}
 
       <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-slate-800/70 mt-1">
-        <span className="text-[10px] font-mono text-slate-500 truncate">
+        <span className="text-xs font-mono text-slate-500 truncate">
           {items.length === 0
             ? 'Awaiting new submissions'
             : `Top ${items.length} of ${prs.length} waiting`}
         </span>
-        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-indigo-300 group-hover:text-indigo-200 transition-colors">
+        <span className="text-xs font-mono font-bold uppercase tracking-widest text-indigo-300 group-hover:text-indigo-200 transition-colors">
           View all →
         </span>
       </div>

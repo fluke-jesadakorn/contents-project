@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { attachPaymentSlipAction } from '../_actions';
+import { attachPaymentSlipAction } from '@/app/actions';
 import { SlipUpload } from '@/components/SlipUpload';
 import type { VisionModel } from '@/lib/ai/loadVisionModels';
 
@@ -57,7 +57,7 @@ export const SettleForm: React.FC<Props> = ({ waybillId, expenseId, visionModels
       </div>
 
       <div>
-        <label className="block text-[10px] font-mono uppercase tracking-wider text-cyan-300/80">
+        <label className="block text-xs font-mono uppercase tracking-wider text-cyan-300/80">
           Payment slip (required)
         </label>
         <div className="mt-1">
@@ -71,14 +71,14 @@ export const SettleForm: React.FC<Props> = ({ waybillId, expenseId, visionModels
           />
         </div>
         {slipId == null && (
-          <p className="mt-1 text-[10px] font-mono text-amber-300">
+          <p className="mt-1 text-xs font-mono text-amber-300">
             Upload the payment receipt slip to enable the disbursement button.
           </p>
         )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="text-[10px] font-mono uppercase tracking-wider text-cyan-300/80">
+        <label className="text-xs font-mono uppercase tracking-wider text-cyan-300/80">
           Payment method
         </label>
         <select
@@ -102,7 +102,7 @@ export const SettleForm: React.FC<Props> = ({ waybillId, expenseId, visionModels
       </div>
 
       {error && (
-        <p className="rounded-md border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-[11px] text-rose-200">
+        <p className="rounded-md border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-sm text-rose-200">
           {error}
         </p>
       )}

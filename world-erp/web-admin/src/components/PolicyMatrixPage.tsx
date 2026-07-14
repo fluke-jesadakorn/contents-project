@@ -121,16 +121,16 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
             <span aria-hidden>🛂</span>
             <T value={t('matrix.title')} /> · <T value={interpolate(t('matrix.grantsN'), { n: totalGrants })} />
           </h2>
-          <p className="mt-1 text-[12px] text-slate-400 leading-relaxed">
+          <p className="mt-1 text-xs text-slate-400 leading-relaxed">
             <T value={t('matrix.subtitle')} />
           </p>
           <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <span className="text-[9px] font-mono uppercase tracking-widest text-slate-500">
+            <span className="text-xs font-mono uppercase tracking-widest text-slate-500">
               <T value={t('matrix.chainOrder')} />
             </span>
             {stages.map((s, i) => (
               <React.Fragment key={s.perm}>
-                <span className="text-[10px] font-mono text-indigo-300">
+                <span className="text-xs font-mono text-indigo-300">
                   {STAGE_LABELS[s.stage]?.icon ?? '·'} <T value={t(`stage.${s.stage}`)} />
                 </span>
                 {i < stages.length - 1 && <span className="text-slate-600">→</span>}
@@ -138,7 +138,7 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
             ))}
           </div>
         </div>
-        <div className="text-[10px] font-mono text-slate-500">
+        <div className="text-xs font-mono text-slate-500">
           {canEdit ? <T value={t('matrix.editGranted')} /> : <T value={t('matrix.viewOnly')} />} · {actorName || '—'}
         </div>
       </header>
@@ -149,13 +149,13 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
             <thead className="bg-slate-900/80 border-b border-slate-800">
               <tr>
                 <th className="text-left px-3 py-2.5 sticky left-0 bg-slate-900/95 backdrop-blur z-10 min-w-[200px]">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-300">
                     <T value={t('matrix.colPersona')} />
                   </span>
                 </th>
                 {stages.map((s) => (
                   <th key={s.perm} className="px-2 py-2.5 min-w-[110px] text-center">
-                    <div className="text-[10px] font-mono text-slate-200 font-bold flex flex-col items-center gap-0.5">
+                    <div className="text-xs font-mono text-slate-200 font-bold flex flex-col items-center gap-0.5">
                       <span className="text-base leading-none">{STAGE_LABELS[s.stage]?.icon ?? '·'}</span>
                       <span className="leading-tight">
                         <T value={t(`stage.${s.stage}`)} />
@@ -164,13 +164,13 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
                   </th>
                 ))}
                 <th className="px-3 py-2.5 min-w-[120px] text-right">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                  <span className="text-xs font-mono uppercase tracking-widest text-slate-400">
                     <T value={t('matrix.colUsers')} />
                   </span>
                 </th>
                 {canEdit && (
                   <th className="px-3 py-2.5 min-w-[160px] text-right">
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                    <span className="text-xs font-mono uppercase tracking-widest text-slate-400">
                       <T value={t('matrix.colActions')} />
                     </span>
                   </th>
@@ -196,7 +196,7 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
                     <td className="px-3 py-2 sticky left-0 bg-slate-950/95 backdrop-blur z-10">
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-100">{personaLabel(p, locale)}</span>
-                        <span className="text-[9px] font-mono text-slate-500">{p.id}</span>
+                        <span className="text-xs font-mono text-slate-500">{p.id}</span>
                       </div>
                     </td>
                     {stages.map((s) => {
@@ -210,7 +210,7 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
                             aria-pressed={on}
                             aria-label={`${personaLabel(p, locale)} ${on ? 'has' : 'does not have'} ${s.stage.replace(/_/g, ' ')}`}
                             className={[
-                              'w-full h-9 rounded-lg border text-[11px] font-bold font-mono transition-all',
+                              'w-full h-9 rounded-lg border text-sm font-bold font-mono transition-all',
                               on
                                 ? 'bg-indigo-500/25 border-indigo-400/60 text-indigo-100 shadow-[0_0_12px_rgba(99,102,241,0.25)]'
                                 : 'bg-slate-900/60 border-slate-800 text-slate-500',
@@ -224,7 +224,7 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
                       );
                     })}
                     <td className="px-3 py-2 text-right">
-                      <span className="text-[11px] font-mono text-slate-300">
+                      <span className="text-sm font-mono text-slate-300">
                         {p.user_count}
                       </span>
                     </td>
@@ -235,7 +235,7 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
                             type="button"
                             disabled={!isDirty || saving}
                             onClick={() => revert(p.id)}
-                            className="text-[10px] font-mono px-2 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
+                            className="text-xs font-mono px-2 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
                           >
                             <T value={t('matrix.reset')} />
                           </button>
@@ -244,7 +244,7 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
                             disabled={!isDirty || saving}
                             onClick={() => save(p.id)}
                             className={[
-                              'text-[10px] font-mono px-2 py-1 rounded border font-bold',
+                              'text-xs font-mono px-2 py-1 rounded border font-bold',
                               isDirty
                                 ? 'bg-indigo-500/30 border-indigo-500/60 text-indigo-100 hover:bg-indigo-500/40'
                                 : 'border-slate-800 text-slate-600',
@@ -264,8 +264,8 @@ export function PolicyMatrixPage({ stages, personas, canEdit, actorName }: Props
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4 text-[11px] text-slate-400 leading-relaxed">
-        <span className="text-[10px] uppercase tracking-widest font-bold text-slate-300 mr-2">
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-400 leading-relaxed">
+        <span className="text-xs uppercase tracking-widest font-bold text-slate-300 mr-2">
           <T value={t('matrix.howItWorks')} />
         </span>
         <T value={t('matrix.howItWorksBody')} />

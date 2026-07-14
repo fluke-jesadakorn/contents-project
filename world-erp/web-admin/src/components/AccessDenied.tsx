@@ -37,21 +37,21 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
           <div className="mt-6 p-4 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs space-y-2.5">
             <div className="flex justify-between items-center">
               <span className="text-slate-400 font-mono">Current Role:</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold font-mono text-[10px] uppercase">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold font-mono text-xs uppercase">
                 {getRoleLabel(roleName)}
               </span>
             </div>
             {requiredAccess && (
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 font-mono">Required:</span>
-                <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 font-bold font-mono text-[10px] uppercase">
+                <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 font-bold font-mono text-xs uppercase">
                   {requiredAccess}
                 </span>
               </div>
             )}
           </div>
 
-          <p className="text-[11px] text-slate-500 mt-5 font-sans leading-relaxed">
+          <p className="text-sm text-slate-500 mt-5 font-sans leading-relaxed">
             Please switch to a role with access to this section<br />
             or contact the administrator to request additional permissions
           </p>

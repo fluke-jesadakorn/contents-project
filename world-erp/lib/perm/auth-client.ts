@@ -4,9 +4,13 @@
 import { ADMIN_PERM, matchPerm, parseDeptFromPerms, parseLevelFromRoles, parseRoleId } from './grammar';
 import type { PermSession } from './session';
 
-export function hasPermission(session: PermSession | null, permission: string): boolean {
+export type PermissionHolder = PermSession | { permissions: string[] | null | undefined } | null;
+
+export function hasPermission(session: PermissionHolder, permission: string): boolean {
   if (!session) return false;
-  return matchPerm(session.permissions, permission);
+  const perms = (session as { permissions: string[] | null | undefined }).permissions;
+  if (!perms) return false;
+  return matchPerm(perms, permission);
 }
 
 export interface OwnedResource {
@@ -15,32 +19,42 @@ export interface OwnedResource {
 }
 
 export function canManageResource(
-  session: PermSession | null,
+  session: PermissionHolder,
   permission: string,
   resource: OwnedResource,
 ): boolean {
   if (!session) return false;
-  if (session.permissions.includes(ADMIN_PERM)) return true;
-  if (!matchPerm(session.permissions, permission)) return false;
-  if (resource.ownerId === session.user.id) return true;
-  const actorDept = parseDeptFromPerms(session.permissions);
+  const perms = (session as { permissions: string[] | null | undefined }).permissions;
+  if (!perms) return false;
+  if (perms.includes(ADMIN_PERM)) return true;
+  if (!matchPerm(perms, permission)) return false;
+  const sessionUserId = (session as { user?: { id?: number } }).user?.id;
+  if (typeof sessionUserId === 'number' && resource.ownerId === sessionUserId) return true;
+  const actorDept = parseDeptFromPerms(perms);
   if (resource.deptId && actorDept && resource.deptId === actorDept) return true;
   return false;
 }
 
-export function sessionDept(session: PermSession | null): string | null {
-  return session ? parseDeptFromPerms(session.permissions) : null;
-}
-
-export function sessionLevel(session: PermSession | null): number {
-  if (!session) return 10;
-  const lv = parseRoleId(session.user.role)?.level;
-  return lv ?? 10;
-}
-
-export function sessionRoleName(session: PermSession | null): string | null {
+export function sessionDept(session: PermissionHolder): string | null {
   if (!session) return null;
-  return parseRoleId(session.user.role)?.name ?? null;
+  return parseDeptFromPerms((session as { permissions: string[] }).permissions ?? []);
+}
+
+export function sessionLevel(session: PermissionHolder): number {
+  if (!session) return 10;
+  const perms = (session as { permissions: string[] | null | undefined }).permissions ?? [];
+  const role = (session as { user?: { role?: string } }).user?.role;
+  if (role) {
+    const lv = parseRoleId(role)?.level;
+    if (lv) return lv;
+  }
+  return parseLevelFromRoles(perms);
+}
+
+export function sessionRoleName(session: PermissionHolder): string | null {
+  if (!session) return null;
+  const role = (session as { user?: { role?: string } }).user?.role;
+  return role ? parseRoleId(role)?.name ?? null : null;
 }
 
 export { ADMIN_PERM };

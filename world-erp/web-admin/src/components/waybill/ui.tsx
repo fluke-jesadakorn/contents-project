@@ -324,7 +324,7 @@ export function statusPill(status: string, lang: 'th' | 'de' | 'en'): React.Reac
   const m = map[status] ?? { tone: 'bg-slate-700/40 text-slate-300 border-slate-600', en: status, th: status, de: status };
   const locale: SecondaryLocale = lang === 'de' ? 'de' : 'th';
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-mono font-bold uppercase ${m.tone}`}>
+    <span className={`rounded-full border px-2 py-0.5 text-xs font-mono font-bold uppercase ${m.tone}`}>
       {bi(m.en, m.th, m.de, locale)}
     </span>
   );

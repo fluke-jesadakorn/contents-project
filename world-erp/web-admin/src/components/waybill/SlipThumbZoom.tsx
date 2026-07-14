@@ -55,7 +55,7 @@ export function SlipThumbZoom({ href, alt, title, subtitle, className, imgClassN
         <img src={href} alt={alt} className={'h-full w-full object-cover ' + (imgClassName ?? '')} />
         <span
           aria-hidden
-          className="absolute bottom-1 right-1 grid place-items-center w-5 h-5 rounded-full bg-slate-950/85 ring-1 ring-slate-700/80 text-[10px] text-slate-100 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute bottom-1 right-1 grid place-items-center w-5 h-5 rounded-full bg-slate-950/85 ring-1 ring-slate-700/80 text-xs text-slate-100 opacity-0 group-hover:opacity-100 transition-opacity"
         >
           🔍
         </span>
@@ -86,7 +86,7 @@ export function SlipThumbZoom({ href, alt, title, subtitle, className, imgClassN
             {title && (
               <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
                 <h3 className="text-sm font-bold text-white truncate">{title}</h3>
-                {subtitle && <span className="text-[11px] font-mono text-slate-400 shrink-0">{subtitle}</span>}
+                {subtitle && <span className="text-sm font-mono text-slate-400 shrink-0">{subtitle}</span>}
               </div>
             )}
             <div className="flex items-center justify-center bg-slate-950 rounded-2xl border border-slate-800 p-2 shadow-2xl shadow-black">

@@ -83,46 +83,46 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({ initial, onSaved, on
         <h4 className="text-sm font-black text-white uppercase tracking-wider font-mono">
           {isEdit ? 'Edit Provider' : 'Add Provider'}
         </h4>
-        <button type="button" onClick={applyPreset} className="text-[10px] px-2 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold">
+        <button type="button" onClick={applyPreset} className="text-xs px-2 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold">
           ✨ Use MiniMax Preset
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Name</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Name</span>
           <input value={name} onChange={e => setName(e.target.value)} placeholder="local-ollama"
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Type</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Type</span>
           <select value={type} onChange={e => setType(e.target.value as any)}
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
             {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </label>
         <label className="space-y-1 md:col-span-2">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Base URL</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Base URL</span>
           <input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="http://localhost:11434"
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono" />
         </label>
         {type !== 'ollama' && (
           <label className="space-y-1 md:col-span-2">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">
+            <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">
               API Key {isEdit && '(leave blank to keep existing)'}
             </span>
             <div className="flex gap-2">
               <input type={showKey ? 'text' : 'password'} value={apiKey} onChange={e => setApiKey(e.target.value)}
                 placeholder="sk-..."
                 className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono" />
-              <button type="button" onClick={() => setShowKey(s => !s)} className="px-3 py-2 text-[10px] rounded-lg bg-slate-800 text-slate-300 hover:text-white">
+              <button type="button" onClick={() => setShowKey(s => !s)} className="px-3 py-2 text-xs rounded-lg bg-slate-800 text-slate-300 hover:text-white">
                 {showKey ? 'Hide' : 'Show'}
               </button>
             </div>
           </label>
         )}
         <label className="space-y-1 md:col-span-2">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Notes (optional)</span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-mono">Notes (optional)</span>
           <input value={notes} onChange={e => setNotes(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
         </label>
@@ -132,9 +132,9 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({ initial, onSaved, on
         </label>
       </div>
 
-      {err && <p className="text-[11px] text-rose-400">{err}</p>}
+      {err && <p className="text-sm text-rose-400">{err}</p>}
       {testResult && (
-        <div className={`text-[11px] rounded-lg p-2 font-mono ${testResult.ok ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-700/40' : 'bg-rose-950/40 text-rose-300 border border-rose-700/40'}`}>
+        <div className={`text-sm rounded-lg p-2 font-mono ${testResult.ok ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-700/40' : 'bg-rose-950/40 text-rose-300 border border-rose-700/40'}`}>
           {testResult.ok
             ? `✓ ${testResult.modelCount} models reachable${testResult.latencyMs ? ` in ${testResult.latencyMs}ms` : ''} — sample: ${(testResult.sample || []).join(', ')}`
             : `✗ ${testResult.error}`}

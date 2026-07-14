@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireActor } from '@/lib/server/guard';
-import { query } from '@/lib/db';
+import { setReadState } from '@/lib/server/queries';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,22 +28,6 @@ export async function POST(req: Request) {
   const all = body.all === true;
   const ids = parseIds(body.ids);
 
-  let result;
-  if (all) {
-    result = await query(
-      `UPDATE notifications SET read_at = NOW()
-       WHERE user_id = $1 AND read_at IS NULL AND cleared_at IS NULL`,
-      [actor.id]
-    );
-  } else if (ids.length > 0) {
-    result = await query(
-      `UPDATE notifications SET read_at = NOW()
-       WHERE user_id = $1 AND id = ANY($2::bigint[]) AND read_at IS NULL AND cleared_at IS NULL`,
-      [actor.id, ids]
-    );
-  } else {
-    return NextResponse.json({ ok: true, updated: 0 });
-  }
-
-  return NextResponse.json({ ok: true, updated: result.rowCount ?? 0 });
+  const result = await setReadState(actor.id, ids, 'mark', all);
+  return NextResponse.json({ ok: true, updated: result.updated });
 }

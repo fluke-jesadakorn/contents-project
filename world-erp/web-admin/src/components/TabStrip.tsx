@@ -41,7 +41,7 @@ export function TabStrip<TId extends string>({
             aria-selected={isActive}
             onClick={() => onChange(t.id)}
             className={[
-              'group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold font-mono uppercase tracking-wider transition-all',
+              'group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold font-mono uppercase tracking-wider transition-all',
               isActive
                 ? isHistory
                   ? 'bg-amber-500/20 text-white border border-amber-400/40 shadow-sm shadow-amber-900/40'
@@ -56,7 +56,7 @@ export function TabStrip<TId extends string>({
             {typeof t.badge === 'number' && t.badge > 0 ? (
               <span
                 className={[
-                  'min-w-[18px] px-1.5 h-4 inline-flex items-center justify-center rounded-full text-[9px] font-mono font-black',
+                  'min-w-[18px] px-1.5 h-4 inline-flex items-center justify-center rounded-full text-xs font-mono font-black',
                   isActive
                     ? isHistory
                       ? 'bg-amber-400 text-amber-950'

@@ -35,7 +35,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
         {category && (
           <Link
             href={category.href ?? '#'}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-800 bg-slate-900/60 text-[11px] font-mono text-slate-400 hover:text-white hover:border-slate-700 transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-800 bg-slate-900/60 text-sm font-mono text-slate-400 hover:text-white hover:border-slate-700 transition-colors"
           >
             <span aria-hidden>{category.icon}</span>
             <span>{category.label}</span>

@@ -172,7 +172,7 @@ export default async function SalesInboxPage({ searchParams }: PageProps) {
           >
             <span aria-hidden>📤</span>
             <span>{pick('sales.tab.mine', locale)}</span>
-            {rows.length > 0 && <span className="rounded-full bg-slate-800 px-1.5 text-[10px]">{rows.length}</span>}
+            {rows.length > 0 && <span className="rounded-full bg-slate-800 px-1.5 text-xs">{rows.length}</span>}
           </a>
           <a
             href={tabHref('queue')}
@@ -285,7 +285,7 @@ export default async function SalesInboxPage({ searchParams }: PageProps) {
                   ? pick('sales.section.mine', locale)
                   : fill(pick('sales.section.open', locale), { n: salesRows.length })}
               </h2>
-              <span className="text-[10px] font-mono text-slate-500">{pick('sales.row.click', locale)}</span>
+              <span className="text-xs font-mono text-slate-500">{pick('sales.row.click', locale)}</span>
             </div>
             <ul className="space-y-2">
               {salesRows.map((row) => {
@@ -314,11 +314,11 @@ export default async function SalesInboxPage({ searchParams }: PageProps) {
                           />
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-sm text-slate-400">
                         {chip?.so_number ?? `SO-${row.origin_id}`} · {chip?.customer_name ?? '—'} ·{' '}
                         {(amount ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })} {row.currency}
                       </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-mono text-slate-500">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono text-slate-500">
                         <span>
                           {fill(pick('sales.row.submitter', locale), { name: row.submitter_name ?? '—' })}
                         </span>

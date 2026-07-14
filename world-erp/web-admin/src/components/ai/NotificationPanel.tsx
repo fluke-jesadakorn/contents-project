@@ -82,14 +82,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       <div className="absolute right-0 top-full mt-2 w-96 z-50 glass-panel-heavy rounded-2xl shadow-2xl shadow-black border border-slate-800 p-3 max-h-[70vh] flex flex-col animate-fade-in">
         <div className="flex items-center justify-between mb-2 px-1">
           <div className="flex items-center gap-2">
-            <div className="text-[10px] font-mono uppercase tracking-wide text-slate-500">
+            <div className="text-xs font-mono uppercase tracking-wide text-slate-500">
               Notifications
             </div>
-            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400">
+            <span className="text-xs font-mono px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400">
               {scoped ? 'Mine' : 'All'}
             </span>
             {unreadCount > 0 && (
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              <span className="text-xs font-mono px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
                 {unreadCount} new
               </span>
             )}
@@ -113,7 +113,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 type="button"
                 onClick={() => onFilterChange?.(f)}
                 className={[
-                  'px-2 py-1 rounded-md text-[10px] font-mono uppercase tracking-wide transition-colors',
+                  'px-2 py-1 rounded-md text-xs font-mono uppercase tracking-wide transition-colors',
                   filter === f
                     ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/40'
                     : 'bg-slate-900/40 text-slate-400 border border-transparent hover:text-white hover:border-slate-700',
@@ -173,7 +173,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         ].join(' ')}>
                           {it.message}
                         </div>
-                        <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                        <div className="text-xs font-mono text-slate-500 mt-0.5">
                           {relTime(it.createdAt)}
                           {it.readAt && <span className="ml-1.5 text-slate-600">· read</span>}
                         </div>
@@ -211,7 +211,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
               onClick={onMarkAllRead}
               disabled={unreadCount === 0}
               className={[
-                'px-2.5 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-wide transition-colors',
+                'px-2.5 py-1.5 rounded-lg text-xs font-mono uppercase tracking-wide transition-colors',
                 unreadCount === 0
                   ? 'bg-slate-900/40 text-slate-600 cursor-not-allowed'
                   : 'bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700',
@@ -222,7 +222,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <button
               type="button"
               onClick={onClearAll}
-              className="px-2.5 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-wide bg-slate-900/40 text-slate-400 hover:text-rose-300 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/30 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-mono uppercase tracking-wide bg-slate-900/40 text-slate-400 hover:text-rose-300 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/30 transition-colors"
             >
               Clear all
             </button>

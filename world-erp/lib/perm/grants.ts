@@ -155,6 +155,7 @@ export interface UpsertUserPermsInput {
   desired_perm_ids: string[];
   granted_by: string;
   reason?: string;
+  ends_at?: Date | string | null;
 }
 
 export async function setUserPermanentPerms(input: UpsertUserPermsInput): Promise<{

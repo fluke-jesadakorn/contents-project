@@ -35,7 +35,7 @@ export const ExecutiveNarrative: React.FC<ExecutiveNarrativeProps> = ({ execRepo
 
   return (
     <div className="p-4 bg-slate-950/40 border border-slate-800/70 rounded-2xl">
-      <div className="text-[10px] font-mono font-bold uppercase text-slate-400 mb-3 tracking-wider flex items-center gap-2">
+      <div className="text-xs font-mono font-bold uppercase text-slate-400 mb-3 tracking-wider flex items-center gap-2">
         <span>{glyph}</span> {isCEO ? 'CEO · Board Summary' : 'CFO · Executive Narrative'}
       </div>
       <AiActionButton

@@ -104,7 +104,7 @@ export const SectionHealthPane: React.FC = () => {
     <div className="space-y-5">
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-black text-white uppercase tracking-wider font-mono">AI Coverage Audit</h3>
-        <p className="text-[11px] text-slate-400">
+        <p className="text-sm text-slate-400">
           DB is the source of truth. ACTIVE = invoked within the last {data.active_window_days} days · NEVER_CALLED = configured but zero invocations · UNCONFIGURED = in catalog but no assignment row · ORPHAN = invoked but not in catalog or assignments.
         </p>
       </div>
@@ -115,7 +115,7 @@ export const SectionHealthPane: React.FC = () => {
           const n = t[b] || 0;
           return (
             <div key={b} className={`rounded-2xl border p-3 ${s.cls}`}>
-              <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase">
+              <div className="flex items-center gap-1.5 text-xs font-mono font-bold uppercase">
                 <span>{s.glyph}</span>
                 <span>{s.label}</span>
               </div>
@@ -142,7 +142,7 @@ export const SectionHealthPane: React.FC = () => {
                 type="button"
                 onClick={() => setFilter(b)}
                 className={[
-                  'text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-lg border',
+                  'text-xs font-mono uppercase tracking-wider px-2 py-1 rounded-lg border',
                   active
                     ? 'bg-indigo-500/20 text-white border-indigo-400/40'
                     : 'bg-slate-900/60 text-slate-300 border-slate-800 hover:text-white',
@@ -183,27 +183,27 @@ export const SectionHealthPane: React.FC = () => {
                 return (
                   <tr key={`${r.bucket}:${r.section_key}`} className="border-t border-slate-800/80 hover:bg-slate-950/40">
                     <td className="px-3 py-2">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold border ${bs.cls}`}>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold border ${bs.cls}`}>
                         {bs.glyph} {bs.label}
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="font-mono text-slate-200 text-[11px]">{r.section_key}</div>
-                      <div className="text-[10px] text-slate-500">{r.label_th}</div>
+                      <div className="font-mono text-slate-200 text-sm">{r.section_key}</div>
+                      <div className="text-xs text-slate-500">{r.label_th}</div>
                     </td>
                     <td className="px-3 py-2">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono border ${ts}`}>{r.task}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-mono border ${ts}`}>{r.task}</span>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="text-[11px] text-slate-300">{pm}</div>
+                      <div className="text-sm text-slate-300">{pm}</div>
                     </td>
                     <td className="px-3 py-2 text-right font-mono text-emerald-300">{r.ok_calls}</td>
                     <td className="px-3 py-2 text-right font-mono text-rose-300">{r.err_calls}</td>
                     <td className="px-3 py-2 text-right font-mono text-slate-200">{r.total_calls}</td>
-                    <td className="px-3 py-2 font-mono text-[10px] text-slate-400" title={fmtDateTime(r.last_invocation_at)}>
+                    <td className="px-3 py-2 font-mono text-xs text-slate-400" title={fmtDateTime(r.last_invocation_at)}>
                       {ageLabel(r.last_invocation_at)}
                     </td>
-                    <td className="px-3 py-2 font-mono text-[10px] text-slate-500" title={fmtDateTime(r.first_invocation_at)}>
+                    <td className="px-3 py-2 font-mono text-xs text-slate-500" title={fmtDateTime(r.first_invocation_at)}>
                       {r.first_invocation_at ? new Date(r.first_invocation_at).toLocaleDateString() : '—'}
                     </td>
                   </tr>
@@ -211,7 +211,7 @@ export const SectionHealthPane: React.FC = () => {
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-6 text-center text-[11px] text-slate-500 font-mono italic">
+                  <td colSpan={9} className="px-3 py-6 text-center text-sm text-slate-500 font-mono italic">
                     No rows for this filter.
                   </td>
                 </tr>
@@ -221,7 +221,7 @@ export const SectionHealthPane: React.FC = () => {
         </div>
       )}
 
-      <div className="text-[10px] text-slate-500 font-mono">
+      <div className="text-xs text-slate-500 font-mono">
         Generated {fmtDateTime(data.generated_at)} · window {data.active_window_days}d
       </div>
     </div>

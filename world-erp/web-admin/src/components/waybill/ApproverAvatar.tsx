@@ -13,7 +13,7 @@ interface Props {
 
 export function ApproverAvatar({ user, size = 'md' }: Props) {
   const locale = useSecondaryLocale();
-  const dim = size === 'sm' ? 'h-8 w-8 text-[10px]' : 'h-10 w-10 text-[11px]';
+  const dim = size === 'sm' ? 'h-8 w-8 text-xs' : 'h-10 w-10 text-sm';
   const accent = roleAccent(user.role_id);
   const position = roleDisplay(user.role_id, locale);
   const dept = user.dept_group_name ?? null;
@@ -36,17 +36,17 @@ export function ApproverAvatar({ user, size = 'md' }: Props) {
               <div className="text-[13px] font-bold leading-tight text-slate-50">
                 {user.fullname}
               </div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+              <div className="text-xs font-mono uppercase tracking-wider text-slate-400">
                 #{user.user_id}
               </div>
             </div>
           </div>
           <div className="border-t border-slate-700/60 pt-1.5">
-            <div className="text-[11px] leading-tight text-slate-200">
+            <div className="text-sm leading-tight text-slate-200">
               {positionLine}
             </div>
             {levelLabel && (
-              <div className="mt-1 inline-flex items-center rounded-full border border-slate-700/60 bg-slate-800/60 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest text-slate-300">
+              <div className="mt-1 inline-flex items-center rounded-full border border-slate-700/60 bg-slate-800/60 px-1.5 py-0.5 text-xs font-mono uppercase tracking-widest text-slate-300">
                 {levelLabel}
               </div>
             )}

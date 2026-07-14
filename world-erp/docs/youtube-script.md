@@ -5,7 +5,7 @@
 > the psql/curl evidence a viewer can re-run.
 >
 > Companion doc: `docs/youtube-casts.md` — cast, departments, cull rules.
-> Tile catalog source of truth: `db/rbac/0008_static_tile_catalog.sql`.
+> Tile catalog source of truth: `db/perm/*.sql`.
 
 ## Conventions
 
@@ -14,7 +14,7 @@
 - **Persona badge** (top-left corner of every shot):
   `🪪 <name> · <dept> · L<n>` — matches `docs/youtube-casts.md`.
 - **Tile badge** (bottom-right): `<tile-id> · <href>` — matches
-  `db/rbac/0008_static_tile_catalog.sql`.
+  `db/perm/*.sql`.
 - **Evidence footer** — every episode ends with copy-paste psql/curl one-liners
   so the viewer can verify the screenshot in 30 seconds.
 - **Out of scope**: marketing copy, music cues, color grading. Ops only.

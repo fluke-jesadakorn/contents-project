@@ -104,11 +104,11 @@ const ToastCard: React.FC<{ toast: Toast; onDismiss: () => void }> = ({ toast, o
             <span className="text-base leading-none mt-0.5">{tone.glyph}</span>
             <div className="flex-1 min-w-0">
               {toast.title && (
-                <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-200">
+                <div className="text-sm font-mono font-bold uppercase tracking-wider text-slate-200">
                   {toast.title}
                 </div>
               )}
-              <div className="text-[12px] text-slate-100 whitespace-pre-wrap font-sans leading-relaxed break-words">
+              <div className="text-xs text-slate-100 whitespace-pre-wrap font-sans leading-relaxed break-words">
                 {toast.message}
               </div>
             </div>

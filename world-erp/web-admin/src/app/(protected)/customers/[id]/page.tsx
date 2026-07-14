@@ -102,14 +102,14 @@ export default async function CustomerDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-              <h3 className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-3">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-3">
                 {t('customers.detail.fields', locale)}
               </h3>
               <UpdateCustomerForm customer={customer} />
             </section>
 
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-              <h3 className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-3">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-3">
                 {t('customers.detail.ar_aging', locale)}
               </h3>
               <CustomerArHistory
@@ -132,7 +132,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
             </section>
 
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-              <h3 className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-3">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-3">
                 {t('customers.detail.recent_sos', locale)}
               </h3>
               <ul className="space-y-1">
@@ -147,7 +147,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
                         {so.so_number}
                       </Link>
                       <span className="font-mono text-slate-300">{formatTHB(parseFloat(so.total_amount))} THB</span>
-                      <span className="text-[10px] font-mono text-slate-500">{so.status}</span>
+                      <span className="text-xs font-mono text-slate-500">{so.status}</span>
                     </li>
                   );
                 })}
@@ -157,7 +157,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
 
           <div className="space-y-6">
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-              <h3 className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-3">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-3">
                 {t('customers.detail.contacts', locale)}
               </h3>
               {contacts.length === 0 ? (
@@ -167,8 +167,8 @@ export default async function CustomerDetailPage({ params }: PageProps) {
                   {contacts.map((c) => (
                     <li key={c.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-2 text-sm">
                       <div className="font-bold text-white">{c.fullname}</div>
-                      {c.role ? <div className="text-[11px] text-slate-400">{c.role}</div> : null}
-                      <div className="text-[11px] font-mono text-slate-500">
+                      {c.role ? <div className="text-sm text-slate-400">{c.role}</div> : null}
+                      <div className="text-sm font-mono text-slate-500">
                         {c.email ? <a href={`mailto:${c.email}`} className="hover:underline">{c.email}</a> : null}
                         {c.phone ? <span className="ml-2">{c.phone}</span> : null}
                       </div>

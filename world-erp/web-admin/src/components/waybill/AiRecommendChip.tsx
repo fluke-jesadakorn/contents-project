@@ -111,7 +111,7 @@ export function AiRecommendChip({
 
   if (state.kind === 'loading') {
     return (
-      <div className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/40 px-2.5 py-1 font-mono text-[10px] text-slate-400">
+      <div className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/40 px-2.5 py-1 font-mono text-xs text-slate-400">
         <span aria-hidden>🤖</span>
         <Bilingual en="AI thinking…" th="AI กำลังคิด…" de="KI denkt nach…" locale={locale} />
       </div>
@@ -120,7 +120,7 @@ export function AiRecommendChip({
 
   if (state.kind === 'error') {
     return (
-      <div className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/40 px-2.5 py-1 font-mono text-[10px] text-slate-400">
+      <div className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/40 px-2.5 py-1 font-mono text-xs text-slate-400">
         <span aria-hidden>🤖</span>
         <Bilingual en="AI unavailable" th="AI ไม่พร้อมใช้งาน" de="KI nicht verfügbar" locale={locale} />
       </div>
@@ -136,7 +136,7 @@ export function AiRecommendChip({
     <div
       role="status"
       aria-live="polite"
-      className={`inline-flex max-w-sm flex-col gap-1 rounded-lg border px-2.5 py-1.5 font-mono text-[10px] ${tone}`}
+      className={`inline-flex max-w-sm flex-col gap-1 rounded-lg border px-2.5 py-1.5 font-mono text-xs ${tone}`}
     >
       <div className="flex items-center gap-2">
         <span aria-hidden>🤖</span>
@@ -157,16 +157,16 @@ export function AiRecommendChip({
             aria-label={`confidence ${pct}%`}
           />
         </div>
-        <span className="text-[9px] uppercase tracking-widest opacity-70">
+        <span className="text-xs uppercase tracking-widest opacity-70">
           <Bilingual en="confidence" th="ความมั่นใจ" de="Konfidenz" locale={locale} />
         </span>
       </div>
 
       {rationale && (
-        <p className="font-sans text-[11px] leading-snug opacity-90">{rationale}</p>
+        <p className="font-sans text-sm leading-snug opacity-90">{rationale}</p>
       )}
 
-      <div className="font-mono text-[9px] uppercase tracking-widest opacity-60">
+      <div className="font-mono text-xs uppercase tracking-widest opacity-60">
         model: {modelName} · {latencyMs}ms ·{' '}
         <Bilingual en="never auto-clicks" th="ไม่กดอัตโนมัติ" de="klickt nie automatisch" locale={locale} />
       </div>

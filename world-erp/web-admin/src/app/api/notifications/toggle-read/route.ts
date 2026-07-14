@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireActor } from '@/lib/server/guard';
-import { toggleReadForUser } from '@/lib/server/queries';
+import { query } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'id required' }, { status: 400 });
   }
 
-  const result = await toggleReadForUser(actor.id, id);
-  if (!result) return NextResponse.json({ error: 'not found' }, { status: 404 });
-  return NextResponse.json({ ok: true, id: String(result.id), readAt: result.readAt });
+  const r = await query<{ id: number; read_at: string | null }>(
+    `UPDATE notifications
+     SET read_at = CASE WHEN read_at IS NULL THEN NOW() ELSE NULL END
+     WHERE user_id = $1 AND id = $2 AND cleared_at IS NULL
+     RETURNING id, read_at`,
+    [actor.id, id]
+  );
+  if (r.rows.length === 0) return NextResponse.json({ error: 'not found' }, { status: 404 });
+  const row = r.rows[0];
+  return NextResponse.json({
+    ok: true,
+    id: String(row.id),
+    readAt: row.read_at ? new Date(row.read_at).toISOString() : null,
+  });
 }

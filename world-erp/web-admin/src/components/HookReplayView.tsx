@@ -63,14 +63,14 @@ export const HookReplayView: React.FC<{ currentUser: any }> = ({ currentUser: _c
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="glass-panel p-6 rounded-3xl border-slate-700/40 bg-gradient-to-br from-slate-900/40 to-slate-950">
-        <span className="text-[10px] font-mono font-black uppercase text-slate-400 block tracking-wider">
+        <span className="text-xs font-mono font-black uppercase text-slate-400 block tracking-wider">
           🪝 Hook Inbox
         </span>
         <h2 className="text-xl font-bold text-white">Webhook Events</h2>
         <p className="text-xs text-slate-400 mt-1">
           Recent inbound webhooks from LINE and generic providers. Replay failed events to re-run the side effect.
         </p>
-        <div className="flex gap-1 p-1 rounded-xl bg-slate-950/60 border border-slate-800 text-[10px] font-mono uppercase tracking-wider mt-4 w-fit">
+        <div className="flex gap-1 p-1 rounded-xl bg-slate-950/60 border border-slate-800 text-xs font-mono uppercase tracking-wider mt-4 w-fit">
           {(['all', 'received', 'failed', 'rejected'] as const).map((f) => (
             <button
               key={f}
@@ -108,18 +108,18 @@ export const HookReplayView: React.FC<{ currentUser: any }> = ({ currentUser: _c
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-mono text-slate-500">#{e.id}</span>
+                  <span className="text-xs font-mono text-slate-500">#{e.id}</span>
                   <span className="text-xs text-white font-mono">{e.eventType}</span>
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9px] font-mono uppercase tracking-wider ${STATUS_TONE[e.status]}`}>
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-xs font-mono uppercase tracking-wider ${STATUS_TONE[e.status]}`}>
                     {e.status}
                   </span>
                   {e.replayCount > 0 && (
-                    <span className="text-[9px] font-mono text-amber-300">
+                    <span className="text-xs font-mono text-amber-300">
                       ↻ {e.replayCount}× replay
                     </span>
                   )}
                 </div>
-                <div className="mt-1 text-[10px] font-mono text-slate-500 truncate">
+                <div className="mt-1 text-xs font-mono text-slate-500 truncate">
                   {e.providerId} · {e.externalId || '—'} · {new Date(e.receivedAt).toLocaleString()}
                 </div>
               </div>
@@ -128,7 +128,7 @@ export const HookReplayView: React.FC<{ currentUser: any }> = ({ currentUser: _c
                   type="button"
                   disabled={busyId === e.id || !e.signatureOk || e.status === 'rejected'}
                   onClick={() => replay(e.id)}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-100 text-[10px] font-mono uppercase tracking-wider hover:bg-cyan-500/30 disabled:opacity-40"
+                  className="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-100 text-xs font-mono uppercase tracking-wider hover:bg-cyan-500/30 disabled:opacity-40"
                 >
                   {busyId === e.id ? '…' : '↻ Replay'}
                 </button>

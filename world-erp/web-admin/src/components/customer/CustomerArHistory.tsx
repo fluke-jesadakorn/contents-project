@@ -86,13 +86,13 @@ export function CustomerArHistory({
       className="rounded-2xl border border-slate-700/70 bg-slate-950/45 p-4 shadow-inner"
     >
       <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+        <div className="text-xs font-mono uppercase tracking-widest text-slate-400">
           <Bilingual en={headingText.en} th={headingText.th} de={headingText.de} locale={locale} />
           {customerName && (
             <span className="ml-2 text-slate-300">· {customerName}</span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500">
+        <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
           <span>
             <Bilingual en={invoicedText.en} th={invoicedText.th} de={invoicedText.de} locale={locale} />
           </span>
@@ -132,7 +132,7 @@ export function CustomerArHistory({
                   : 'border-slate-800 bg-slate-900/30 text-slate-500',
               ].join(' ')}
             >
-              <div className="w-20 text-[10px] font-mono uppercase tracking-wider shrink-0">
+              <div className="w-20 text-xs font-mono uppercase tracking-wider shrink-0">
                 {bucketDict ? (
                   <Bilingual en={bucketDict.en} th={bucketDict.th} de={bucketDict.de} locale={locale} />
                 ) : (
@@ -149,10 +149,10 @@ export function CustomerArHistory({
                 )}
               </div>
               <div className="w-32 shrink-0 text-right">
-                <div className="text-[11px] font-mono font-bold tabular-nums">
+                <div className="text-sm font-mono font-bold tabular-nums">
                   {formatTHB(amount, locale)} THB
                 </div>
-                <div className="text-[9px] font-mono text-slate-500">
+                <div className="text-xs font-mono text-slate-500">
                   <Bilingual
                     en={soDict.en.replace('{n}', String(soCount)).replace('{plural}', soCount === 1 ? '' : 's')}
                     th={soDict.th?.replace('{n}', String(soCount)).replace('{plural}', soCount === 1 ? '' : 's')}
@@ -166,7 +166,7 @@ export function CustomerArHistory({
         })}
       </ul>
 
-      <footer className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono">
+      <footer className="mt-3 grid grid-cols-2 gap-2 text-xs font-mono">
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2">
           <div className="text-slate-500 uppercase tracking-wider">
             <Bilingual en={outstandingText.en} th={outstandingText.th} de={outstandingText.de} locale={locale} />

@@ -22,7 +22,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ crumbs, className }) => 
       className={[
         'flex items-center flex-wrap gap-x-1.5 gap-y-1 px-3 py-2 mb-4',
         'rounded-xl border border-slate-800/70 bg-slate-900/40',
-        'text-[11px] font-sans',
+        'text-sm font-sans',
         className || '',
       ].join(' ')}
     >

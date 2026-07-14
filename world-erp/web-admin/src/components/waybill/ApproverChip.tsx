@@ -13,7 +13,7 @@ interface Props {
 export function ApproverChip({ summary, view }: Props) {
   if (!summary) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-mono text-slate-500">
+      <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-xs font-mono text-slate-500">
         ⏳ Awaiting: —
       </span>
     );
@@ -26,7 +26,7 @@ export function ApproverChip({ summary, view }: Props) {
     ? `${roleLabel} team (${summary.count})`
     : summary.names.slice(0, 2).join(', ') + (summary.names.length > 2 ? ` +${summary.names.length - 2}` : '');
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono text-amber-200">
+    <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-mono text-amber-200">
       <span>{head}</span>
       <span className="text-slate-300">·</span>
       <span className="text-amber-100">{names}</span>

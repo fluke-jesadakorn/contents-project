@@ -5,15 +5,18 @@ import {
   loadApproversByStage,
   loadActedUsersByStage,
   loadExpenseFullPicture,
+  loadWaybillEvents,
 } from '@/lib/server/waybill';
 import { loadActor } from '@/lib/server/guard';
 import { loadVisionModels } from '@/lib/ai/loadVisionModels';
 import { matchPerm } from '@erp-lib/perm/server';
 import { getSecondaryLocale } from '@erp-lib/server/locale';
 import { pipsForDomain, pipIndex, domainForOrigin } from '@erp-lib/waybill/derive';
+import { verifyEventChain } from '@erp-lib/waybill/events';
 import { WaybillStepCards } from '@/components/waybill/WaybillStepCards';
-import { WaybillTimelineBlock } from '@/components/waybill/WaybillTimelineBlock';
-import { WaybillAuditSectionBlock } from '@/components/waybill/WaybillAuditSectionBlock';
+import { WaybillTimelineBigPicture } from '@/components/waybill/WaybillTimelineBigPicture';
+import { WaybillAuditSection } from '@/components/waybill/WaybillAuditSection';
+import { WaybillExpenseCollapsible } from '@/components/waybill/WaybillExpenseCollapsible';
 import { WaybillHeader } from '@/components/waybill/WaybillHeader';
 import { InlineActionForm } from '@/components/waybill/InlineActionForm';
 import { ExportPdfButton } from '@/components/waybill/ExportPdfButton';
@@ -56,12 +59,14 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
 
   const action = asString(sp.action);
 
-  const [approversByStage, actedUsersByStage, visionModels, locale, expensePicture] = await Promise.all([
+  const [approversByStage, actedUsersByStage, visionModels, locale, expensePicture, events, integrity] = await Promise.all([
     loadApproversByStage(wb.id),
     loadActedUsersByStage(wb.id),
     loadVisionModels(),
     getSecondaryLocale(),
     wb.origin === 'expense' ? loadExpenseFullPicture(wb.origin_id) : Promise.resolve(null),
+    loadWaybillEvents(wb.id),
+    verifyEventChain(wb.id),
   ]);
 
   const perms = actor.permissions;
@@ -180,19 +185,37 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
             <InlineActionForm kind="reject" waybillId={wb.id} stage={wb.current_stage} locale={locale} />
           )}
 
-          <Suspense fallback={<div className="h-32 animate-pulse rounded-2xl border border-slate-800/60 bg-slate-950/40" aria-hidden />}>
-            <WaybillTimelineBlock
-              waybillId={wb.id}
-              domain={domainForOrigin(wb.origin)}
-              currentStage={wb.current_stage}
-              status={wb.status}
-              activeActorName={ctx.activeActorName}
-              activeRole={actor.role_id}
-              rejectionReason={rejectionReason}
-              rejectionActorName={rejectionActorName}
-              rejectedAt={null}
-            />
-          </Suspense>
+          <WaybillTimelineBigPicture
+            waybillId={wb.id}
+            domain={domainForOrigin(wb.origin)}
+            currentStage={wb.current_stage}
+            status={wb.status}
+            events={ctx.events}
+            attachments={ctx.attachments}
+            amountTHB={wb.total_amount ? Number(wb.total_amount) : null}
+            locale={locale}
+            canAct={canAct && !isRejected}
+            canAttach={canAttach && !isRejected}
+            canSettle={canSettle}
+            canFinalApprove={canFinalApprove}
+            originId={wb.origin_id}
+            approversByStage={approversByStage}
+            currentUserId={actor.id}
+            visionModels={visionModels}
+            canConfirmGl={canConfirmGl}
+            hasGlConfirmed={false}
+          />
+
+          {expensePicture && (
+            <Suspense fallback={<div className="h-24 animate-pulse rounded-2xl border border-slate-800/60 bg-slate-950/40" aria-hidden />}>
+              <WaybillExpenseCollapsible
+                data={expensePicture}
+                waybillId={wb.id}
+                currentStage={wb.current_stage}
+                locale={locale}
+              />
+            </Suspense>
+          )}
 
           <Suspense fallback={
             <div className="space-y-4">
@@ -210,7 +233,7 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
               attachments={ctx.attachments}
               approversByStage={approversByStage}
               actedUsersByStage={actedUsersByStage}
-              expensePicture={expensePicture}
+              expensePicture={null}
               hasGlConfirmed={false}
               artifacts={null}
               actorCanSeeGlLines={actorCanSeeGlLines}
@@ -244,9 +267,12 @@ export default async function WaybillDetail({ params, searchParams }: PageProps)
             />
           </Suspense>
 
-          <Suspense fallback={<div className="h-24 animate-pulse rounded-2xl border border-slate-800/60 bg-slate-950/40" aria-hidden />}>
-            <WaybillAuditSectionBlock waybillId={wb.id} />
-          </Suspense>
+          <WaybillAuditSection
+            waybillId={wb.id}
+            events={events}
+            integrity={integrity}
+            locale={locale}
+          />
         </section>
       </PageLayout>
     </>

@@ -4,7 +4,7 @@ import { T } from '@/components/i18n/T';
 import {
   rejectWaybillAction,
   finalRejectWaybillAction,
-} from '@/app/(protected)/waybill/[id]/_actions';
+} from '@/app/actions';
 
 interface InlineActionFormProps {
   kind: 'reject' | 'final-reject';
@@ -71,7 +71,7 @@ export function InlineActionForm({
           <span className="text-base font-bold text-rose-100">
             <T value={heading} />
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-rose-300/70">
+          <span className="font-mono text-xs uppercase tracking-widest text-rose-300/70">
             <T value={subtitle} />
             {' · '}
             <span className="text-cyan-300">{waybillId}</span>

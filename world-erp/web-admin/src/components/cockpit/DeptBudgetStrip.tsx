@@ -72,7 +72,7 @@ export async function DeptBudgetStrip({
   if (rows.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
-        <p className="text-[10px] font-mono text-slate-500">
+        <p className="text-xs font-mono text-slate-500">
           <T value={{ en: 'No department budgets yet.', th: 'ยังไม่มีงบประมาณแผนก', de: 'Noch keine Abteilungsbudgets.' }} />
         </p>
       </div>
@@ -93,7 +93,7 @@ export async function DeptBudgetStrip({
               </span>
               <span className="font-mono text-slate-400 flex-shrink-0 whitespace-nowrap ml-2">
                 {row.mtd_spend.toLocaleString()} / {row.monthly_budget.toLocaleString()} THB
-                <span className="ml-2 text-[10px] text-slate-500">({row.pct_used.toFixed(1)}%)</span>
+                <span className="ml-2 text-xs text-slate-500">({row.pct_used.toFixed(1)}%)</span>
               </span>
             </div>
             <div className="w-full h-2 rounded-full bg-slate-950 border border-slate-900 overflow-hidden">

@@ -281,7 +281,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
           </span>
         </div>
         <span
-          className="text-slate-400 text-[10px] ml-1 transition-transform duration-200"
+          className="text-slate-400 text-xs ml-1 transition-transform duration-200"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
           aria-hidden
         >
@@ -300,7 +300,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
             role="menu"
             className="absolute right-0 mt-2 w-[28rem] max-w-[92vw] bg-slate-950/98 border border-indigo-500/40 rounded-2xl shadow-2xl shadow-black/70 p-2 z-50 animate-fade-in flex flex-col max-h-[min(72vh,640px)]"
           >
-            <div className="px-3 pt-2 pb-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+            <div className="px-3 pt-2 pb-1 text-xs font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
               <span>Switch User Role</span>
               <span className="text-slate-500 normal-case font-normal">{flat.length}/{users.length}</span>
             </div>
@@ -312,7 +312,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
                     type="button"
                     onClick={() => setGroupBy(opt.key)}
                     className={[
-                      'px-2 py-1 rounded-md text-[9px] font-mono font-bold uppercase tracking-wider transition-colors',
+                      'px-2 py-1 rounded-md text-xs font-mono font-bold uppercase tracking-wider transition-colors',
                       groupBy === opt.key
                         ? 'bg-indigo-500/30 text-indigo-200 border border-indigo-500/50'
                         : 'text-slate-400 hover:text-slate-200 border border-transparent',
@@ -324,14 +324,14 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
                 ))}
               </div>
               <div className="flex items-center rounded-lg border border-slate-800 bg-slate-950/60 p-0.5">
-                <span className="px-1.5 text-[9px] font-mono uppercase text-slate-500">Sort</span>
+                <span className="px-1.5 text-xs font-mono uppercase text-slate-500">Sort</span>
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt.key}
                     type="button"
                     onClick={() => setSortBy(opt.key)}
                     className={[
-                      'px-2 py-1 rounded-md text-[9px] font-mono font-bold uppercase tracking-wider transition-colors',
+                      'px-2 py-1 rounded-md text-xs font-mono font-bold uppercase tracking-wider transition-colors',
                       sortBy === opt.key
                         ? 'bg-purple-500/30 text-purple-200 border border-purple-500/50'
                         : 'text-slate-400 hover:text-slate-200 border border-transparent',
@@ -388,7 +388,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
                       {gi > 0 && <div className="my-1.5 mx-2 border-t border-slate-800/80" />}
                       <div className="mx-1 mb-1 px-2 py-1 flex items-center gap-2 rounded-md bg-slate-900/50 border border-slate-800">
                         <span className="text-xs">{gMeta.icon}</span>
-                        <span className="text-[9px] uppercase tracking-widest font-mono font-bold text-slate-300">{gMeta.label}</span>
+                        <span className="text-xs uppercase tracking-widest font-mono font-bold text-slate-300">{gMeta.label}</span>
                         <span className="ml-auto text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700 bg-slate-950/60 text-slate-300">
                           {gMeta.code} • {arr.length}
                         </span>
@@ -435,7 +435,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
                                   <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase border bg-slate-500/10 text-slate-300 border-slate-600/50">
                                     P{staffLevelOf(u)}
                                   </span>
-                                  <span className="text-[9px] text-slate-600 font-mono">{u.employee_code}</span>
+                                  <span className="text-xs text-slate-600 font-mono">{u.employee_code}</span>
                                 </div>
                               </div>
                               <span className="text-base leading-none opacity-70 shrink-0">{roleGlyph(roleKey)}</span>
@@ -449,7 +449,7 @@ export const PersonaMenu: React.FC<PersonaMenuProps> = ({ users, currentUser }) 
               )}
             </div>
 
-            <div className="px-3 py-2 border-t border-slate-800/80 flex items-center justify-between gap-2 text-[9px] text-slate-500 font-mono">
+            <div className="px-3 py-2 border-t border-slate-800/80 flex items-center justify-between gap-2 text-xs text-slate-500 font-mono">
               <span className="shrink-0">↑↓ Select · Enter Confirm · Esc Close</span>
               <span className="flex items-center gap-1.5">
                 <span className={['px-1.5 py-0.5 rounded border', roleBadge(curRole)].join(' ')}>

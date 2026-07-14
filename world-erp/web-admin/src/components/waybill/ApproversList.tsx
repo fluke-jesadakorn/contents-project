@@ -36,7 +36,7 @@ export function ApproversList({
     return (
       <div>
         {title !== null && (
-          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+          <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
             {title}
           </div>
         )}
@@ -77,10 +77,10 @@ export function ApproversList({
     <div>
       {title !== null && (
         <div className="flex items-baseline justify-between gap-2">
-          <div className={`text-[10px] font-mono uppercase tracking-widest ${headerTone}`}>
+          <div className={`text-xs font-mono uppercase tracking-widest ${headerTone}`}>
             {title}
           </div>
-          <div className="text-[10px] font-mono text-slate-500">
+          <div className="text-xs font-mono text-slate-500">
             {approvers.length}{' '}
             <Bilingual
               en={approvers.length === 1 ? 'person' : 'people'}
@@ -117,7 +117,7 @@ export function ApproversList({
               </>
             )}
           </p>
-          <p className="mt-0.5 text-[10px] font-mono uppercase tracking-widest text-slate-500">
+          <p className="mt-0.5 text-xs font-mono uppercase tracking-widest text-slate-500">
             {first
               ? multiRole
                 ? (first.dept_group_name ?? '')
@@ -128,7 +128,7 @@ export function ApproversList({
       </div>
 
       {actedUsers.length > 0 && (
-        <div className="mt-3 text-[10px] font-mono uppercase tracking-widest text-emerald-300/80">
+        <div className="mt-3 text-xs font-mono uppercase tracking-widest text-emerald-300/80">
           <span aria-hidden>✓</span>{' '}
           <Bilingual
             en={`${actedUsers.length} signed`}

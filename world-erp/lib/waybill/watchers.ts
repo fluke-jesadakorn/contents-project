@@ -110,17 +110,18 @@ export interface WaybillWaitingOnRow {
 export async function listWaitingOnForUser(
   userId: string | number,
 ): Promise<WaybillWaitingOnRow[]> {
-  const userRes = await query<{ role_id: string; dept_id: string | null }>(
+  const userRes = await query<{ role_id: string; dept_id: string | null; dept_group_id: string | null }>(
     `SELECT COALESCE((
               SELECT ur.role_id FROM perm.user_roles ur
-               WHERE ur.user_id = u.id
+                WHERE ur.user_id = u.id
             ORDER BY split_part(ur.role_id, '::', 2)::int ASC NULLS LAST LIMIT 1
             ), '') AS role_id,
-            (SELECT split_part(up.permission_id, ':', 3) FROM perm.user_permissions up
+            (SELECT split_part(up.permission_id, ':', 3) FROM perm.active_user_permissions up
                WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
-                 AND up.revoked_at IS NULL
-                 AND (up.ends_at IS NULL OR up.ends_at > now())
-               ORDER BY up.permission_id LIMIT 1) AS dept_id
+               ORDER BY up.permission_id LIMIT 1) AS dept_id,
+            (SELECT split_part(up.permission_id, ':', 3) FROM perm.active_user_permissions up
+               WHERE up.user_id = u.id AND up.permission_id LIKE 'user:dept:%'
+               ORDER BY up.permission_id LIMIT 1) AS dept_group_id
        FROM users u
       WHERE u.id = $1`,
     [userId],

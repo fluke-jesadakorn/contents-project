@@ -3,14 +3,12 @@ import {
   stageLabel,
 } from '@erp-lib/waybill/labels';
 import { normalizeStage } from '@erp-lib/perm/stages';
-import type { InboxItemRow } from '@/lib/server/waybill';
+import type { WaybillInboxRow, InboxScope } from '@/lib/server/waybill';
 import { dismissInboxItemAction } from '@/app/(protected)/inbox/_actions';
-
-type InboxScope = 'waiting' | 'watching' | 'all';
 
 interface Props {
   scope: InboxScope;
-  items: InboxItemRow[];
+  items: WaybillInboxRow[];
   lang?: 'en' | 'th';
 }
 
@@ -40,7 +38,7 @@ function formatAmount(value: string | null, currency: string): string {
   return `${n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
 }
 
-function formatNotifiedAt(date: Date | null | undefined): string {
+function formatNotifiedAt(date: Date | string | null | undefined): string {
   if (!date) return '';
   const d = new Date(date);
   const yyyy = d.getFullYear();
@@ -85,12 +83,15 @@ export function InboxList({ scope, items, lang: _lang = 'en' }: Props) {
         const { label: stageLabelText, emoji: stageEmoji } = stageInfo(it.current_stage, it.origin);
         const amount = formatAmount(it.total_amount, it.currency);
         const age = formatAge(it.age_hours);
+        const wbId: string = (it as any).waybill_id ?? (it as any).id ?? '';
+        const stageKey: string = (it as any).stage_key ?? '';
+        const notifiedAt: string | Date | null = (it as any).notified_at ?? null;
 
-        const unwatched = scope === 'watching' && it.notified_at == null;
-        const rowLink = `/waybill/${it.waybill_id}`;
+        const unwatched = scope === 'watching' && notifiedAt == null;
+        const rowLink = `/waybill/${wbId}`;
         return (
           <li
-            key={`${it.waybill_id}:${it.stage_key ?? ''}`}
+            key={`${wbId}:${stageKey}`}
             className="flex flex-wrap items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-800/40"
           >
             <Link
@@ -106,22 +107,22 @@ export function InboxList({ scope, items, lang: _lang = 'en' }: Props) {
               <div className="min-w-0 flex-1 space-y-0.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm text-cyan-300">
-                    {it.waybill_id}
+                    {it.id}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-mono text-slate-300">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-xs font-mono text-slate-300">
                     <span aria-hidden>{stageEmoji}</span>
                     <span>{stageLabelText}</span>
                   </span>
                   {unwatched && (
-                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-mono text-amber-300">
+                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-mono text-amber-300">
                       NEW
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] text-slate-400">
+                <div className="text-sm text-slate-400">
                   {visual.label} · {it.vendor_name ?? '—'}
                 </div>
-                <div className="text-[10px] font-mono text-slate-500">
+                <div className="text-xs font-mono text-slate-500">
                   submitter: {it.submitter_name ?? '—'}
                 </div>
               </div>
@@ -129,23 +130,23 @@ export function InboxList({ scope, items, lang: _lang = 'en' }: Props) {
 
             <div className="flex flex-col items-end gap-1 text-right">
               <span className="font-mono text-sm text-slate-200">{amount}</span>
-              <span className="text-[10px] font-mono text-slate-500">{age}</span>
-              {scope === 'waiting' && it.required_role && (
-                <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono text-amber-300">
-                  your role: {it.required_role}
+              <span className="text-xs font-mono text-slate-500">{age}</span>
+              {scope === 'waiting' && (
+                <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-mono text-amber-300">
+                  awaiting your action
                 </span>
               )}
               {scope === 'watching' && (
                 <>
-                  <span className="text-[10px] font-mono text-slate-500">
-                    🔔 since {formatNotifiedAt(it.notified_at)}
+                  <span className="text-xs font-mono text-slate-500">
+                    🔔 since {formatNotifiedAt(notifiedAt)}
                   </span>
                   <form action={dismissInboxItemAction} className="mt-1">
-                    <input type="hidden" name="waybillId" value={it.waybill_id} />
-                    <input type="hidden" name="stageKey" value={it.stage_key ?? ''} />
+                    <input type="hidden" name="waybillId" value={wbId} />
+                    <input type="hidden" name="stageKey" value={stageKey} />
                     <button
                       type="submit"
-                      className="rounded-md border border-slate-700 px-2 py-0.5 text-[10px] font-mono text-slate-400 transition-colors hover:border-rose-500/60 hover:text-rose-300"
+                      className="rounded-md border border-slate-700 px-2 py-0.5 text-xs font-mono text-slate-400 transition-colors hover:border-rose-500/60 hover:text-rose-300"
                     >
                       Stop watching
                     </button>

@@ -117,11 +117,11 @@ export default async function MyWaybillsPage({ searchParams }: PageProps) {
                       amountTHB={amount}
                     />
                   </div>
-                  <div className="text-[11px] text-slate-400">
+                  <div className="text-sm text-slate-400">
                     {originLabel} · {row.vendor_name ?? '—'} ·{' '}
                     {(amount ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })} {row.currency}
                   </div>
-                  <div className="text-[10px] font-mono text-slate-500">
+                  <div className="text-xs font-mono text-slate-500">
                     submitter: {row.submitter_name ?? '—'} · age{' '}
                     {Math.max(0, Math.floor(row.age_hours))}h
                   </div>

@@ -10,6 +10,10 @@ import type { ActionName } from './sessionToken.types';
 export interface RequireActionOpts {
   perm?: string;
   stage?: string;
+  entityCtx?: {
+    entityType: 'expense' | 'pr';
+    entityId: number;
+  };
 }
 
 export async function requireActionFor(

@@ -20,7 +20,7 @@ export const TileTooltip: React.FC<Props> = ({ content, children, side = 'top', 
           side={side}
           align={align}
           sideOffset={8}
-          className="z-[60] max-w-xs rounded-xl border border-slate-700/80 bg-slate-950/95 px-3 py-2 text-[11px] text-slate-200 shadow-2xl shadow-black/60 backdrop-blur-sm animate-fade-in"
+          className="z-[60] max-w-xs rounded-xl border border-slate-700/80 bg-slate-950/95 px-3 py-2 text-sm text-slate-200 shadow-2xl shadow-black/60 backdrop-blur-sm animate-fade-in"
         >
           {content}
           <Tooltip.Arrow className="fill-slate-700/80" />

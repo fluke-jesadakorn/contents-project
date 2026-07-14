@@ -28,13 +28,13 @@ export const NotificationDigest: React.FC<NotificationDigestProps> = ({ items })
   return (
     <div className="mt-3 pt-3 border-t border-slate-800/80">
       <div className="flex items-center justify-between mb-1.5">
-        <div className="text-[10px] font-mono uppercase tracking-wide text-indigo-300">
+        <div className="text-xs font-mono uppercase tracking-wide text-indigo-300">
           🧠 AI Digest
         </div>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="text-[10px] text-slate-500 hover:text-slate-300 font-mono"
+          className="text-xs text-slate-500 hover:text-slate-300 font-mono"
         >
           {open ? '▲ Hide' : '▼ Show'}
         </button>

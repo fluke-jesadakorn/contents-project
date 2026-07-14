@@ -36,14 +36,14 @@ export const Kpi: React.FC<KpiProps> = ({ label, value, accent = 'slate', size =
   const textSize = size === 'sm' ? 'text-xl' : 'text-2xl';
   return (
     <div className={`bg-slate-900/60 ${padding} rounded-2xl border ${a.border} relative`}>
-      <span className="text-[10px] text-slate-400 uppercase tracking-widest font-mono font-black block">
+      <span className="text-xs text-slate-400 uppercase tracking-widest font-mono font-black block">
         {label}
       </span>
       <span className={`${textSize} font-black font-mono mt-2 block ${valueClassName ?? a.text}`}>
         {value}
       </span>
       {caption && (
-        <span className="text-[9px] text-slate-500 font-mono mt-1 block">{caption}</span>
+        <span className="text-xs text-slate-500 font-mono mt-1 block">{caption}</span>
       )}
     </div>
   );

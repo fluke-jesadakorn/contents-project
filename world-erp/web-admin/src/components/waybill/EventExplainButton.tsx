@@ -105,7 +105,7 @@ export function EventExplainButton({
         onClick={run}
         disabled={busy}
         aria-expanded={open}
-        className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300 transition hover:bg-slate-700 disabled:opacity-60"
+        className="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-300 transition hover:bg-slate-700 disabled:opacity-60"
       >
         💬{' '}
         <T
@@ -120,7 +120,7 @@ export function EventExplainButton({
       {open && (
         <div className="absolute left-0 top-full z-40 mt-1 w-full max-w-sm rounded-lg border border-slate-700/60 bg-slate-950/95 p-2.5 shadow-2xl shadow-slate-950/60 backdrop-blur">
           <div className="flex items-start justify-between gap-2">
-            <div className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+            <div className="font-mono text-xs uppercase tracking-widest text-slate-400">
               <span aria-hidden>🤖</span>{' '}
               <span>
                 {eventKind}
@@ -133,30 +133,30 @@ export function EventExplainButton({
               onClick={close}
               aria-label={locale === 'th' ? 'ปิด' : locale === 'de' ? 'Schließen' : 'Close'}
               title="Close"
-              className="grid h-4 w-4 place-items-center rounded bg-slate-800 font-mono text-[10px] text-slate-300 hover:bg-rose-900/60"
+              className="grid h-4 w-4 place-items-center rounded bg-slate-800 font-mono text-xs text-slate-300 hover:bg-rose-900/60"
             >
               ✕
             </button>
           </div>
 
           {busy && (
-            <p className="mt-1.5 font-mono text-[10px] text-slate-400">
+            <p className="mt-1.5 font-mono text-xs text-slate-400">
               <T value={{ en: 'Asking the AI…', th: 'กำลังถาม AI…', de: 'Frage die KI…' }} />
             </p>
           )}
 
           {!busy && error && (
-            <p className="mt-1.5 font-mono text-[10px] text-rose-300">✗ {error}</p>
+            <p className="mt-1.5 font-mono text-xs text-rose-300">✗ {error}</p>
           )}
 
           {!busy && !error && text && (
-            <p className="mt-1.5 whitespace-pre-wrap font-sans text-[11px] leading-snug text-slate-100">
+            <p className="mt-1.5 whitespace-pre-wrap font-sans text-sm leading-snug text-slate-100">
               {text}
             </p>
           )}
 
           {!busy && !error && !text && (
-            <p className="mt-1.5 font-mono text-[10px] italic text-slate-500">
+            <p className="mt-1.5 font-mono text-xs italic text-slate-500">
               <T value={{ en: 'No answer yet', th: 'ยังไม่มีคำตอบ', de: 'Noch keine Antwort' }} />
             </p>
           )}

@@ -104,7 +104,7 @@ export function WaybillRail({
           </span>
         ))}
         {rendered.length > 1 && (
-          <span className="ml-2 text-[10px] font-mono text-slate-500">
+          <span className="ml-2 text-xs font-mono text-slate-500">
             step {(idx === -1 ? rendered.length : idx + 1)} of {rendered.filter((r) => r.state !== 'skipped').length}
           </span>
         )}
@@ -115,10 +115,10 @@ export function WaybillRail({
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 font-sans">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+        <span className="text-xs font-mono uppercase tracking-widest text-slate-500">
           {domain === 'procurement' ? 'Procurement Waybill' : 'Expense Waybill'}
         </span>
-        <span className="text-[10px] font-mono text-slate-500">
+        <span className="text-xs font-mono text-slate-500">
           {isClosed ? 'Closed' : `Step ${idx + 1} of ${rendered.filter((r) => r.state !== 'skipped').length}`}
         </span>
       </div>
@@ -154,7 +154,7 @@ export function WaybillRail({
                 <span className="text-xl">{pip.emoji}</span>
                 <span
                   className={
-                    'rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ' +
+                    'rounded px-1.5 py-0.5 text-xs font-bold uppercase ' +
                     (state === 'passed'
                       ? 'bg-emerald-500/20 text-emerald-300'
                       : state === 'active'
@@ -179,20 +179,20 @@ export function WaybillRail({
                     : 'Pending'}
                 </span>
               </div>
-              <h4 className="text-[11px] font-bold leading-tight">
+              <h4 className="text-sm font-bold leading-tight">
                 {lang === 'th' ? pip.th : pip.en}
               </h4>
-              <p className="text-[10px] leading-tight text-slate-500">
+              <p className="text-xs leading-tight text-slate-500">
                 {lang === 'th' ? pip.description_th : pip.description_en}
               </p>
 
               <div className="mt-auto w-full border-t border-slate-800/60 pt-1.5">
-                <div className="text-[9px] font-mono uppercase tracking-widest text-slate-500">
+                <div className="text-xs font-mono uppercase tracking-widest text-slate-500">
                   {lang === 'th' ? 'ผู้อนุมัติ' : 'Approver'}
                 </div>
                 <div
                   className={
-                    'text-[11px] font-bold leading-tight ' +
+                    'text-sm font-bold leading-tight ' +
                     (state === 'passed' || state === 'active'
                       ? 'text-amber-300'
                       : 'text-slate-300')
@@ -201,7 +201,7 @@ export function WaybillRail({
                   👤 {approverLabel}
                 </div>
                 {actor && state === 'passed' && (
-                  <div className="mt-1 text-[10px] font-mono leading-tight text-emerald-300">
+                  <div className="mt-1 text-xs font-mono leading-tight text-emerald-300">
                     ✓ {actor.name}
                     <span className="text-slate-500">
                       {' · ' + fmtActorTs(actor.ts)}
@@ -209,7 +209,7 @@ export function WaybillRail({
                   </div>
                 )}
                 {state === 'active' && activeActorName && (
-                  <div className="mt-1 text-[10px] font-mono leading-tight text-cyan-300">
+                  <div className="mt-1 text-xs font-mono leading-tight text-cyan-300">
                     ⏱ {activeActorName}
                   </div>
                 )}

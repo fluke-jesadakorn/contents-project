@@ -20,7 +20,8 @@ interface NavTabsProps {
 }
 
 export const NavTabs: React.FC<NavTabsProps> = ({ role, activeTab, setActiveTab, countByTab }) => {
-  const allowed = new Set(getAllowedTabs(role));
+  const r: RoleName = role ?? 'staff';
+  const allowed = new Set(getAllowedTabs(r));
   const visible = TABS.filter((t) => allowed.has(t.key));
   if (visible.length === 0) return null;
 
@@ -39,7 +40,7 @@ export const NavTabs: React.FC<NavTabsProps> = ({ role, activeTab, setActiveTab,
             onClick={() => setActiveTab(t.key)}
             aria-current={active ? 'page' : undefined}
             className={[
-              'group relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold font-mono uppercase tracking-wider transition-all',
+              'group relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold font-mono uppercase tracking-wider transition-all',
               active
                 ? 'bg-indigo-500/20 text-white border border-indigo-400/40 shadow-sm shadow-indigo-900/40'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent',
@@ -50,7 +51,7 @@ export const NavTabs: React.FC<NavTabsProps> = ({ role, activeTab, setActiveTab,
             {typeof count === 'number' && count > 0 && (
               <span
                 className={[
-                  'min-w-[18px] px-1.5 h-4 inline-flex items-center justify-center rounded-full text-[9px] font-mono font-black',
+                  'min-w-[18px] px-1.5 h-4 inline-flex items-center justify-center rounded-full text-xs font-mono font-black',
                   active ? 'bg-indigo-400 text-indigo-950' : 'bg-slate-800 text-slate-300',
                 ].join(' ')}
               >
@@ -67,7 +68,8 @@ export const NavTabs: React.FC<NavTabsProps> = ({ role, activeTab, setActiveTab,
 export type MobileTabsProps = NavTabsProps;
 
 export const MobileTabs: React.FC<MobileTabsProps> = ({ role, activeTab, setActiveTab }) => {
-  const allowed = new Set(getAllowedTabs(role));
+  const r: RoleName = role ?? 'staff';
+  const allowed = new Set(getAllowedTabs(r));
   const visible = TABS.filter((t) => allowed.has(t.key));
   if (visible.length === 0) return null;
   return (

@@ -42,7 +42,7 @@ export const AuditPane: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-sm font-black text-white uppercase tracking-wider font-mono">Audit Log</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Every AI invocation is logged here — inspect latency, errors, and token usage</p>
+          <p className="text-sm text-slate-400 mt-0.5">Every AI invocation is logged here — inspect latency, errors, and token usage</p>
         </div>
         <div className="flex gap-2 items-center">
           <input value={filterSection} onChange={e => setFilterSection(e.target.value)} placeholder="filter section_key"
@@ -72,25 +72,25 @@ export const AuditPane: React.FC = () => {
             <tbody>
               {items.map(i => (
                 <tr key={i.id} className="border-t border-slate-800/80 hover:bg-slate-950/40">
-                  <td className="px-3 py-2 font-mono text-[10px] text-slate-400">{new Date(i.created_at).toLocaleString()}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-slate-400">{new Date(i.created_at).toLocaleString()}</td>
                   <td className="px-3 py-2">
-                    <div className="font-mono text-slate-200 text-[10px]">{i.section_key}</div>
-                    <div className="text-[9px] text-slate-500">{i.task_type}</div>
+                    <div className="font-mono text-slate-200 text-xs">{i.section_key}</div>
+                    <div className="text-xs text-slate-500">{i.task_type}</div>
                   </td>
                   <td className="px-3 py-2">
-                    <div className="text-[10px] text-slate-300">{i.provider_name || '—'}</div>
-                    <div className="text-[9px] text-slate-500 font-mono">{i.model_name || '—'}</div>
+                    <div className="text-xs text-slate-300">{i.provider_name || '—'}</div>
+                    <div className="text-xs text-slate-500 font-mono">{i.model_name || '—'}</div>
                   </td>
-                  <td className="px-3 py-2 text-[10px] text-slate-300">{i.staff_name || '—'}</td>
-                  <td className="px-3 py-2 text-[10px] font-mono text-slate-400">
+                  <td className="px-3 py-2 text-xs text-slate-300">{i.staff_name || '—'}</td>
+                  <td className="px-3 py-2 text-xs font-mono text-slate-400">
                     {(i.prompt_tokens || 0) + (i.response_tokens || 0)} <span className="text-slate-600">(p:{i.prompt_tokens || 0}, r:{i.response_tokens || 0})</span>
                   </td>
-                  <td className="px-3 py-2 text-[10px] font-mono text-slate-400">{i.latency_ms ? `${i.latency_ms}ms` : '—'}</td>
+                  <td className="px-3 py-2 text-xs font-mono text-slate-400">{i.latency_ms ? `${i.latency_ms}ms` : '—'}</td>
                   <td className="px-3 py-2">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold ${
                       i.status === 'ok' ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-700/40' : 'bg-rose-950/40 text-rose-300 border border-rose-700/40'
                     }`}>{i.status}</span>
-                    {i.error && <div className="text-[9px] text-rose-400 mt-1 max-w-xs truncate" title={i.error}>{i.error}</div>}
+                    {i.error && <div className="text-xs text-rose-400 mt-1 max-w-xs truncate" title={i.error}>{i.error}</div>}
                   </td>
                 </tr>
               ))}

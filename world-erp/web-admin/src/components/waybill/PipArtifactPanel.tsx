@@ -53,7 +53,7 @@ function StatusPill({ status }: { status: string | null }) {
   };
   const cls = map[status ?? ''] ?? 'bg-slate-700 text-slate-200 border-slate-600';
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider ${cls}`}>
+    <span className={`rounded-full border px-2 py-0.5 text-xs font-mono uppercase tracking-wider ${cls}`}>
       {status ?? '—'}
     </span>
   );
@@ -81,9 +81,9 @@ function LinesInline({
       balanced={balanced}
       lineCount={lines.length}
     >
-      <table className="w-full min-w-[420px] border-collapse text-[11px]">
+      <table className="w-full min-w-[420px] border-collapse text-sm">
         <thead>
-          <tr className="text-left font-mono text-[9px] uppercase tracking-widest text-slate-500">
+          <tr className="text-left font-mono text-xs uppercase tracking-widest text-slate-500">
             <th className="border-b border-slate-800/60 px-2 py-1">code</th>
             <th className="border-b border-slate-800/60 px-2 py-1">
               {bi('account', 'ชื่อบัญชี', undefined, locale)}
@@ -150,7 +150,7 @@ export function PipArtifactPanel({
         {artifact?.id ?? '—'}
       </div>
       {artifact?.finalizedAt && (
-        <div className="mt-1 text-[10px] font-mono text-slate-500">
+        <div className="mt-1 text-xs font-mono text-slate-500">
           {bi('finalized', 'บันทึกเมื่อ', undefined, localeSafe)} {finalizedDateLabel}
           {artifact.finalizedByName ? ` · ${artifact.finalizedByName}` : ''}
         </div>
@@ -168,16 +168,16 @@ export function PipArtifactPanel({
         {artifact?.href && (
           <a
             href={artifact.href}
-            className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-[11px] font-mono text-cyan-200 hover:bg-cyan-500/30"
+            className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-sm font-mono text-cyan-200 hover:bg-cyan-500/30"
           >
             Open full →
           </a>
         )}
-        {kind === 'po' && (
+{kind === 'po' && artifact?.href && (
           <a
-            href={`/api/waybill/${_waybillId}/po/file`}
+            href={artifact.href}
             download
-            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[11px] font-mono text-amber-200 hover:bg-amber-500/30"
+            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-sm font-mono text-amber-200 hover:bg-amber-500/30"
           >
             {bi('Download PO', 'ดาวน์โหลด PO', undefined, localeSafe)} ↓
           </a>
@@ -191,14 +191,14 @@ export function PipArtifactPanel({
             <input type="hidden" name="waybillId" value={_waybillId} />
             <button
               type="submit"
-              className="rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 px-3 py-1.5 text-[11px] font-bold text-slate-950 shadow shadow-emerald-500/30 hover:from-emerald-300"
+              className="rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 px-3 py-1.5 text-sm font-bold text-slate-950 shadow shadow-emerald-500/30 hover:from-emerald-300"
             >
               ✓ {approveLabel}
             </button>
           </form>
         )}
         {disabledReason && (
-          <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-[10px] font-mono text-slate-400">
+          <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-xs font-mono text-slate-400">
             {disabledReason}
           </span>
         )}

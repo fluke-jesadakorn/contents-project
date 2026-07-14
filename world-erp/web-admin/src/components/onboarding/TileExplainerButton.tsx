@@ -116,7 +116,7 @@ export const TileExplainerButton: React.FC<TileExplainerButtonProps> = ({
         type="button"
         onClick={run}
         disabled={busy}
-        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-200 border border-indigo-500/30 hover:bg-indigo-500/25 font-bold inline-flex items-center gap-1.5 disabled:opacity-60"
+        className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-200 border border-indigo-500/30 hover:bg-indigo-500/25 font-bold inline-flex items-center gap-1.5 disabled:opacity-60"
       >
         <span>{busy ? '…' : '🔍'}</span>
         <span><T value={busy ? pick('ai.explainer.thinking') : pick('ai.explainer.walkMeThrough')} /></span>
@@ -125,10 +125,10 @@ export const TileExplainerButton: React.FC<TileExplainerButtonProps> = ({
       {open && (
         <div className="absolute left-0 top-full mt-2 w-80 z-50 glass-panel-heavy rounded-2xl border border-indigo-500/30 shadow-2xl shadow-indigo-900/40 p-3 text-left">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-200 min-w-0">
+            <div className="text-xs font-mono font-bold uppercase tracking-wider text-indigo-200 min-w-0">
               <span className="truncate block">🪟 {tileDisplayName}</span>
               {meta?.modelName && (
-                <span className="mt-1 inline-block px-1.5 py-0.5 rounded bg-black/30 text-[9px] font-mono normal-case text-slate-300">
+                <span className="mt-1 inline-block px-1.5 py-0.5 rounded bg-black/30 text-xs font-mono normal-case text-slate-300">
                   {meta.modelName}
                   {meta.latencyMs != null ? ` · ${meta.latencyMs}ms` : ''}
                 </span>
@@ -139,7 +139,7 @@ export const TileExplainerButton: React.FC<TileExplainerButtonProps> = ({
                 type="button"
                 onClick={copy}
                 disabled={!text}
-                className="text-[10px] px-2 py-0.5 rounded bg-black/30 hover:bg-black/50 disabled:opacity-30 font-mono text-slate-200"
+                className="text-xs px-2 py-0.5 rounded bg-black/30 hover:bg-black/50 disabled:opacity-30 font-mono text-slate-200"
               >
                 <T value={copied ? pick('ai.explainer.copied') : pick('ai.explainer.copy')} />
               </button>
@@ -148,7 +148,7 @@ export const TileExplainerButton: React.FC<TileExplainerButtonProps> = ({
                 onClick={close}
                 aria-label={plain('ai.explainer.close')}
                 title={plain('ai.explainer.close')}
-                className="text-[10px] w-5 h-5 inline-flex items-center justify-center rounded bg-black/30 hover:bg-rose-900/60 text-slate-200 font-mono"
+                className="text-xs w-5 h-5 inline-flex items-center justify-center rounded bg-black/30 hover:bg-rose-900/60 text-slate-200 font-mono"
               >
                 ✕
               </button>
@@ -160,22 +160,22 @@ export const TileExplainerButton: React.FC<TileExplainerButtonProps> = ({
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-300 animate-pulse" />
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-300 animate-pulse [animation-delay:120ms]" />
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-300 animate-pulse [animation-delay:240ms]" />
-              <span className="ml-1 text-[10px] font-mono text-slate-400"><T value={pick('ai.explainer.askingCoach')} /></span>
+              <span className="ml-1 text-xs font-mono text-slate-400"><T value={pick('ai.explainer.askingCoach')} /></span>
             </div>
           )}
 
           {!busy && error && (
-            <p className="text-[11px] text-rose-300 font-mono">✗ {error}</p>
+            <p className="text-sm text-rose-300 font-mono">✗ {error}</p>
           )}
 
           {!busy && !error && text && (
-            <p className="text-[12px] whitespace-pre-wrap leading-relaxed text-slate-100 font-sans">
+            <p className="text-xs whitespace-pre-wrap leading-relaxed text-slate-100 font-sans">
               {text}
             </p>
           )}
 
           {!busy && !error && !text && (
-            <p className="text-[11px] text-slate-500 font-mono"><T value={pick('ai.explainer.noResponse')} /></p>
+            <p className="text-sm text-slate-500 font-mono"><T value={pick('ai.explainer.noResponse')} /></p>
           )}
         </div>
       )}

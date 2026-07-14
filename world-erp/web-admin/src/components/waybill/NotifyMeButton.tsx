@@ -4,7 +4,7 @@ import React, { useTransition } from 'react';
 import {
   subscribeWaybillAction,
   unsubscribeWaybillAction,
-} from '@/app/(protected)/waybill/[id]/_actions';
+} from '@/app/actions';
 import { T } from '@/components/i18n/T';
 import { useSecondaryLocale } from '@/components/i18n/SecondaryLocaleProvider';
 
@@ -37,7 +37,7 @@ export function NotifyMeButton({
               ? 'Nur aufgeführte Genehmiger können diese Stufe beobachten'
               : 'Only listed approvers can watch this stage'
         }
-        className="inline-flex items-center gap-1.5 rounded-md border border-slate-700/60 bg-slate-900/40 px-2.5 py-1 text-[11px] font-mono text-slate-500 opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-md border border-slate-700/60 bg-slate-900/40 px-2.5 py-1 text-sm font-mono text-slate-500 opacity-60"
       >
         <span aria-hidden>🔒</span>
         <span>
@@ -71,7 +71,7 @@ export function NotifyMeButton({
         disabled={pending}
         data-testid={`notify-${stageKey}`}
         className={
-          'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-mono transition disabled:opacity-50 ' +
+          'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-mono transition disabled:opacity-50 ' +
           tone
         }
       >

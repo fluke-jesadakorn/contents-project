@@ -19,7 +19,7 @@ import {
 import { AttachmentRow } from './AttachmentRow';
 import { AttachmentUpload } from './AttachmentUpload';
 import type { ApproversByStage } from '@/lib/server/waybill';
-import { approveWaybillAction, confirmGlRecordedAction, finalApproveWaybillAction } from '@/app/(protected)/waybill/[id]/_actions';
+import { approveWaybillAction, confirmGlRecordedAction, finalApproveWaybillAction } from '@/app/actions';
 import { SettleForm } from '@/app/(protected)/waybill/[id]/_components/SettleForm';
 import type { VisionModel } from '@/lib/ai/loadVisionModels';
 import { roleDisplay, eventKindLabel } from './ui';
@@ -145,8 +145,8 @@ export function WaybillTimelineBigPicture({
   canConfirmGl = false,
   hasGlConfirmed = false,
 }: WaybillTimelineBigPictureProps) {
-  const _localeSafe: SecondaryLocale = locale ?? 'th';
-  void _localeSafe;
+  const localeSafe: SecondaryLocale = locale ?? 'th';
+  void localeSafe;
   const pips = pipsForDomain(domain);
   const curIdx = pipIndex(domain, currentStage);
   const isRejected = status === 'rejected' || currentStage === 'rejected';
@@ -163,7 +163,7 @@ export function WaybillTimelineBigPicture({
 
   return (
     <section
-      aria-label={<Bilingual en="Waybill pipeline (full)" th="ไปป์ไลน์ Waybill (แบบเต็ม)" locale={locale} />}
+      aria-label={localeSafe === 'de' ? 'Waybill-Pipeline (vollständig)' : 'ไปป์ไลน์ Waybill (แบบเต็ม)'}
       className="space-y-4 font-sans"
     >
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -175,7 +175,7 @@ export function WaybillTimelineBigPicture({
             <span className="text-base font-bold text-white sm:text-lg">
               {domain === 'procurement' ? 'Procurement Pipeline' : 'Expense Pipeline'}
             </span>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+            <span className="text-xs font-mono uppercase tracking-widest text-slate-500">
               {<Bilingual en="bottom → top (approval order)" th="ล่าง→บน (ลำดับอนุมัติ)" locale={locale} />}
             </span>
           </div>
@@ -222,7 +222,7 @@ export function WaybillTimelineBigPicture({
                 canSettle={isCurrentStage && canSettle && !isRejected}
                 canFinalApprove={isCurrentStage && canFinalApprove && !isRejected}
                 originId={originId}
-                locale={locale}
+                locale={localeSafe}
                 approvers={approversByStage[pip.key] ?? []}
                 currentUserId={currentUserId}
                 visionModels={visionModels}
@@ -322,20 +322,20 @@ function StepCard({
           <h3 className={'text-base font-bold leading-tight sm:text-lg ' + tone.title}>
             <Bilingual en={pip.en} th={pip.th} de={pip.de} locale={locale} />
           </h3>
-          <span className="font-mono text-[10px] uppercase tracking-wider text-slate-500">
+          <span className="font-mono text-xs uppercase tracking-wider text-slate-500">
             #{pipIndexN + 1}
           </span>
         </Link>
         <span
-          className={'ml-auto inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ' + tone.badge}
+          className={'ml-auto inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ' + tone.badge}
         >
           <Bilingual en={PIP_BADGE_EN[state]} th={PIP_BADGE_TH[state]} de={PIP_BADGE_DE[state]} locale={locale} />
         </span>
-        <span className="rounded-md border border-slate-700/60 bg-slate-900/60 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-slate-400">
+        <span className="rounded-md border border-slate-700/60 bg-slate-900/60 px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-slate-400">
           {bucketKind}
         </span>
         {roleText && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/40 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-cyan-200">
+          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/40 bg-cyan-500/15 px-2 py-0.5 text-xs font-mono font-bold uppercase tracking-widest text-cyan-200">
             <span className="text-cyan-300/80">role:</span>
             <span className="text-cyan-100">{roleText}</span>
           </span>
@@ -626,7 +626,7 @@ function ActionPromptBlock({
                     <span aria-hidden className="text-2xl">✓</span>
                     <span>{<Bilingual en="Final approve" th="อนุมัติขั้นสุดท้าย" locale={locale} />}</span>
                   </span>
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-950/70 group-hover:text-emerald-950">
+                  <span className="text-xs font-mono uppercase tracking-widest text-emerald-950/70 group-hover:text-emerald-950">
                     {<Bilingual en="→ posts to GL" th="→ บันทึกบัญชี (GL)" locale={locale} />}
                   </span>
                 </button>
@@ -640,7 +640,7 @@ function ActionPromptBlock({
                   <span aria-hidden className="text-2xl">✗</span>
                   <span>{<Bilingual en="Final reject" th="ปฏิเสธขั้นสุดท้าย" locale={locale} />}</span>
                 </span>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-rose-950/70 group-hover:text-rose-950">
+                <span className="text-xs font-mono uppercase tracking-widest text-rose-950/70 group-hover:text-rose-950">
                   {<Bilingual en="→ no GL post" th="→ ไม่บันทึกบัญชี" locale={locale} />}
                 </span>
               </Link>

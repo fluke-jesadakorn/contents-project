@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadActor } from '@/lib/server/guard';
-import { matchPerm } from "-lib/perm";
+import { matchPerm } from '@erp-lib/perm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

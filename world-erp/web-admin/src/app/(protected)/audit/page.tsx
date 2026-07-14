@@ -77,7 +77,7 @@ export default async function AuditPage() {
     const auditTitle = getTextServer(hrDict, 'hr.audit', 'th');
     return (
       <PageLayout title={<T value={auditTitle} />} subtitle="Audit log feed">
-        <div className="text-rose-400 text-sm">Audit tile is not configured. Run db/rbac/0011_rename_tiles.sql.</div>
+        <div className="text-rose-400 text-sm">Audit tile is not configured.</div>
       </PageLayout>
     );
   }

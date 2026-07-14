@@ -25,7 +25,7 @@ export function SparklineTrends({ cash, mtd }: SparklineTrendsProps) {
   if (data.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-        <p className="text-[10px] font-mono text-slate-500">
+        <p className="text-xs font-mono text-slate-500">
           <T
             value={{
               en: 'No snapshots yet — run bun run snapshot-exec to seed.',
@@ -45,13 +45,13 @@ export function SparklineTrends({ cash, mtd }: SparklineTrendsProps) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] font-mono text-slate-400">
+        <div className="text-xs font-mono text-slate-400">
           {data.length}{' '}
           <T value={data.length === 1 ? { en: 'day', th: 'วัน', de: 'Tag' } : { en: 'days', th: 'วัน', de: 'Tage' }} />{' '}
           · last {data.length - 1} delta
         </div>
         <div
-          className={`text-[11px] font-mono font-bold ${cashDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+          className={`text-sm font-mono font-bold ${cashDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
         >
           {cashDelta >= 0 ? '↑' : '↓'} {Math.abs(cashDelta).toLocaleString()} THB
         </div>
@@ -94,7 +94,7 @@ export function SparklineTrends({ cash, mtd }: SparklineTrendsProps) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex items-center gap-4 mt-2 text-[10px] font-mono text-slate-400">
+      <div className="flex items-center gap-4 mt-2 text-xs font-mono text-slate-400">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-0.5 bg-indigo-400" />
           <T value={{ en: 'Cash', th: 'เงินสด', de: 'Bargeld' }} />

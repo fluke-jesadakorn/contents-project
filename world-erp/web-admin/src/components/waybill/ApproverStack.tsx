@@ -30,7 +30,7 @@ export function ApproverStack({ approvers }: Props) {
             align="end"
             content={
               <div className="min-w-[220px] space-y-1.5">
-                <div className="border-b border-slate-700/60 pb-1 text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                <div className="border-b border-slate-700/60 pb-1 text-xs font-mono uppercase tracking-widest text-slate-400">
                   +{overflow.length}{' '}
                   approver{overflow.length === 1 ? '' : 's'}
                 </div>
@@ -42,15 +42,15 @@ export function ApproverStack({ approvers }: Props) {
                     return (
                       <li key={`o-${a.user_id}`} className="flex items-center gap-2">
                         <span
-                          className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[9px] font-bold ring-1 ring-slate-700/60 ${roleAccent(a.role_id)}`}
+                          className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold ring-1 ring-slate-700/60 ${roleAccent(a.role_id)}`}
                         >
                           {initialsOf(a.fullname)}
                         </span>
                         <div className="min-w-0 flex-1 leading-tight">
-                          <div className="truncate text-[11px] font-semibold text-slate-100">
+                          <div className="truncate text-sm font-semibold text-slate-100">
                             {a.fullname}
                           </div>
-                          <div className="truncate text-[10px] text-slate-400">
+                          <div className="truncate text-xs text-slate-400">
                             {line}
                           </div>
                         </div>
@@ -64,7 +64,7 @@ export function ApproverStack({ approvers }: Props) {
             <span
               tabIndex={0}
               aria-label={`+${overflow.length} more approvers`}
-              className="grid h-10 w-10 shrink-0 cursor-default place-items-center rounded-full bg-slate-800 text-[11px] font-bold text-slate-300 ring-2 ring-slate-950 transition hover:bg-slate-700 hover:ring-slate-700 focus:outline-none focus:ring-slate-700"
+              className="grid h-10 w-10 shrink-0 cursor-default place-items-center rounded-full bg-slate-800 text-sm font-bold text-slate-300 ring-2 ring-slate-950 transition hover:bg-slate-700 hover:ring-slate-700 focus:outline-none focus:ring-slate-700"
             >
               +{overflow.length}
             </span>

@@ -37,7 +37,7 @@ export function Bilingual({
       <span className="font-bold">{en}</span>
       <span
         className={
-          secondaryClassName ?? 'ml-2 text-[11px] opacity-70 font-normal text-slate-500'
+          secondaryClassName ?? 'ml-2 text-sm opacity-70 font-normal text-slate-500'
         }
       >
         · {secondary}

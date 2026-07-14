@@ -44,21 +44,21 @@ export function WaybillAuditSection({
               <span className="text-base font-bold text-white">
                 <Bilingual en="Audit log" th="บันทึกตรวจสอบ" locale={localeSafe} /> ({events.length})
               </span>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+              <span className="font-mono text-xs uppercase tracking-widest text-slate-500">
                 {subtitle}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {integrity.ok ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-mono font-bold uppercase text-emerald-200">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-xs font-mono font-bold uppercase text-emerald-200">
                 <span aria-hidden>✓</span>
                 <span>
                   <Bilingual en="HMAC chain verified" th="ลายเซ็นถูกต้อง" locale={localeSafe} />
                 </span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/50 bg-rose-500/15 px-2.5 py-1 text-[10px] font-mono font-bold uppercase text-rose-200">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/50 bg-rose-500/15 px-2.5 py-1 text-xs font-mono font-bold uppercase text-rose-200">
                 <span aria-hidden>⚠</span>
                 <span>
                   <Bilingual en="integrity failed" th="ลายเซ็นผิด" locale={localeSafe} />
@@ -66,10 +66,10 @@ export function WaybillAuditSection({
                 </span>
               </span>
             )}
-            <span className="font-mono text-[10px] uppercase tracking-wider text-slate-500 group-open:hidden">
+            <span className="font-mono text-xs uppercase tracking-wider text-slate-500 group-open:hidden">
               ▶
             </span>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-slate-500 hidden group-open:inline">
+            <span className="font-mono text-xs uppercase tracking-wider text-slate-500 hidden group-open:inline">
               ▼
             </span>
           </div>
@@ -77,7 +77,7 @@ export function WaybillAuditSection({
       </summary>
 
       <div className="border-t border-slate-800/60 px-4 py-4">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+        <p className="font-mono text-xs uppercase tracking-widest text-slate-500">
           waybill: <span className="text-cyan-300">{waybillId}</span> ·{' '}
           <Bilingual en="events total" th="เหตุการณ์ทั้งหมด" locale={localeSafe} /> {integrity.total}
         </p>
@@ -89,7 +89,7 @@ export function WaybillAuditSection({
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-xs">
               <thead>
-                <tr className="text-left font-mono text-[10px] uppercase tracking-widest text-slate-500">
+                <tr className="text-left font-mono text-xs uppercase tracking-widest text-slate-500">
                   <th className="border-b border-slate-800/60 px-2 py-1.5">#</th>
                   <th className="border-b border-slate-800/60 px-2 py-1.5">
                     <Bilingual en="kind" th="ชนิด" locale={localeSafe} />
@@ -151,7 +151,7 @@ export function WaybillAuditSection({
                           <summary className="cursor-pointer text-cyan-300 hover:text-cyan-200">
                             <Bilingual en="expand" th="ขยาย" locale={localeSafe} />
                           </summary>
-                          <pre className="mt-1 max-w-md overflow-x-auto whitespace-pre-wrap break-all rounded bg-slate-950 p-2 text-[10px] text-slate-300">
+                          <pre className="mt-1 max-w-md overflow-x-auto whitespace-pre-wrap break-all rounded bg-slate-950 p-2 text-xs text-slate-300">
                             {payloadStringify(e.payload)}
                           </pre>
                         </details>

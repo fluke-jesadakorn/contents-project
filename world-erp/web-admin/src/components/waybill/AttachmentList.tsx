@@ -49,9 +49,9 @@ export function AttachmentList({
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-white">
           📎 Attachments
-          <span className="ml-2 font-mono text-[10px] text-slate-400">{total} total</span>
+          <span className="ml-2 font-mono text-xs text-slate-400">{total} total</span>
         </h3>
-        <div className="text-[10px] font-mono text-slate-500">
+        <div className="text-xs font-mono text-slate-500">
           current stage: {currentStage}
         </div>
       </header>
@@ -78,11 +78,11 @@ export function AttachmentList({
             <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-xs">
               <span className="font-bold text-white">
                 {stageHeading}
-                <span className="ml-2 font-mono text-[10px] text-slate-500">
+                <span className="ml-2 font-mono text-xs text-slate-500">
                   ({items.length} file{items.length === 1 ? '' : 's'})
                 </span>
               </span>
-              <span className="font-mono text-[10px] text-slate-500">
+              <span className="font-mono text-xs text-slate-500">
                 {isCurrent ? '★ current' : fmtTime(items[0]?.occurred_at ?? new Date())}
               </span>
             </summary>

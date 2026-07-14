@@ -109,7 +109,7 @@ export function AiSummaryCharts({ actor, brief, stuck, locale = 'th' }: AiSummar
         <div className="flex items-center gap-2">
           {mode === 'loaded' && (
             <>
-              <span className="text-[10px] font-mono text-slate-500">
+              <span className="text-xs font-mono text-slate-500">
                 {meta.modelName ? `${meta.modelName}` : ''}{meta.latencyMs != null ? ` · ${meta.latencyMs}ms` : ''}
               </span>
               <button
@@ -163,7 +163,7 @@ export function AiSummaryCharts({ actor, brief, stuck, locale = 'th' }: AiSummar
       )}
 
       {mode === 'idle' && collapsed && (
-        <div className="text-[10px] font-mono text-slate-500">
+        <div className="text-xs font-mono text-slate-500">
           <T value={{ en: 'Summary hidden. Click Expand to view again.', th: 'ซ่อนสรุปไว้ กดขยายเพื่อดูอีกครั้ง', de: 'Zusammenfassung ausgeblendet. Auf Ausklappen klicken, um sie erneut anzuzeigen.' }} />
         </div>
       )}
@@ -193,7 +193,7 @@ export function AiSummaryCharts({ actor, brief, stuck, locale = 'th' }: AiSummar
             </div>
           )}
           {charts.length === 0 && (
-            <div className="text-[10px] font-mono text-slate-500">
+            <div className="text-xs font-mono text-slate-500">
               <T value={{ en: 'No charts returned by the model.', th: 'โมเดลไม่ส่งแผนภูมิกลับมา', de: 'Modell hat keine Diagramme zurückgegeben.' }} />
             </div>
           )}

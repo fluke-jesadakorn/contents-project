@@ -136,12 +136,12 @@ export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
                 />
                 {state.opts.minLength != null && (
-                  <p className="text-[10px] text-slate-500 mt-1 font-mono">
+                  <p className="text-xs text-slate-500 mt-1 font-mono">
                     Min {state.opts.minLength} characters
                   </p>
                 )}
                 {err && (
-                  <p className="text-[10px] text-rose-300 mt-1 font-mono">{err}</p>
+                  <p className="text-xs text-rose-300 mt-1 font-mono">{err}</p>
                 )}
               </div>
             )}

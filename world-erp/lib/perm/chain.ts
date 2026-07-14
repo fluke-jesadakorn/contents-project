@@ -51,6 +51,7 @@ export interface ActorCtx {
   userId: number;
   roleId: string;
   deptId: string | null;
+  deptGroupId?: string | null;
   level: number;
 }
 
@@ -213,18 +214,18 @@ export function resolveNextStage(
   _actorRole: string,
   _amount?: number,
   domain?: 'expense' | 'procurement' | 'sales',
-): string | null {
+): { stage: string; completed: boolean } | null {
   if (domain === 'sales') {
     const salesOrder = ['so_draft', 'so_sales_review', 'so_credit_check', 'so_invoiced', 'so_paid'];
     const idx = salesOrder.indexOf(currentStage);
     if (idx < 0 || idx >= salesOrder.length - 1) return null;
-    return salesOrder[idx + 1];
+    return { stage: salesOrder[idx + 1], completed: false };
   }
   const norm = normalizeStage(currentStage);
   if (!norm) return null;
   const idx = STAGE_ORDER.indexOf(norm);
-  if (idx < 0 || idx >= STAGE_ORDER.length - 1) return 'awaiting_disbursement';
-  return STAGE_ORDER[idx + 1];
+  if (idx < 0 || idx >= STAGE_ORDER.length - 1) return { stage: 'awaiting_disbursement', completed: true };
+  return { stage: STAGE_ORDER[idx + 1], completed: false };
 }
 
 export function isFinalApprovalStage(stage: string): boolean {

@@ -7,7 +7,7 @@ import {
   allowedKindsFor,
   type WaybillAttachmentKind,
 } from '@erp-lib/waybill/kinds';
-import { attachWaybillDocumentAction } from '@/app/(protected)/waybill/[id]/_actions';
+import { attachWaybillDocumentAction } from '@/app/actions';
 
 interface Props {
   waybillId: string;
@@ -113,7 +113,7 @@ export function AttachmentUpload({ waybillId, stage }: Props) {
       onSubmit={(e) => void onUpload(e)}
       className="rounded-2xl border border-cyan-500/30 bg-cyan-950/15 p-3"
     >
-      <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-cyan-300">
+      <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-cyan-300">
         <span>📤</span>
         <span>
           Attach document · stage: {stage}
@@ -123,7 +123,7 @@ export function AttachmentUpload({ waybillId, stage }: Props) {
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <div className="space-y-1">
-          <label className="text-[10px] font-mono text-slate-400">File (≤ 50 MB)</label>
+          <label className="text-xs font-mono text-slate-400">File (≤ 50 MB)</label>
           <input
             ref={fileRef}
             type="file"
@@ -133,14 +133,14 @@ export function AttachmentUpload({ waybillId, stage }: Props) {
             className="block w-full rounded border border-slate-800 bg-slate-950 p-2 text-xs text-white file:mr-2 file:rounded file:border-0 file:bg-cyan-500/30 file:px-3 file:py-1 file:text-cyan-100"
           />
           {filename && (
-            <div className="text-[10px] font-mono text-slate-500">
+            <div className="text-xs font-mono text-slate-500">
               {filename} · {byteSize ? `${(byteSize / 1024).toFixed(1)} KB` : ''}
             </div>
           )}
         </div>
 
         <div className="grid gap-2">
-          <label className="text-[10px] font-mono text-slate-400">Kind</label>
+          <label className="text-xs font-mono text-slate-400">Kind</label>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as WaybillAttachmentKind)}
@@ -167,13 +167,13 @@ export function AttachmentUpload({ waybillId, stage }: Props) {
       </div>
 
       {error && (
-        <div className="mt-2 rounded border border-rose-500/40 bg-rose-950/40 p-2 text-[11px] text-rose-200">
+        <div className="mt-2 rounded border border-rose-500/40 bg-rose-950/40 p-2 text-sm text-rose-200">
           ⚠ {error}
         </div>
       )}
 
       <div className="mt-3 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-mono text-slate-500">
+        <span className="text-xs font-mono text-slate-500">
           {allowed.length} kind{allowed.length === 1 ? '' : 's'} allowed at this stage
         </span>
         <button

@@ -100,19 +100,19 @@ export function ZoneSection({
           {icon}
         </span>
         <span
-          className={`text-[10px] font-mono uppercase tracking-widest ${t.label}`}
+          className={`text-xs font-mono uppercase tracking-widest ${t.label}`}
         >
           {label}
         </span>
         {displayCount !== undefined && (
           <span
-            className={`ml-1 inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-mono font-bold ${t.count}`}
+            className={`ml-1 inline-flex items-center rounded-full border px-1.5 py-0.5 text-xs font-mono font-bold ${t.count}`}
           >
             {displayCount}
           </span>
         )}
         {meta && (
-          <span className="ml-auto truncate text-[10px] font-mono text-slate-500">
+          <span className="ml-auto truncate text-xs font-mono text-slate-500">
             {meta}
           </span>
         )}
