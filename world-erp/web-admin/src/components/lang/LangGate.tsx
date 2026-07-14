@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { LangPicker, setLang } from './LangPicker';
-
-const STORAGE_KEY = 'worderp.lang';
+import { LangPicker, setLang, STORAGE_KEY } from './LangPicker';
 
 export function LangGate() {
   const [open, setOpen] = useState(false);

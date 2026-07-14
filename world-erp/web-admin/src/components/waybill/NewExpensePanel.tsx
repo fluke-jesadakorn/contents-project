@@ -1,21 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import {
   SlipUpload,
   type BookBankFields,
-  type SlipDraftFields,
-  type SlipKind,
-  type SlipUploadHandle,
   type SubmitState,
 } from '@/components/SlipUpload';
 import type { VisionModel } from '@/lib/ai/loadVisionModels';
-import {
-  startExpenseDraft,
-  saveDraftExpense,
-  discardDraftExpense,
-} from '@/app/actions';
+import { submitExpenseFromSlip } from '@/app/actions';
 import { StepCard, StepBadge } from '@/components/StepCard';
 import { useSecondaryLocale } from '@/components/i18n/SecondaryLocaleProvider';
 import { Bilingual } from '@/components/i18n/Bilingual';
@@ -24,12 +16,6 @@ import { NewWaybillPanel } from './NewWaybillPanel';
 interface Props {
   currentUserId: number;
   initialModels: VisionModel[];
-  initialDraft?: {
-    waybillId: string;
-    expenseId: number;
-    savedAt?: string | null;
-    parsed?: SlipDraftFields | null;
-  } | null;
 }
 
 const EMPTY_BANK: BookBankFields = {
@@ -39,26 +25,15 @@ const EMPTY_BANK: BookBankFields = {
   accountName: '',
 };
 
-const AUTOSAVE_DEBOUNCE_MS = 10_000;
-
-export function NewExpensePanel({ currentUserId, initialModels, initialDraft }: Props) {
+export function NewExpensePanel({ currentUserId, initialModels }: Props) {
   const locale = useSecondaryLocale();
   const [payment, setPayment] = useState<'cash' | 'credit_card' | 'transfer'>('cash');
   const [bookBankSlipId, setBookBankSlipId] = useState<number | null>(null);
   const [bookBankFields, setBookBankFields] = useState<BookBankFields>(EMPTY_BANK);
   const [submitState, setSubmitState] = useState<SubmitState | null>(null);
-  const [draftWaybillId, setDraftWaybillId] = useState<string | null>(initialDraft?.waybillId ?? null);
-  const [draftExpenseId, setDraftExpenseId] = useState<number | null>(initialDraft?.expenseId ?? null);
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialDraft?.savedAt ?? null);
-  const [autosavePending, setAutosavePending] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const receiptRef = useRef<SlipUploadHandle>(null);
-  const router = useRouter();
-  const lastParsedRef = useRef<SlipDraftFields | null>(initialDraft?.parsed ?? null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const draftRef = useRef({ waybillId: draftWaybillId, expenseId: draftExpenseId });
-  draftRef.current = { waybillId: draftWaybillId, expenseId: draftExpenseId };
+  void submitExpenseFromSlip;
 
   const parsed = submitState?.parsed ?? null;
   const receiptSlipId = submitState?.slipId ?? null;
@@ -71,7 +46,7 @@ export function NewExpensePanel({ currentUserId, initialModels, initialDraft }: 
       bookBankFields.bankName.length > 0 &&
       bookBankFields.accountNumber.length > 0 &&
       bookBankFields.accountName.length > 0);
-  const canSubmitAll = receiptReady && bookBankReady && !submitState?.confirming;
+  const canSubmitAll = receiptReady && bookBankReady && !submitting;
 
   const steps = [
     {
@@ -96,164 +71,52 @@ export function NewExpensePanel({ currentUserId, initialModels, initialDraft }: 
 
   const completedCount = steps.filter((s) => s.done).length;
 
-  useEffect(() => {
-    if (!parsed) {
-      lastParsedRef.current = null;
-      return;
-    }
-    const prev = lastParsedRef.current;
-    const changed =
-      !prev ||
-      prev.vendorName !== parsed.vendorName ||
-      prev.vendorAddress !== parsed.vendorAddress ||
-      prev.createdTo !== parsed.createdTo ||
-      prev.createdToAddress !== parsed.createdToAddress ||
-      prev.transactionDate !== parsed.transactionDate ||
-      prev.paymentMethod !== parsed.paymentMethod ||
-      prev.subtotal !== parsed.subtotal ||
-      prev.vatAmount !== parsed.vatAmount ||
-      prev.totalAmount !== parsed.totalAmount;
-    if (!changed) return;
-    lastParsedRef.current = parsed;
-
-    if (!draftRef.current.waybillId) return;
-
-    const timer = setTimeout(async () => {
-      setAutosavePending(true);
-      const r = await saveDraftExpense({
-        waybillId: draftRef.current.waybillId!,
-        actorId: currentUserId,
-        payload: {
-          vendorName: parsed.vendorName,
-          vendorAddress: parsed.vendorAddress,
-          createdTo: parsed.createdTo,
-          createdToAddress: parsed.createdToAddress,
-          transactionDate: parsed.transactionDate,
-          subtotal: parsed.subtotal,
-          vatAmount: parsed.vatAmount,
-          totalAmount: parsed.totalAmount,
-          paymentMethod: parsed.paymentMethod,
-        },
-      });
-      setAutosavePending(false);
-      if (r.ok && r.savedAt) setLastSavedAt(r.savedAt);
-    }, AUTOSAVE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [parsed, currentUserId]);
-
-  useEffect(() => {
-    return () => {
-      const waybillId = draftRef.current.waybillId;
-      if (!waybillId) return;
-      const fd = new FormData();
-      fd.set('waybillId', waybillId);
-      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-        navigator.sendBeacon('/api/discard-draft', fd);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!receiptSlipId || draftWaybillId) return;
-    let cancelled = false;
-    (async () => {
-      const r = await startExpenseDraft(currentUserId);
-      if (cancelled || !r || !r.waybillId) return;
-      setDraftWaybillId(r.waybillId);
-      setDraftExpenseId(r.expenseId ?? null);
-      setLastSavedAt(new Date().toISOString());
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [receiptSlipId, draftWaybillId, currentUserId]);
-
-  function onBookBankReady(slipId: number, kind: SlipKind) {
-    if (kind !== 'book_bank') return;
-    setBookBankSlipId(slipId);
-  }
-
-  function onBookBankDiscarded(slipId: number, kind: SlipKind) {
-    if (kind !== 'book_bank') return;
-    if (bookBankSlipId === slipId) {
-      setBookBankSlipId(null);
-      setBookBankFields(EMPTY_BANK);
-    }
-  }
-
   async function handleSubmitAll() {
-    setSubmitError(null);
-    if (!receiptRef.current) return;
-    try {
-      await receiptRef.current.submit();
-    } catch (e: any) {
-      setSubmitError(e?.message ?? 'Submit failed · ส่งไม่สำเร็จ');
-    }
-  }
-
-  async function handleDiscard() {
-    if (!draftWaybillId) return;
-    const msg = 'Discard this draft? The waybill ID and any uploaded slips will be removed. · ลบร่างนี้? รหัส Waybill และสลิปที่อัปโหลดจะถูกลบ';
-    if (!confirm(msg)) return;
-    setDiscarding(true);
-    const r = await discardDraftExpense({ waybillId: draftWaybillId, actorId: currentUserId });
-    setDiscarding(false);
-    if (!r.ok) {
-      const errMsg = r.error ?? 'Could not discard draft · ลบร่างไม่สำเร็จ';
-      alert(errMsg);
-      return;
-    }
-    setDraftWaybillId(null);
-    setDraftExpenseId(null);
-    setLastSavedAt(null);
-    lastParsedRef.current = null;
-    router.refresh();
+    if (!receiptSlipId) return;
+    setSubmitting(true);
+    await submitExpenseFromSlip({
+      slipId: receiptSlipId,
+      actorId: currentUserId,
+      overrides: needsBookBank && bookBankSlipId
+        ? {
+            paymentMethod: 'transfer',
+            bookBankSlipId,
+            bookBankFields,
+          }
+        : { paymentMethod: payment },
+    });
+    setSubmitting(false);
   }
 
   const hint = (
-    <>
-      <Bilingual
-        en="Upload a receipt → AI reads the slip → pick a payment method → submit for approval. About 1–2 minutes."
-        th="อัพโหลดใบเสร็จ → AI อ่านสลิป → เลือกวิธีชำระ → ส่งเพื่ออนุมัติ ใช้เวลาประมาณ 1–2 นาที"
-        locale={locale}
-      />
-      {draftWaybillId && (
-        <span className="ml-2 text-xs font-mono text-mute" data-testid="autosave-status">
-          {autosavePending
-            ? '· saving… · กำลังบันทึก…'
-            : lastSavedAt
-              ? `· saved · บันทึกเมื่อ`
-              : '· unsaved · ยังไม่บันทึก'}
-        </span>
-      )}
-    </>
+    <Bilingual
+      en="Upload a receipt → AI reads the slip → pick a payment method → submit for approval. About 1–2 minutes."
+      th="อัพโหลดใบเสร็จ → AI อ่านสลิป → เลือกวิธีชำระ → ส่งเพื่ออนุมัติ ใช้เวลาประมาณ 1–2 นาที"
+      locale={locale}
+    />
   );
 
-  const submitLabel = submitState?.confirming
+  const submitLabel = submitting
     ? <Bilingual en="⏳ Saving…" th="⏳ กำลังบันทึก…" locale={locale} />
     : canSubmitAll
       ? <Bilingual en="✓ Submit expense for approval" th="✓ ส่งค่าใช้จ่ายเพื่ออนุมัติ" locale={locale} />
       : <Bilingual en="🔒 Submit (disabled)" th="🔒 ส่ง (ปิดอยู่)" locale={locale} />;
 
-  const discardLabel = discarding
-    ? 'Discarding… · กำลังลบ…'
-    : '🗑 Discard draft · 🗑 ลบร่าง';
-
   return (
     <NewWaybillPanel
       domain="expense"
       currentUserId={currentUserId}
-      initialDraft={initialDraft ?? null}
+      initialDraft={null}
       title=""
       titleTh=""
-      discardLabel={discardLabel}
+      discardLabel={null}
       submitLabel={submitLabel}
       readyToSubmit={canSubmitAll}
-      submitting={submitState?.confirming ?? false}
+      submitting={submitting}
       onSubmit={handleSubmitAll}
-      onDiscard={handleDiscard}
+      onDiscard={() => {}}
       hint={hint}
-      draftWaybillId={draftWaybillId}
+      draftWaybillId={null}
     >
       <ol
         className="grid grid-cols-1 sm:grid-cols-3 gap-2"
@@ -322,7 +185,6 @@ export function NewExpensePanel({ currentUserId, initialModels, initialDraft }: 
               Receipt · ใบเสร็จ
             </h4>
             <SlipUpload
-              ref={receiptRef}
               kind="receipt"
               currentUserId={currentUserId}
               initialModels={initialModels}
@@ -331,14 +193,10 @@ export function NewExpensePanel({ currentUserId, initialModels, initialDraft }: 
               onPaymentChange={setPayment}
               onSubmitStateChange={setSubmitState}
               hideSubmitButton
-              draftWaybillId={draftWaybillId}
+              draftWaybillId={null}
               onConfirmed={({ expenseId, waybillId }) => {
-                const target = waybillId ?? draftWaybillId ?? draftRef.current.waybillId;
-                if (target) {
-                  router.push(`/waybill/${target}`);
-                } else {
-                  router.push(`/waybill/by-expense/${expenseId}`);
-                }
+                if (waybillId) window.location.assign(`/waybill/${waybillId}`);
+                else if (expenseId) window.location.assign(`/waybill/by-expense/${expenseId}`);
               }}
             />
           </div>
@@ -357,8 +215,15 @@ export function NewExpensePanel({ currentUserId, initialModels, initialDraft }: 
                 kind="book_bank"
                 currentUserId={currentUserId}
                 initialModels={initialModels}
-                onSlipReady={onBookBankReady}
-                onSlipDiscarded={onBookBankDiscarded}
+                onSlipReady={(slipId, kind) => {
+                  if (kind === 'book_bank') setBookBankSlipId(slipId);
+                }}
+                onSlipDiscarded={(slipId, kind) => {
+                  if (kind === 'book_bank' && bookBankSlipId === slipId) {
+                    setBookBankSlipId(null);
+                    setBookBankFields(EMPTY_BANK);
+                  }
+                }}
                 onBookBankFieldsChange={setBookBankFields}
                 hideSubmitButton
               />
@@ -366,12 +231,6 @@ export function NewExpensePanel({ currentUserId, initialModels, initialDraft }: 
           )}
         </div>
       </StepCard>
-
-      {submitError && (
-        <p className="glass-tint-critical mt-3 rounded-md px-3 py-2 text-sm text-critical">
-          ⚠ {submitError}
-        </p>
-      )}
     </NewWaybillPanel>
   );
 }

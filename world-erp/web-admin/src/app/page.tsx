@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { getActor } from '@/lib/server/actor';
 import { matchPerm } from '@erp-lib/perm/server';
 import { SignInPanel } from '@/components/SignInPanel';
+import { LayOut } from '@/components/LayOut';
 import { HomeTilesFetcher } from './(protected)/_components/HomeTilesFetcher';
 import { HomeTilesFallback } from './(protected)/_components/HomeTilesFallback';
 
@@ -19,13 +20,15 @@ export default async function TilesPage() {
   const canViewHub = true;
 
   return (
-    <Suspense fallback={<HomeTilesFallback />}>
-      <HomeTilesFetcher
-        actor={actor as any}
-        canViewHub={canViewHub}
-        canViewPolicy={canViewPolicy}
-        canViewExec={canViewExec}
-      />
-    </Suspense>
+    <LayOut>
+      <Suspense fallback={<HomeTilesFallback />}>
+        <HomeTilesFetcher
+          actor={actor as any}
+          canViewHub={canViewHub}
+          canViewPolicy={canViewPolicy}
+          canViewExec={canViewExec}
+        />
+      </Suspense>
+    </LayOut>
   );
 }

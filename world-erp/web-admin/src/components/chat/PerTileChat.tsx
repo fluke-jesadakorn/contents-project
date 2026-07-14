@@ -1,10 +1,8 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import { ChartRenderer } from './ChartRenderer';
-import { ExtractApplyButton } from './ExtractApplyButton';
 import { PinToCockpitButton } from './PinToCockpitButton';
 import { parseChartBlocks, type ChartSpec } from './chartContract';
-import { parseExtractBlocks, type ExtractFields } from './extractContract';
 import { QUICK_PROMPTS } from './quickPrompts';
 import { useT } from '@/components/i18n/useT';
 import { T, interpolate } from '@/components/i18n/T';
@@ -156,7 +154,7 @@ export function PerTileChat({
     }
 
     const { plain, charts } = parseChartBlocks(msg.content);
-    const { extracts } = parseExtractBlocks(plain);
+    const extracts: never[] = [];
 
     return (
       <div key={idx} className={`flex flex-col ${align} max-w-[92%]`}>
@@ -172,14 +170,11 @@ export function PerTileChat({
               )}
             </React.Fragment>
           ))}
-          {tileId === 'expense' &&
-            extracts.map((ex: ExtractFields, ei: number) => (
-              <ExtractApplyButton
-                key={ei}
-                waybillId={expenseDraftId}
-                fields={ex}
-              />
-            ))}
+          {tileId === 'expense' && extracts.length > 0 && (
+            <div className="mt-2 text-xs font-mono text-amber-300/80">
+              (legacy extract fields — submit slip OCR instead)
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-1 px-1">
           <button

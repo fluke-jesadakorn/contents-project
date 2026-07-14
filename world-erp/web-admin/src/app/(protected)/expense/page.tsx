@@ -241,17 +241,6 @@ export default async function ExpenseInboxPage({ searchParams }: PageProps) {
             <NewExpensePanel
               currentUserId={actor.id}
               initialModels={await loadVisionModels()}
-              initialDraft={
-                activeDraft
-                  ? {
-                      waybillId: activeDraft.waybill_id,
-                      expenseId: activeDraft.expense_id,
-                      savedAt: activeDraft.draft_updated_at
-                        ? new Date(activeDraft.draft_updated_at).toISOString()
-                        : null,
-                    }
-                  : null
-              }
             />
           </div>
         )}

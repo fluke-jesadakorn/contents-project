@@ -5,6 +5,7 @@ import { matchPerm } from '@erp-lib/perm/server';
 import { loadActor } from '@/lib/server/guard';
 import { ActorProvider, type ActorSnapshot } from '@/components/ActorProvider';
 import { OnboardingOverlay } from '@/components/onboarding/OnboardingOverlay';
+import { LayOut } from '@/components/LayOut';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   return (
     <ActorProvider value={snapshot}>
       <OnboardingOverlay />
-      {children}
+      <LayOut>{children}</LayOut>
     </ActorProvider>
   );
 }

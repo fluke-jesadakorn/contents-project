@@ -22,13 +22,17 @@
 ## Stack quick-reference
 
 ```
-Browser → web-admin (Next.js :3003)
-       ├→ rbac-svc (Fastify :3100) — RBAC matrix, groups, audit, export
-       └→ ai-svc   (Fastify :3004) — OCR (Ollama Vision + Swift N-API),
-                                    storage (MinIO bucket epsx-erp-slips),
-                                    AI router (Ollama bge-m3 + qwen2.5/3.6)
-Postgres 18 + pgvector on :5432 (DB: finance_db, owner: contract)
+Browser → web-admin (Next.js :3003, single Next.js process)
+       └→ lib/* via tsconfig path alias @erp-lib/*
+            ├→ Postgres  (finance_db, owner contract)
+            ├→ MinIO     (bucket epsx-erp-slips, key YYYY/MM/<uuid>)
+            └→ Ollama    (bge-m3 for embeddings, qwen2.5/3.6 for chat,
+                          vision models for slip OCR)
 ```
+
+Single-process stack (Fastify `rbac-svc`/`ai-svc` services were
+collapsed into `lib/{perm,ai,slips,finance}/*` and consumed by Next.js
+via `@erp-lib/*` tsconfig path aliases — see `web-admin/tsconfig.json`).
 
 ---
 
@@ -147,14 +151,27 @@ PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
 
 ### Stage ladder source of truth
 
-`lib/rbac/stage-types.ts:22` maps each `StageName` to its RBAC module id:
+`lib/perm/stages.ts:131` maps each `StageName` to its permission id:
 
 ```ts
-supervisor_review  → 'stage-supervisor-review'
-head_review        → 'stage-head-review'
-cfo_review         → 'stage-cfo-review'
-ceo_review         → 'stage-ceo-review'
+submission               → 'stage:submission:act::allow'
+dept_verification        → 'stage:dept_verification:act::allow'
+dept_authorization       → 'stage:dept_authorization:act::allow'
+accounting_verification  → 'stage:accounting_verification:act::allow'
+accounting_supervision   → 'stage:accounting_supervision:act::allow'
+accounting_authorization → 'stage:accounting_authorization:act::allow'
+disbursement_authorization → 'stage:disbursement_authorization:act::allow'
+cfo_authorization        → 'stage:cfo_authorization:act::allow'
+ceo_authorization        → 'stage:ceo_authorization:act::allow'
+awaiting_disbursement    → (terminal — no act perm)
+disbursed                → (terminal — no act perm)
+rejected                 → (terminal — no act perm)
 ```
+
+Granting a persona `stage:<key>:act::allow` (via `perm.role_permissions`)
+on a role makes that persona eligible to act on a waybill that is
+currently parked at that stage. Resolution is role-level MIN level —
+the lowest-numbered level wins, mirroring finance hierarchy.
 
 The matrix decides who can act on which stage — same matrix as EP 03.
 
@@ -256,7 +273,7 @@ PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
 | Tile           | `permissions` · `/permissions` · group `hr` · sub_view `permissions` |
 | Modules seen   | 28 tiles (`tile-*`)                                         |
 | AI section     | `policy:editor` (lint a draft policy)                       |
-| Tables touched | `rbac.cell_grants`, `rbac.role_groups`, `rbac.audit_log`    |
+| Tables touched | `perm.role_permissions`, `perm.user_roles`, `perm.audit`    |
 | Length target  | ~5 min                                                      |
 
 ### Demo steps
@@ -274,8 +291,8 @@ PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
 7. Click **Apply** → `PATCH /api/cells` → cell turns emerald (allow).
 8. The right-hand panel shows the cascade: downstream module
    `tile-reconciliation` and `tile-all-prs` also unlock for
-   `account_officer` (group inheritance via
-   `lib/rbac/inheritance.ts`).
+   `account_officer` (group inheritance via the CASL ability built in
+   `lib/perm/ability.ts`).
 9. **Switch persona → Emily** (accounting_manager) → open her hub →
    reconciliation tile now visible (was hidden before).
 10. **Switch back to Alex** → click **Export CSV** →
@@ -315,26 +332,28 @@ PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
 ```bash
 # 1. The cell flip from step 5
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
-  SELECT role_id, module_id, action, state, reason, updated_by, updated_at
-  FROM rbac.cell_grants
-  WHERE role_id = (SELECT id FROM roles WHERE name = 'account_officer')
-    AND module_id = 'tile-ledger'
-  ORDER BY updated_at DESC LIMIT 1;"
+  SELECT rp.role_id, rp.permission_id, rp.granted_by, rp.granted_at
+  FROM perm.role_permissions rp
+  WHERE rp.role_id = 'account_officer::5'
+    AND rp.permission_id = 'tile:ledger:view::allow'
+  ORDER BY rp.granted_at DESC LIMIT 1;"
 
 # 2. The audit entry (note the reason text)
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
-  SELECT actor_id, action, target_type, target_id, payload, created_at
-  FROM rbac.audit_log
-  WHERE target_type = 'cell_grant'
-  ORDER BY created_at DESC LIMIT 1;"
+  SELECT actor, kind, target, occurred_at
+  FROM perm.audit
+  WHERE kind = 'role_permission.grant'
+  ORDER BY occurred_at DESC LIMIT 1;"
 
 # 3. The downstream cascade — what unlocked
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
-  SELECT module_id, COUNT(*) FILTER (WHERE state = 'allow') AS allow_cells
-  FROM rbac.cell_grants
-  WHERE role_id = (SELECT id FROM roles WHERE name = 'account_officer')
-  GROUP BY module_id
-  ORDER BY allow_cells DESC;"
+  SELECT split_part(permission_id, ':', 2) AS subject,
+         COUNT(*) AS grant_count
+  FROM perm.role_permissions
+  WHERE role_id = 'account_officer::5'
+    AND permission_id LIKE 'tile:%:view::allow'
+  GROUP BY split_part(permission_id, ':', 2)
+  ORDER BY grant_count DESC;"
 
 # 4. The exported CSV — first 5 lines
 curl -s -H "Cookie: erp_session=<alex-session>" \
@@ -360,7 +379,9 @@ curl -s -H "Cookie: erp_session=<alex-session>" \
 
 1. Sign in as Alex. Open `/org-chart` (tile `org-chart`).
 2. The tree loads from `GET /api/org` (route handler at
-   `web-admin/src/app/api/org/route.ts:4`) → `getOrg()` in `lib/rbac/server.ts`.
+   `web-admin/src/app/api/org/route.ts:4`) → `loadOrg()` in `lib/perm/auth.ts`
+   (single-source-of-truth permission loader built atop the
+   `lib/perm/grammar.ts` parser).
 
 ### Demo steps
 
@@ -419,10 +440,10 @@ PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
 
 # 2. The audit trail
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
-  SELECT actor_id, action, target_type, target_id, payload, created_at
-  FROM rbac.audit_log
-  WHERE target_type = 'role_reparent'
-  ORDER BY created_at DESC LIMIT 1;"
+  SELECT actor, kind, target, occurred_at
+  FROM perm.audit
+  WHERE kind = 'role.reparent'
+  ORDER BY occurred_at DESC LIMIT 1;"
 
 # 3. The tree as JSON (first 80 lines)
 curl -s -H "Cookie: erp_session=<alex-session>" \
@@ -430,11 +451,12 @@ curl -s -H "Cookie: erp_session=<alex-session>" \
 
 # 4. Bulk cells applied
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
-  SELECT COUNT(*) FILTER (WHERE state = 'allow') AS allow_count
-  FROM rbac.cell_grants
-  WHERE module_id = 'tile-approve-expense'
-    AND role_id IN (SELECT role_id FROM users
-                    WHERE department = 'Finance & Account');"
+  SELECT COUNT(*) AS grant_count
+  FROM perm.role_permissions rp
+  JOIN perm.user_roles ur ON ur.role_id = rp.role_id
+  JOIN perm.user_permissions dept ON dept.user_id = ur.user_id
+                             AND dept.permission_id = 'user:dept:finance-2::allow'
+  WHERE rp.permission_id = 'tile:expense:approve::allow';"
 ```
 
 ---
@@ -489,7 +511,7 @@ From `db/apply_staff_level.sql:43` — single source of truth:
 7. Click **Edit** → change `staff_level` to **3** → save.
 8. The hub redraws live (no reload): John's tile list now includes
    `tile-approve-expense` and `tile-review-queue` (group inheritance
-   resolved client-side via `lib/rbac/inheritance.ts` →
+   resolved client-side via `@erp-lib/perm/auth-client` →
    `components/tileAccess.ts`).
 9. **Switch persona → John**. The new tiles are visible on his hub.
 10. Roll back: as Alex, set John back to L5 → tiles disappear again.
@@ -531,21 +553,23 @@ PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
   WHERE u.id IN (1, 4, 15, 20, 27, 29)
   ORDER BY u.staff_level;"
 
-# 2. Role-level defaults (canonical table from apply_staff_level.sql)
+# 2. Role-level defaults (level encoded inline as ::<n> in role_id)
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
-  SELECT name, default_staff_level
-  FROM roles
-  ORDER BY default_staff_level, name;"
+  SELECT id, display_name
+  FROM perm.roles
+  ORDER BY split_part(id, '::', 2)::int, id;"
 
-# 3. John's tile list — what L5 sees
+# 3. John's tile list — what his effective permission set yields
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
-  SELECT t.id, t.display_name, t.group_name,
-         cg.state AS cell_state
-  FROM rbac.tiles t
-  LEFT JOIN rbac.cell_grants cg
-    ON cg.module_id = t.module_id
-   AND cg.role_id = (SELECT role_id FROM users WHERE id = 1)
-  WHERE cg.state = 'allow'
+  SELECT t.id, t.display_name, t.group_name
+  FROM perm.tiles t
+  WHERE t.view_perm_id IN (
+    SELECT permission_id FROM perm.user_permissions WHERE user_id = $1 AND revoked_at IS NULL
+    UNION
+    SELECT rp.permission_id FROM perm.role_permissions rp
+      JOIN perm.user_roles ur ON ur.role_id = rp.role_id
+     WHERE ur.user_id = $1
+  )
   ORDER BY t.sort_order;"
 
 # 4. Same query after level bump to 3 (compare count)
@@ -835,12 +859,12 @@ PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
   WHERE u.id IN (1, 4, 15, 20, 27, 29)
   ORDER BY u.id;"
 
-# All RBAC cells touched in the last hour
+# All perm grants touched in the last hour
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "
-  SELECT role_id, module_id, action, state, updated_at
-  FROM rbac.cell_grants
-  WHERE updated_at > NOW() - INTERVAL '1 hour'
-  ORDER BY updated_at DESC;"
+  SELECT role_id, permission_id, granted_at, granted_by
+  FROM perm.role_permissions
+  WHERE granted_at > NOW() - INTERVAL '1 hour'
+  ORDER BY granted_at DESC;"
 
 # All slips uploaded in the last hour
 PGPASSWORD=contractpw psql -h localhost -U contract -d finance_db -c "

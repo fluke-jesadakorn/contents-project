@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { SecondaryLocale } from '@erp-lib/server/locale';
+import { STORAGE_KEY, LANG_EVENT } from '@/components/lang/LangPicker';
 
-const STORAGE_KEY = 'worderp.lang';
 const Ctx = createContext<SecondaryLocale>('th');
 
 export function SecondaryLocaleProvider({
@@ -24,13 +24,13 @@ export function SecondaryLocaleProvider({
       if (d === 'de' || d === 'th') setLoc(d);
       else setLoc(read());
     };
-    window.addEventListener('worderp:lang', handler);
+    window.addEventListener(LANG_EVENT, handler);
     const onStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) setLoc(read());
     };
     window.addEventListener('storage', onStorage);
     return () => {
-      window.removeEventListener('worderp:lang', handler);
+      window.removeEventListener(LANG_EVENT, handler);
       window.removeEventListener('storage', onStorage);
     };
   }, []);
