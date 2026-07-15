@@ -24,7 +24,7 @@
   - **n8n** (พอร์ต `5678`): ระบบรัน Flow Orchestration อัตโนมัติ
   - **MinIO** (พอร์ต `9000` / Console `9001`): ระบบเก็บไฟล์สำหรับเอกสารสัญญากฎหมาย
   - **PostgreSQL 18** (พอร์ต `5432`): ฐานข้อมูลหลักของทั้งสองโปรเจกต์ (`lawpoc_n8n`, `hr_db`)
-  - **OCR Native Service** (พอร์ต `8765`): บริการดึงข้อความจากภาพ/PDF — ย้ายมาเป็นของ World ERP (ดู `world-erp/ocr/`) ใช้ Node.js + Swift N-API Vision + sharp + poppler CLI (pdftoppm/tesseract/pdftotext) + Ollama qwen3-vl เป็น pipeline ต่อหน้าแบบ per-page waterfall
+  - **OCR Native Service** (พอร์ต `8765`): บริการดึงข้อความจากภาพ/PDF — ย้ายมาเป็นของ Folio (ดู `folio/ocr/`) ใช้ Node.js + Swift N-API Vision + sharp + poppler CLI (pdftoppm/tesseract/pdftotext) + Ollama qwen3-vl เป็น pipeline ต่อหน้าแบบ per-page waterfall
 * ** launchd plists**: การตั้งค่าไฟล์ Daemon ในตัว macOS เพื่อช่วยสตาร์ทและกู้คืนบริการให้อัตโนมัติ (`com.lawpoc.*`)
 
 ---
