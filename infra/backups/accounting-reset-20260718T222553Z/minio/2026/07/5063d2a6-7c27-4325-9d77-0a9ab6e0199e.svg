@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000">
+  <rect width="800" height="1000" fill="white"/>
+  <text x="60" y="90" font-size="42" font-family="Arial">TAX RECEIPT</text>
+  <text x="60" y="170" font-size="28" font-family="Arial">Vendor: Acceptance Office Supply Co., Ltd.</text>
+  <text x="60" y="225" font-size="28" font-family="Arial">Date: 2026-07-19</text>
+  <text x="60" y="310" font-size="28" font-family="Arial">Office equipment</text>
+  <text x="60" y="380" font-size="28" font-family="Arial">Subtotal: 11,214.95 THB</text>
+  <text x="60" y="435" font-size="28" font-family="Arial">VAT 7%: 785.05 THB</text>
+  <text x="60" y="520" font-size="38" font-family="Arial">Total: 12,000.00 THB</text>
+  <text x="60" y="600" font-size="28" font-family="Arial">Payment: Cash</text>
+</svg>

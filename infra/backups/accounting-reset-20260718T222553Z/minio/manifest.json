@@ -1,0 +1,63 @@
+{
+  "bucket": "folio-storage",
+  "createdAt": "2026-07-18T22:25:53.550Z",
+  "objectCount": 11,
+  "totalBytes": 287172,
+  "objects": [
+    {
+      "name": "2026/07/453bcf17-db05-4091-90a6-148f688cc9c5.png",
+      "size": 57790,
+      "etag": "880e7029eedeaa1f5d6be924b9b88268"
+    },
+    {
+      "name": "2026/07/5063d2a6-7c27-4325-9d77-0a9ab6e0199e.svg",
+      "size": 809,
+      "etag": "21dbc018cce5636b1e845187da4f78a7"
+    },
+    {
+      "name": "2026/07/6e8665ef-7807-4e08-8571-dd7503db98ad.png",
+      "size": 57790,
+      "etag": "880e7029eedeaa1f5d6be924b9b88268"
+    },
+    {
+      "name": "2026/07/7c751902-6e21-4119-9c63-47c9ec89a02b.png",
+      "size": 36431,
+      "etag": "1ee763e00db4374d9116f41d0b181a77"
+    },
+    {
+      "name": "2026/07/7fc59caa-f88d-4a86-8918-5a90c7cda7f4.png",
+      "size": 36372,
+      "etag": "abd92ca86105c1da4b5506f4bed6d876"
+    },
+    {
+      "name": "2026/07/82372e75-4136-4cb7-bea5-e982e2a5f9e8.svg",
+      "size": 503,
+      "etag": "fac2690ce3bfd270964bfeb02e12e933"
+    },
+    {
+      "name": "2026/07/d742752e-5744-47ea-97b7-a682a2984585.svg",
+      "size": 503,
+      "etag": "fac2690ce3bfd270964bfeb02e12e933"
+    },
+    {
+      "name": "2026/07/f546e3a0-ee15-4960-9717-62d6017d889d.png",
+      "size": 36372,
+      "etag": "abd92ca86105c1da4b5506f4bed6d876"
+    },
+    {
+      "name": "2026/07/f6bb8566-847b-4073-bf6a-afa84f5e92dd.png",
+      "size": 57790,
+      "etag": "880e7029eedeaa1f5d6be924b9b88268"
+    },
+    {
+      "name": "expense-voucher/WB-2026-000003.pdf",
+      "size": 1204,
+      "etag": "8a81b75dfaa33513bd6716cda4a202e0"
+    },
+    {
+      "name": "po/WB-2026-000003.pdf",
+      "size": 1608,
+      "etag": "3c971f4b90ef8e4fbdc1704ee33717ef"
+    }
+  ]
+}

@@ -1,0 +1,2204 @@
+;
+; Archive created at 2026-07-19 03:27:30 +07
+;     dbname: folio_db
+;     TOC Entries: 2195
+;     Compression: gzip
+;     Dump Version: 1.16-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 18.4 (Homebrew)
+;     Dumped by pg_dump version: 18.4 (Homebrew)
+;
+;
+; Selected TOC Entries:
+;
+132; 2615 109698 SCHEMA - ai contract
+133; 2615 109699 SCHEMA - auth contract
+134; 2615 109700 SCHEMA - chat contract
+137; 2615 109701 SCHEMA - finance contract
+7777; 0 0 ACL - SCHEMA finance contract
+138; 2615 109702 SCHEMA - folio contract
+7778; 0 0 ACL - SCHEMA folio contract
+135; 2615 109703 SCHEMA - hook contract
+81; 2615 111827 SCHEMA - inventory contract
+139; 2615 109704 SCHEMA - law contract
+7779; 0 0 ACL - SCHEMA law contract
+136; 2615 109705 SCHEMA - n8n contract
+140; 2615 109706 SCHEMA - perm contract
+7780; 0 0 ACL - SCHEMA perm contract
+7781; 0 0 ACL - SCHEMA public pg_database_owner
+2; 3079 85970 EXTENSION - pgcrypto 
+7782; 0 0 COMMENT - EXTENSION pgcrypto 
+4; 3079 85631 EXTENSION - uuid-ossp 
+7783; 0 0 COMMENT - EXTENSION "uuid-ossp" 
+3; 3079 85642 EXTENSION - vector 
+7784; 0 0 COMMENT - EXTENSION vector 
+880; 1255 109707 FUNCTION ai recompute_model_ratings() contract
+721; 1255 113648 FUNCTION finance ap_aging(date, bigint) contract
+840; 1255 113646 FUNCTION finance ap_balance_as_of(date, bigint) contract
+744; 1255 113647 FUNCTION finance ar_aging(date, bigint) contract
+795; 1255 113645 FUNCTION finance ar_balance_as_of(date, bigint) contract
+760; 1255 113473 FUNCTION finance assert_journal_balanced(bigint) contract
+753; 1255 113477 FUNCTION finance audit_journal_status() contract
+813; 1255 113513 FUNCTION finance balance_sheet(date, bigint) contract
+612; 1259 111962 TABLE finance accounts contract
+616; 1259 112045 TABLE finance journal_lines contract
+614; 1259 111990 TABLE finance journals contract
+689; 1259 113487 VIEW finance v_posted_lines contract
+824; 1255 113511 FUNCTION finance general_ledger(date, date, bigint, text) contract
+831; 1255 113481 FUNCTION finance guard_issued_document() contract
+778; 1255 113475 FUNCTION finance guard_posted_journal() contract
+722; 1255 113476 FUNCTION finance guard_posted_lines() contract
+755; 1255 113472 FUNCTION finance next_document_number(text, bigint, date) contract
+810; 1255 113474 FUNCTION finance post_journal(bigint, integer) contract
+850; 1255 113512 FUNCTION finance profit_and_loss(date, date, bigint) contract
+735; 1255 113510 FUNCTION finance trial_balance(date, date, bigint) contract
+827; 1255 109708 FUNCTION folio ai_decrypt(bytea, text) contract
+702; 1255 109709 FUNCTION folio ai_encrypt(text, text) contract
+705; 1255 109710 FUNCTION folio backfill_exec_snapshot(date, numeric, numeric) contract
+853; 1255 109711 FUNCTION folio get_ar_aging_buckets() contract
+856; 1255 109712 FUNCTION folio get_cockpit_projection(integer) contract
+851; 1255 109713 FUNCTION folio get_dept_budget_status(integer, integer) contract
+707; 1255 109714 FUNCTION folio next_purchase_order_number(integer) contract
+751; 1255 109715 FUNCTION folio next_sales_order_number(smallint) contract
+754; 1255 109716 FUNCTION folio next_waybill_number(smallint) contract
+819; 1255 109717 FUNCTION folio slips_check_exactly_one_parent() contract
+833; 1255 109718 FUNCTION folio waybill_risk_score(text) contract
+866; 1255 113483 FUNCTION inventory guard_posted_movement() contract
+756; 1255 113484 FUNCTION inventory guard_posted_movement_line() contract
+886; 1255 113649 FUNCTION inventory valuation_as_of(date, bigint) contract
+903; 1255 109719 FUNCTION law next_doc_seq() contract
+836; 1255 109720 FUNCTION law touch_updated_at() contract
+869; 1255 109721 FUNCTION perm touch_updated_at() contract
+712; 1255 87826 FUNCTION public increment_workflow_version() n8n_user
+479; 1259 109722 TABLE ai model_ratings contract
+480; 1259 109734 TABLE auth sessions contract
+481; 1259 109750 TABLE chat messages contract
+482; 1259 109764 SEQUENCE chat messages_id_seq contract
+7785; 0 0 SEQUENCE OWNED BY chat messages_id_seq contract
+483; 1259 109765 TABLE chat sessions contract
+484; 1259 109783 TABLE finance account_cf_class contract
+7786; 0 0 ACL finance TABLE account_cf_class contract
+485; 1259 109799 TABLE finance ai_provider_health contract
+7787; 0 0 ACL finance TABLE ai_provider_health contract
+486; 1259 109808 TABLE finance ai_user_section_defaults contract
+7788; 0 0 ACL finance TABLE ai_user_section_defaults contract
+630; 1259 112365 TABLE finance ap_allocations contract
+629; 1259 112364 SEQUENCE finance ap_allocations_id_seq contract
+7789; 0 0 SEQUENCE OWNED BY finance ap_allocations_id_seq contract
+628; 1259 112309 TABLE finance ap_documents contract
+627; 1259 112308 SEQUENCE finance ap_documents_id_seq contract
+7790; 0 0 SEQUENCE OWNED BY finance ap_documents_id_seq contract
+626; 1259 112271 TABLE finance ar_allocations contract
+625; 1259 112270 SEQUENCE finance ar_allocations_id_seq contract
+7791; 0 0 SEQUENCE OWNED BY finance ar_allocations_id_seq contract
+624; 1259 112215 TABLE finance ar_documents contract
+623; 1259 112214 SEQUENCE finance ar_documents_id_seq contract
+7792; 0 0 SEQUENCE OWNED BY finance ar_documents_id_seq contract
+632; 1259 112403 TABLE finance bank_accounts contract
+631; 1259 112402 SEQUENCE finance bank_accounts_id_seq contract
+7793; 0 0 SEQUENCE OWNED BY finance bank_accounts_id_seq contract
+634; 1259 112439 TABLE finance bank_import_templates contract
+633; 1259 112438 SEQUENCE finance bank_import_templates_id_seq contract
+7794; 0 0 SEQUENCE OWNED BY finance bank_import_templates_id_seq contract
+636; 1259 112462 TABLE finance bank_imports contract
+635; 1259 112461 SEQUENCE finance bank_imports_id_seq contract
+7795; 0 0 SEQUENCE OWNED BY finance bank_imports_id_seq contract
+640; 1259 112537 TABLE finance bank_match_groups contract
+639; 1259 112536 SEQUENCE finance bank_match_groups_id_seq contract
+7796; 0 0 SEQUENCE OWNED BY finance bank_match_groups_id_seq contract
+642; 1259 112571 TABLE finance bank_match_lines contract
+641; 1259 112570 SEQUENCE finance bank_match_lines_id_seq contract
+7797; 0 0 SEQUENCE OWNED BY finance bank_match_lines_id_seq contract
+644; 1259 112608 TABLE finance bank_reconciliation_audit contract
+643; 1259 112607 SEQUENCE finance bank_reconciliation_audit_id_seq contract
+7798; 0 0 SEQUENCE OWNED BY finance bank_reconciliation_audit_id_seq contract
+638; 1259 112495 TABLE finance bank_transactions contract
+637; 1259 112494 SEQUENCE finance bank_transactions_id_seq contract
+7799; 0 0 SEQUENCE OWNED BY finance bank_transactions_id_seq contract
+606; 1259 111865 TABLE finance branches contract
+605; 1259 111864 SEQUENCE finance branches_id_seq contract
+7800; 0 0 SEQUENCE OWNED BY finance branches_id_seq contract
+648; 1259 112656 TABLE finance budget_lines contract
+647; 1259 112655 SEQUENCE finance budget_lines_id_seq contract
+7801; 0 0 SEQUENCE OWNED BY finance budget_lines_id_seq contract
+646; 1259 112631 TABLE finance budgets contract
+645; 1259 112630 SEQUENCE finance budgets_id_seq contract
+7802; 0 0 SEQUENCE OWNED BY finance budgets_id_seq contract
+487; 1259 109818 TABLE finance cashflow_period contract
+7803; 0 0 ACL finance TABLE cashflow_period contract
+650; 1259 112683 TABLE finance closing_checklists contract
+649; 1259 112682 SEQUENCE finance closing_checklists_id_seq contract
+7804; 0 0 SEQUENCE OWNED BY finance closing_checklists_id_seq contract
+622; 1259 112161 TABLE finance commercial_documents contract
+621; 1259 112160 SEQUENCE finance commercial_documents_id_seq contract
+7805; 0 0 SEQUENCE OWNED BY finance commercial_documents_id_seq contract
+603; 1259 111828 TABLE finance company_config contract
+604; 1259 111850 TABLE finance currencies contract
+611; 1259 111945 TABLE finance document_sequences contract
+609; 1259 111905 TABLE finance fiscal_periods contract
+608; 1259 111904 SEQUENCE finance fiscal_periods_id_seq contract
+7806; 0 0 SEQUENCE OWNED BY finance fiscal_periods_id_seq contract
+607; 1259 111883 TABLE finance fx_rates contract
+618; 1259 112092 TABLE finance journal_events contract
+617; 1259 112091 SEQUENCE finance journal_events_id_seq contract
+7807; 0 0 SEQUENCE OWNED BY finance journal_events_id_seq contract
+615; 1259 112044 SEQUENCE finance journal_lines_id_seq contract
+7808; 0 0 SEQUENCE OWNED BY finance journal_lines_id_seq contract
+613; 1259 111989 SEQUENCE finance journals_id_seq contract
+7809; 0 0 SEQUENCE OWNED BY finance journals_id_seq contract
+610; 1259 111927 TABLE finance tax_codes contract
+691; 1259 113519 VIEW finance v_ap_aging contract
+690; 1259 113514 VIEW finance v_ar_aging contract
+695; 1259 113624 VIEW finance v_trial_balance contract
+697; 1259 113633 VIEW finance v_balance_sheet contract
+488; 1259 109831 TABLE folio chart_of_accounts contract
+7810; 0 0 ACL folio TABLE chart_of_accounts contract
+489; 1259 109843 TABLE folio journal_entries contract
+7811; 0 0 ACL folio TABLE journal_entries contract
+490; 1259 109861 TABLE folio ledger_lines contract
+7812; 0 0 ACL folio TABLE ledger_lines contract
+491; 1259 109875 VIEW finance v_cashflow_classified contract
+7813; 0 0 ACL finance TABLE v_cashflow_classified contract
+662; 1259 112863 TABLE inventory lots contract
+656; 1259 112761 TABLE inventory products contract
+667; 1259 112997 TABLE inventory stock_balances contract
+658; 1259 112818 TABLE inventory warehouses contract
+693; 1259 113529 VIEW inventory v_valuation contract
+694; 1259 113534 VIEW finance v_control_tieouts contract
+692; 1259 113524 VIEW finance v_fx_exposure contract
+696; 1259 113629 VIEW finance v_income_statement contract
+698; 1259 113637 VIEW finance v_period_summary contract
+620; 1259 112119 TABLE finance vendors contract
+619; 1259 112118 SEQUENCE finance vendors_id_seq contract
+7814; 0 0 SEQUENCE OWNED BY finance vendors_id_seq contract
+492; 1259 109895 TABLE folio access_requests contract
+7815; 0 0 ACL folio TABLE access_requests contract
+493; 1259 109907 SEQUENCE folio access_requests_id_seq contract
+7816; 0 0 SEQUENCE OWNED BY folio access_requests_id_seq contract
+494; 1259 109908 TABLE folio ai_assignments contract
+7817; 0 0 ACL folio TABLE ai_assignments contract
+495; 1259 109927 SEQUENCE folio ai_assignments_id_seq contract
+7818; 0 0 SEQUENCE OWNED BY folio ai_assignments_id_seq contract
+496; 1259 109928 TABLE folio ai_chat_sessions contract
+7819; 0 0 ACL folio TABLE ai_chat_sessions contract
+497; 1259 109944 SEQUENCE folio ai_chat_sessions_id_seq contract
+7820; 0 0 SEQUENCE OWNED BY folio ai_chat_sessions_id_seq contract
+498; 1259 109945 TABLE folio ai_invocations contract
+7821; 0 0 ACL folio TABLE ai_invocations contract
+499; 1259 109954 SEQUENCE folio ai_invocations_id_seq contract
+7822; 0 0 SEQUENCE OWNED BY folio ai_invocations_id_seq contract
+500; 1259 109955 TABLE folio ai_models contract
+7823; 0 0 ACL folio TABLE ai_models contract
+501; 1259 109971 SEQUENCE folio ai_models_id_seq contract
+7824; 0 0 SEQUENCE OWNED BY folio ai_models_id_seq contract
+502; 1259 109972 TABLE folio ai_providers contract
+7825; 0 0 ACL folio TABLE ai_providers contract
+503; 1259 109988 SEQUENCE folio ai_providers_id_seq contract
+7826; 0 0 SEQUENCE OWNED BY folio ai_providers_id_seq contract
+504; 1259 109989 VIEW folio ai_section_health contract
+7827; 0 0 ACL folio TABLE ai_section_health contract
+505; 1259 109994 TABLE folio ai_staff contract
+7828; 0 0 ACL folio TABLE ai_staff contract
+506; 1259 110010 SEQUENCE folio ai_staff_id_seq contract
+7829; 0 0 SEQUENCE OWNED BY folio ai_staff_id_seq contract
+602; 1259 111801 TABLE folio ai_user_section_preferences contract
+507; 1259 110011 TABLE folio approval_override_audit contract
+7830; 0 0 ACL folio TABLE approval_override_audit contract
+508; 1259 110023 SEQUENCE folio approval_override_audit_id_seq contract
+7831; 0 0 SEQUENCE OWNED BY folio approval_override_audit_id_seq contract
+509; 1259 110024 TABLE folio approval_transitions contract
+7832; 0 0 ACL folio TABLE approval_transitions contract
+510; 1259 110035 SEQUENCE folio approval_transitions_id_seq contract
+7833; 0 0 SEQUENCE OWNED BY folio approval_transitions_id_seq contract
+511; 1259 110036 TABLE folio approver_nudges contract
+7834; 0 0 ACL folio TABLE approver_nudges contract
+512; 1259 110048 SEQUENCE folio approver_nudges_id_seq contract
+7835; 0 0 SEQUENCE OWNED BY folio approver_nudges_id_seq contract
+513; 1259 110049 TABLE folio customer_advisories contract
+7836; 0 0 ACL folio TABLE customer_advisories contract
+514; 1259 110060 TABLE folio customers contract
+7837; 0 0 ACL folio TABLE customers contract
+515; 1259 110080 TABLE folio sales_orders contract
+7838; 0 0 ACL folio TABLE sales_orders contract
+516; 1259 110114 VIEW folio customer_ar_history contract
+7839; 0 0 ACL folio TABLE customer_ar_history contract
+517; 1259 110119 TABLE folio customer_contacts contract
+7840; 0 0 ACL folio TABLE customer_contacts contract
+518; 1259 110129 SEQUENCE folio customer_contacts_id_seq contract
+7841; 0 0 SEQUENCE OWNED BY folio customer_contacts_id_seq contract
+519; 1259 110130 SEQUENCE folio customers_id_seq contract
+7842; 0 0 SEQUENCE OWNED BY folio customers_id_seq contract
+520; 1259 110131 TABLE folio domain_events contract
+7843; 0 0 ACL folio TABLE domain_events contract
+521; 1259 110141 SEQUENCE folio domain_events_id_seq contract
+7844; 0 0 SEQUENCE OWNED BY folio domain_events_id_seq contract
+522; 1259 110142 TABLE folio exec_snapshots contract
+7845; 0 0 ACL folio TABLE exec_snapshots contract
+523; 1259 110156 SEQUENCE folio exec_snapshots_id_seq contract
+7846; 0 0 SEQUENCE OWNED BY folio exec_snapshots_id_seq contract
+524; 1259 110157 TABLE folio expense_items contract
+7847; 0 0 ACL folio TABLE expense_items contract
+525; 1259 110168 SEQUENCE folio expense_items_id_seq contract
+7848; 0 0 SEQUENCE OWNED BY folio expense_items_id_seq contract
+526; 1259 110169 TABLE folio expense_payments contract
+7849; 0 0 ACL folio TABLE expense_payments contract
+527; 1259 110187 SEQUENCE folio expense_payments_id_seq contract
+7850; 0 0 SEQUENCE OWNED BY folio expense_payments_id_seq contract
+528; 1259 110188 TABLE folio expenses contract
+7851; 0 0 ACL folio TABLE expenses contract
+529; 1259 110205 SEQUENCE folio expenses_id_seq contract
+7852; 0 0 SEQUENCE OWNED BY folio expenses_id_seq contract
+530; 1259 110206 SEQUENCE folio hook_events_id_seq contract
+531; 1259 110207 TABLE folio hr_leave contract
+7853; 0 0 ACL folio TABLE hr_leave contract
+532; 1259 110220 SEQUENCE folio journal_entries_id_seq contract
+7854; 0 0 SEQUENCE OWNED BY folio journal_entries_id_seq contract
+533; 1259 110221 TABLE folio learned_mappings contract
+7855; 0 0 ACL folio TABLE learned_mappings contract
+534; 1259 110232 SEQUENCE folio ledger_lines_id_seq contract
+7856; 0 0 SEQUENCE OWNED BY folio ledger_lines_id_seq contract
+535; 1259 110233 TABLE folio notification_digests contract
+7857; 0 0 ACL folio TABLE notification_digests contract
+536; 1259 110247 SEQUENCE folio notification_digests_id_seq contract
+7858; 0 0 SEQUENCE OWNED BY folio notification_digests_id_seq contract
+537; 1259 110248 TABLE folio notifications contract
+7859; 0 0 ACL folio TABLE notifications contract
+538; 1259 110270 SEQUENCE folio notifications_id_seq contract
+7860; 0 0 SEQUENCE OWNED BY folio notifications_id_seq contract
+539; 1259 110271 TABLE folio po_invoices contract
+7861; 0 0 ACL folio TABLE po_invoices contract
+540; 1259 110285 SEQUENCE folio po_invoices_id_seq contract
+7862; 0 0 SEQUENCE OWNED BY folio po_invoices_id_seq contract
+541; 1259 110286 TABLE folio po_items contract
+7863; 0 0 ACL folio TABLE po_items contract
+542; 1259 110295 SEQUENCE folio po_items_id_seq contract
+7864; 0 0 SEQUENCE OWNED BY folio po_items_id_seq contract
+543; 1259 110296 TABLE folio policy_audit contract
+7865; 0 0 ACL folio TABLE policy_audit contract
+544; 1259 110303 SEQUENCE folio policy_audit_id_seq contract
+7866; 0 0 SEQUENCE OWNED BY folio policy_audit_id_seq contract
+545; 1259 110304 TABLE folio policy_lint_results contract
+7867; 0 0 ACL folio TABLE policy_lint_results contract
+546; 1259 110314 TABLE folio pr_items contract
+7868; 0 0 ACL folio TABLE pr_items contract
+547; 1259 110324 SEQUENCE folio pr_items_id_seq contract
+7869; 0 0 SEQUENCE OWNED BY folio pr_items_id_seq contract
+548; 1259 110325 TABLE folio purchase_orders contract
+7870; 0 0 ACL folio TABLE purchase_orders contract
+549; 1259 110340 SEQUENCE folio purchase_orders_id_seq contract
+7871; 0 0 SEQUENCE OWNED BY folio purchase_orders_id_seq contract
+550; 1259 110341 TABLE folio purchase_requisitions contract
+7872; 0 0 ACL folio TABLE purchase_requisitions contract
+551; 1259 110355 SEQUENCE folio purchase_requisitions_id_seq contract
+7873; 0 0 SEQUENCE OWNED BY folio purchase_requisitions_id_seq contract
+552; 1259 110356 SEQUENCE folio sales_orders_fy_2026_seq contract
+553; 1259 110357 SEQUENCE folio sales_orders_id_seq contract
+7874; 0 0 SEQUENCE OWNED BY folio sales_orders_id_seq contract
+554; 1259 110358 TABLE folio sales_product_embeddings contract
+7875; 0 0 ACL folio TABLE sales_product_embeddings contract
+555; 1259 110368 SEQUENCE folio sales_product_embeddings_id_seq contract
+7876; 0 0 SEQUENCE OWNED BY folio sales_product_embeddings_id_seq contract
+556; 1259 110369 TABLE folio slips contract
+7877; 0 0 COMMENT folio COLUMN slips.status contract
+7878; 0 0 COMMENT folio COLUMN slips.confirmed_at contract
+7879; 0 0 COMMENT folio COLUMN slips.discarded_at contract
+7880; 0 0 COMMENT folio COLUMN slips.discarded_by contract
+7881; 0 0 COMMENT folio COLUMN slips.kind contract
+7882; 0 0 COMMENT folio COLUMN slips.bank_name contract
+7883; 0 0 COMMENT folio COLUMN slips.account_number contract
+7884; 0 0 COMMENT folio COLUMN slips.account_name contract
+7885; 0 0 COMMENT folio COLUMN slips.bank_branch contract
+7886; 0 0 ACL folio TABLE slips contract
+557; 1259 110384 SEQUENCE folio slips_id_seq contract
+7887; 0 0 SEQUENCE OWNED BY folio slips_id_seq contract
+558; 1259 110385 TABLE folio so_items contract
+7888; 0 0 ACL folio TABLE so_items contract
+559; 1259 110403 SEQUENCE folio so_items_id_seq contract
+7889; 0 0 SEQUENCE OWNED BY folio so_items_id_seq contract
+560; 1259 110404 TABLE folio users contract
+7890; 0 0 ACL folio TABLE users contract
+561; 1259 110434 SEQUENCE folio users_id_seq contract
+7891; 0 0 SEQUENCE OWNED BY folio users_id_seq contract
+562; 1259 110435 TABLE folio vendor_embeddings contract
+7892; 0 0 ACL folio TABLE vendor_embeddings contract
+563; 1259 110444 SEQUENCE folio vendor_embeddings_id_seq contract
+7893; 0 0 SEQUENCE OWNED BY folio vendor_embeddings_id_seq contract
+564; 1259 110445 TABLE folio vision_chain contract
+7894; 0 0 ACL folio TABLE vision_chain contract
+565; 1259 110454 TABLE folio waybill_attachments contract
+7895; 0 0 ACL folio TABLE waybill_attachments contract
+566; 1259 110478 SEQUENCE folio waybill_attachments_id_seq contract
+7896; 0 0 SEQUENCE OWNED BY folio waybill_attachments_id_seq contract
+567; 1259 110479 TABLE folio waybill_events contract
+7897; 0 0 ACL folio TABLE waybill_events contract
+568; 1259 110493 TABLE folio waybill_reviews contract
+7898; 0 0 ACL folio TABLE waybill_reviews contract
+569; 1259 110504 TABLE folio waybills contract
+7899; 0 0 ACL folio TABLE waybills contract
+570; 1259 110526 VIEW folio waybill_risk contract
+7900; 0 0 ACL folio TABLE waybill_risk contract
+571; 1259 110530 TABLE folio waybill_stage_claims contract
+7901; 0 0 ACL folio TABLE waybill_stage_claims contract
+572; 1259 110543 SEQUENCE folio waybill_stage_claims_id_seq contract
+7902; 0 0 SEQUENCE OWNED BY folio waybill_stage_claims_id_seq contract
+573; 1259 110544 TABLE folio waybill_watchers contract
+7903; 0 0 ACL folio TABLE waybill_watchers contract
+574; 1259 110555 SEQUENCE folio waybill_watchers_id_seq contract
+7904; 0 0 SEQUENCE OWNED BY folio waybill_watchers_id_seq contract
+575; 1259 110556 SEQUENCE folio waybills_fy_2026_seq contract
+576; 1259 110557 TABLE hook hook_events contract
+577; 1259 110575 SEQUENCE hook hook_events_id_seq contract
+7905; 0 0 SEQUENCE OWNED BY hook hook_events_id_seq contract
+578; 1259 110576 TABLE hook hook_providers contract
+660; 1259 112842 TABLE inventory bins contract
+659; 1259 112841 SEQUENCE inventory bins_id_seq contract
+7906; 0 0 SEQUENCE OWNED BY inventory bins_id_seq contract
+654; 1259 112742 TABLE inventory categories contract
+653; 1259 112741 SEQUENCE inventory categories_id_seq contract
+7907; 0 0 SEQUENCE OWNED BY inventory categories_id_seq contract
+669; 1259 113033 TABLE inventory costing_events contract
+668; 1259 113032 SEQUENCE inventory costing_events_id_seq contract
+7908; 0 0 SEQUENCE OWNED BY inventory costing_events_id_seq contract
+684; 1259 113295 TABLE inventory landed_cost_allocations contract
+683; 1259 113294 SEQUENCE inventory landed_cost_allocations_id_seq contract
+7909; 0 0 SEQUENCE OWNED BY inventory landed_cost_allocations_id_seq contract
+661; 1259 112862 SEQUENCE inventory lots_id_seq contract
+7910; 0 0 SEQUENCE OWNED BY inventory lots_id_seq contract
+655; 1259 112760 SEQUENCE inventory products_id_seq contract
+7911; 0 0 SEQUENCE OWNED BY inventory products_id_seq contract
+680; 1259 113229 TABLE inventory purchase_receipt_lines contract
+679; 1259 113228 SEQUENCE inventory purchase_receipt_lines_id_seq contract
+7912; 0 0 SEQUENCE OWNED BY inventory purchase_receipt_lines_id_seq contract
+678; 1259 113192 TABLE inventory purchase_receipts contract
+677; 1259 113191 SEQUENCE inventory purchase_receipts_id_seq contract
+7913; 0 0 SEQUENCE OWNED BY inventory purchase_receipts_id_seq contract
+682; 1259 113261 TABLE inventory recost_jobs contract
+681; 1259 113260 SEQUENCE inventory recost_jobs_id_seq contract
+7914; 0 0 SEQUENCE OWNED BY inventory recost_jobs_id_seq contract
+672; 1259 113101 TABLE inventory reorder_settings contract
+671; 1259 113066 TABLE inventory reservations contract
+670; 1259 113065 SEQUENCE inventory reservations_id_seq contract
+7915; 0 0 SEQUENCE OWNED BY inventory reservations_id_seq contract
+688; 1259 113363 TABLE inventory sales_shipment_lines contract
+687; 1259 113362 SEQUENCE inventory sales_shipment_lines_id_seq contract
+7916; 0 0 SEQUENCE OWNED BY inventory sales_shipment_lines_id_seq contract
+686; 1259 113330 TABLE inventory sales_shipments contract
+685; 1259 113329 SEQUENCE inventory sales_shipments_id_seq contract
+7917; 0 0 SEQUENCE OWNED BY inventory sales_shipments_id_seq contract
+676; 1259 113159 TABLE inventory stock_count_lines contract
+675; 1259 113158 SEQUENCE inventory stock_count_lines_id_seq contract
+7918; 0 0 SEQUENCE OWNED BY inventory stock_count_lines_id_seq contract
+674; 1259 113128 TABLE inventory stock_counts contract
+673; 1259 113127 SEQUENCE inventory stock_counts_id_seq contract
+7919; 0 0 SEQUENCE OWNED BY inventory stock_counts_id_seq contract
+666; 1259 112934 TABLE inventory stock_movement_lines contract
+665; 1259 112933 SEQUENCE inventory stock_movement_lines_id_seq contract
+7920; 0 0 SEQUENCE OWNED BY inventory stock_movement_lines_id_seq contract
+664; 1259 112890 TABLE inventory stock_movements contract
+663; 1259 112889 SEQUENCE inventory stock_movements_id_seq contract
+7921; 0 0 SEQUENCE OWNED BY inventory stock_movements_id_seq contract
+652; 1259 112719 TABLE inventory unit_conversions contract
+651; 1259 112707 TABLE inventory units contract
+657; 1259 112817 SEQUENCE inventory warehouses_id_seq contract
+7922; 0 0 SEQUENCE OWNED BY inventory warehouses_id_seq contract
+579; 1259 110590 TABLE law contract_chunks contract
+7923; 0 0 ACL law TABLE contract_chunks contract
+580; 1259 110602 TABLE law contract_pages contract
+7924; 0 0 ACL law TABLE contract_pages contract
+581; 1259 110616 TABLE law contracts contract
+7925; 0 0 ACL law TABLE contracts contract
+582; 1259 110634 TABLE law job_queue contract
+7926; 0 0 ACL law TABLE job_queue contract
+583; 1259 110648 SEQUENCE law job_queue_id_seq contract
+7927; 0 0 SEQUENCE OWNED BY law job_queue_id_seq contract
+584; 1259 110649 TABLE perm user_permissions contract
+7928; 0 0 ACL perm TABLE user_permissions contract
+585; 1259 110663 VIEW perm active_user_permissions contract
+7929; 0 0 ACL perm TABLE active_user_permissions contract
+586; 1259 110667 TABLE perm audit contract
+7930; 0 0 ACL perm TABLE audit contract
+587; 1259 110679 SEQUENCE perm audit_id_seq contract
+7931; 0 0 SEQUENCE OWNED BY perm audit_id_seq contract
+588; 1259 110680 TABLE perm decision_log contract
+7932; 0 0 ACL perm TABLE decision_log contract
+589; 1259 110691 SEQUENCE perm decision_log_id_seq contract
+7933; 0 0 SEQUENCE OWNED BY perm decision_log_id_seq contract
+590; 1259 110692 TABLE perm department_permissions contract
+7934; 0 0 ACL perm TABLE department_permissions contract
+591; 1259 110705 TABLE perm departments contract
+7935; 0 0 ACL perm TABLE departments contract
+592; 1259 110719 TABLE perm permissions contract
+7936; 0 0 ACL perm TABLE permissions contract
+593; 1259 110725 TABLE perm policies contract
+7937; 0 0 ACL perm TABLE policies contract
+594; 1259 110741 TABLE perm policy_decisions contract
+7938; 0 0 ACL perm TABLE policy_decisions contract
+595; 1259 110751 SEQUENCE perm policy_decisions_id_seq contract
+7939; 0 0 SEQUENCE OWNED BY perm policy_decisions_id_seq contract
+596; 1259 110752 TABLE perm role_permissions contract
+7940; 0 0 ACL perm TABLE role_permissions contract
+597; 1259 110766 TABLE perm roles contract
+7941; 0 0 ACL perm TABLE roles contract
+598; 1259 110786 TABLE perm tiles contract
+7942; 0 0 ACL perm TABLE tiles contract
+599; 1259 110810 TABLE perm user_departments contract
+7943; 0 0 ACL perm TABLE user_departments contract
+600; 1259 110819 SEQUENCE perm user_permissions_id_seq contract
+7944; 0 0 SEQUENCE OWNED BY perm user_permissions_id_seq contract
+601; 1259 110820 TABLE perm user_roles contract
+7945; 0 0 ACL perm TABLE user_roles contract
+452; 1259 88685 TABLE public agent_checkpoints n8n_user
+7946; 0 0 ACL public TABLE agent_checkpoints n8n_user
+457; 1259 88814 TABLE public agent_execution n8n_user
+7947; 0 0 ACL public TABLE agent_execution n8n_user
+456; 1259 88777 TABLE public agent_execution_threads n8n_user
+7948; 0 0 COMMENT public COLUMN agent_execution_threads."taskId" n8n_user
+7949; 0 0 COMMENT public COLUMN agent_execution_threads."taskVersionId" n8n_user
+7950; 0 0 COMMENT public COLUMN agent_execution_threads."parentThreadId" n8n_user
+7951; 0 0 COMMENT public COLUMN agent_execution_threads."parentAgentId" n8n_user
+7952; 0 0 ACL public TABLE agent_execution_threads n8n_user
+472; 1259 89498 TABLE public agent_files n8n_user
+7953; 0 0 COMMENT public COLUMN agent_files.id n8n_user
+7954; 0 0 COMMENT public COLUMN agent_files."agentId" n8n_user
+7955; 0 0 COMMENT public COLUMN agent_files."binaryDataId" n8n_user
+7956; 0 0 COMMENT public COLUMN agent_files."fileSizeBytes" n8n_user
+7957; 0 0 ACL public TABLE agent_files n8n_user
+466; 1259 89340 TABLE public agent_history n8n_user
+7958; 0 0 COMMENT public COLUMN agent_history.schema n8n_user
+7959; 0 0 COMMENT public COLUMN agent_history.tools n8n_user
+7960; 0 0 COMMENT public COLUMN agent_history.skills n8n_user
+7961; 0 0 ACL public TABLE agent_history n8n_user
+473; 1259 89525 TABLE public agent_task_definition n8n_user
+7962; 0 0 COMMENT public COLUMN agent_task_definition.id n8n_user
+7963; 0 0 COMMENT public COLUMN agent_task_definition."agentId" n8n_user
+7964; 0 0 COMMENT public COLUMN agent_task_definition.objective n8n_user
+7965; 0 0 COMMENT public COLUMN agent_task_definition."cronExpression" n8n_user
+7966; 0 0 ACL public TABLE agent_task_definition n8n_user
+475; 1259 89569 TABLE public agent_task_run_lock n8n_user
+7967; 0 0 COMMENT public COLUMN agent_task_run_lock."agentId" n8n_user
+7968; 0 0 COMMENT public COLUMN agent_task_run_lock."taskId" n8n_user
+7969; 0 0 COMMENT public COLUMN agent_task_run_lock."holderId" n8n_user
+7970; 0 0 COMMENT public COLUMN agent_task_run_lock."heldUntil" n8n_user
+7971; 0 0 ACL public TABLE agent_task_run_lock n8n_user
+474; 1259 89547 TABLE public agent_task_snapshot n8n_user
+7972; 0 0 COMMENT public COLUMN agent_task_snapshot."versionId" n8n_user
+7973; 0 0 COMMENT public COLUMN agent_task_snapshot."taskId" n8n_user
+7974; 0 0 COMMENT public COLUMN agent_task_snapshot.enabled n8n_user
+7975; 0 0 COMMENT public COLUMN agent_task_snapshot.objective n8n_user
+7976; 0 0 COMMENT public COLUMN agent_task_snapshot."cronExpression" n8n_user
+7977; 0 0 ACL public TABLE agent_task_snapshot n8n_user
+451; 1259 88658 TABLE public agents n8n_user
+7978; 0 0 ACL public TABLE agents n8n_user
+462; 1259 89212 TABLE public agents_memory_entries n8n_user
+7979; 0 0 COMMENT public COLUMN agents_memory_entries."agentId" n8n_user
+7980; 0 0 COMMENT public COLUMN agents_memory_entries."resourceId" n8n_user
+7981; 0 0 COMMENT public COLUMN agents_memory_entries."supersededBy" n8n_user
+7982; 0 0 COMMENT public COLUMN agents_memory_entries."embeddingModel" n8n_user
+7983; 0 0 COMMENT public COLUMN agents_memory_entries.embedding n8n_user
+7984; 0 0 COMMENT public COLUMN agents_memory_entries.metadata n8n_user
+7985; 0 0 COMMENT public COLUMN agents_memory_entries."lastSeenAt" n8n_user
+7986; 0 0 ACL public TABLE agents_memory_entries n8n_user
+465; 1259 89316 TABLE public agents_memory_entry_cursors n8n_user
+7987; 0 0 COMMENT public COLUMN agents_memory_entry_cursors."agentId" n8n_user
+7988; 0 0 COMMENT public COLUMN agents_memory_entry_cursors."observationScopeId" n8n_user
+7989; 0 0 COMMENT public COLUMN agents_memory_entry_cursors."lastIndexedObservationId" n8n_user
+7990; 0 0 COMMENT public COLUMN agents_memory_entry_cursors."lastIndexedObservationCreatedAt" n8n_user
+7991; 0 0 ACL public TABLE agents_memory_entry_cursors n8n_user
+463; 1259 89250 TABLE public agents_memory_entry_locks n8n_user
+7992; 0 0 COMMENT public COLUMN agents_memory_entry_locks."agentId" n8n_user
+7993; 0 0 COMMENT public COLUMN agents_memory_entry_locks."resourceId" n8n_user
+7994; 0 0 COMMENT public COLUMN agents_memory_entry_locks."holderId" n8n_user
+7995; 0 0 ACL public TABLE agents_memory_entry_locks n8n_user
+464; 1259 89274 TABLE public agents_memory_entry_sources n8n_user
+7996; 0 0 COMMENT public COLUMN agents_memory_entry_sources."agentId" n8n_user
+7997; 0 0 COMMENT public COLUMN agents_memory_entry_sources."memoryEntryId" n8n_user
+7998; 0 0 COMMENT public COLUMN agents_memory_entry_sources."observationId" n8n_user
+7999; 0 0 COMMENT public COLUMN agents_memory_entry_sources."threadId" n8n_user
+8000; 0 0 COMMENT public COLUMN agents_memory_entry_sources."evidenceHash" n8n_user
+8001; 0 0 COMMENT public COLUMN agents_memory_entry_sources."evidenceText" n8n_user
+8002; 0 0 ACL public TABLE agents_memory_entry_sources n8n_user
+455; 1259 88731 TABLE public agents_messages n8n_user
+8003; 0 0 ACL public TABLE agents_messages n8n_user
+460; 1259 89162 TABLE public agents_observation_cursors n8n_user
+8004; 0 0 COMMENT public COLUMN agents_observation_cursors."agentId" n8n_user
+8005; 0 0 COMMENT public COLUMN agents_observation_cursors."observationScopeId" n8n_user
+8006; 0 0 ACL public TABLE agents_observation_cursors n8n_user
+461; 1259 89186 TABLE public agents_observation_locks n8n_user
+8007; 0 0 COMMENT public COLUMN agents_observation_locks."agentId" n8n_user
+8008; 0 0 COMMENT public COLUMN agents_observation_locks."observationScopeId" n8n_user
+8009; 0 0 COMMENT public COLUMN agents_observation_locks."holderId" n8n_user
+8010; 0 0 ACL public TABLE agents_observation_locks n8n_user
+459; 1259 89117 TABLE public agents_observations n8n_user
+8011; 0 0 COMMENT public COLUMN agents_observations.id n8n_user
+8012; 0 0 COMMENT public COLUMN agents_observations."agentId" n8n_user
+8013; 0 0 COMMENT public COLUMN agents_observations."observationScopeId" n8n_user
+8014; 0 0 ACL public TABLE agents_observations n8n_user
+453; 1259 88705 TABLE public agents_resources n8n_user
+8015; 0 0 ACL public TABLE agents_resources n8n_user
+454; 1259 88717 TABLE public agents_threads n8n_user
+8016; 0 0 ACL public TABLE agents_threads n8n_user
+448; 1259 88559 TABLE public ai_builder_temporary_workflow n8n_user
+8017; 0 0 ACL public TABLE ai_builder_temporary_workflow n8n_user
+384; 1259 87011 TABLE public annotation_tag_entity n8n_user
+8018; 0 0 ACL public TABLE annotation_tag_entity n8n_user
+369; 1259 86434 TABLE public auth_identity n8n_user
+8019; 0 0 ACL public TABLE auth_identity n8n_user
+371; 1259 86451 TABLE public auth_provider_sync_history n8n_user
+8020; 0 0 ACL public TABLE auth_provider_sync_history n8n_user
+370; 1259 86450 SEQUENCE public auth_provider_sync_history_id_seq n8n_user
+8021; 0 0 SEQUENCE OWNED BY public auth_provider_sync_history_id_seq n8n_user
+414; 1259 87854 TABLE public binary_data n8n_user
+8022; 0 0 COMMENT public COLUMN binary_data."sourceType" n8n_user
+8023; 0 0 COMMENT public COLUMN binary_data."sourceId" n8n_user
+8024; 0 0 COMMENT public COLUMN binary_data.data n8n_user
+8025; 0 0 COMMENT public COLUMN binary_data."fileSize" n8n_user
+8026; 0 0 ACL public TABLE binary_data n8n_user
+427; 1259 88177 TABLE public chat_hub_agent_tools n8n_user
+8027; 0 0 ACL public TABLE chat_hub_agent_tools n8n_user
+405; 1259 87651 TABLE public chat_hub_agents n8n_user
+8028; 0 0 COMMENT public COLUMN chat_hub_agents.provider n8n_user
+8029; 0 0 COMMENT public COLUMN chat_hub_agents.model n8n_user
+8030; 0 0 ACL public TABLE chat_hub_agents n8n_user
+404; 1259 87596 TABLE public chat_hub_messages n8n_user
+8031; 0 0 COMMENT public COLUMN chat_hub_messages.type n8n_user
+8032; 0 0 COMMENT public COLUMN chat_hub_messages.provider n8n_user
+8033; 0 0 COMMENT public COLUMN chat_hub_messages.model n8n_user
+8034; 0 0 COMMENT public COLUMN chat_hub_messages."agentId" n8n_user
+8035; 0 0 COMMENT public COLUMN chat_hub_messages.status n8n_user
+8036; 0 0 COMMENT public COLUMN chat_hub_messages.attachments n8n_user
+8037; 0 0 ACL public TABLE chat_hub_messages n8n_user
+426; 1259 88160 TABLE public chat_hub_session_tools n8n_user
+8038; 0 0 ACL public TABLE chat_hub_session_tools n8n_user
+403; 1259 87569 TABLE public chat_hub_sessions n8n_user
+8039; 0 0 COMMENT public COLUMN chat_hub_sessions.provider n8n_user
+8040; 0 0 COMMENT public COLUMN chat_hub_sessions.model n8n_user
+8041; 0 0 COMMENT public COLUMN chat_hub_sessions."agentId" n8n_user
+8042; 0 0 COMMENT public COLUMN chat_hub_sessions."agentName" n8n_user
+8043; 0 0 ACL public TABLE chat_hub_sessions n8n_user
+425; 1259 88135 TABLE public chat_hub_tools n8n_user
+8044; 0 0 ACL public TABLE chat_hub_tools n8n_user
+432; 1259 88290 TABLE public credential_dependency n8n_user
+8045; 0 0 ACL public TABLE credential_dependency n8n_user
+431; 1259 88289 SEQUENCE public credential_dependency_id_seq n8n_user
+356; 1259 86069 TABLE public credentials_entity n8n_user
+8046; 0 0 ACL public TABLE credentials_entity n8n_user
+401; 1259 87502 TABLE public data_table n8n_user
+8047; 0 0 ACL public TABLE data_table n8n_user
+402; 1259 87521 TABLE public data_table_column n8n_user
+8048; 0 0 COMMENT public COLUMN data_table_column.type n8n_user
+8049; 0 0 COMMENT public COLUMN data_table_column.index n8n_user
+8050; 0 0 ACL public TABLE data_table_column n8n_user
+447; 1259 88538 TABLE public deployment_key n8n_user
+8051; 0 0 ACL public TABLE deployment_key n8n_user
+424; 1259 88108 TABLE public dynamic_credential_entry n8n_user
+8052; 0 0 ACL public TABLE dynamic_credential_entry n8n_user
+417; 1259 87906 TABLE public dynamic_credential_resolver n8n_user
+8053; 0 0 COMMENT public COLUMN dynamic_credential_resolver.config n8n_user
+8054; 0 0 ACL public TABLE dynamic_credential_resolver n8n_user
+419; 1259 88014 TABLE public dynamic_credential_user_entry n8n_user
+8055; 0 0 ACL public TABLE dynamic_credential_user_entry n8n_user
+450; 1259 88620 TABLE public evaluation_collection n8n_user
+8056; 0 0 ACL public TABLE evaluation_collection n8n_user
+449; 1259 88585 TABLE public evaluation_config n8n_user
+8057; 0 0 ACL public TABLE evaluation_config n8n_user
+368; 1259 86398 TABLE public event_destinations n8n_user
+8058; 0 0 ACL public TABLE event_destinations n8n_user
+385; 1259 87023 TABLE public execution_annotation_tags n8n_user
+8059; 0 0 ACL public TABLE execution_annotation_tags n8n_user
+383; 1259 86991 TABLE public execution_annotations n8n_user
+8060; 0 0 ACL public TABLE execution_annotations n8n_user
+382; 1259 86990 SEQUENCE public execution_annotations_id_seq n8n_user
+8061; 0 0 SEQUENCE OWNED BY public execution_annotations_id_seq n8n_user
+373; 1259 86573 TABLE public execution_data n8n_user
+8062; 0 0 ACL public TABLE execution_data n8n_user
+358; 1259 86086 TABLE public execution_entity n8n_user
+8063; 0 0 ACL public TABLE execution_entity n8n_user
+357; 1259 86085 SEQUENCE public execution_entity_id_seq n8n_user
+8064; 0 0 SEQUENCE OWNED BY public execution_entity_id_seq n8n_user
+380; 1259 86960 TABLE public execution_metadata n8n_user
+8065; 0 0 ACL public TABLE execution_metadata n8n_user
+379; 1259 86959 SEQUENCE public execution_metadata_temp_id_seq n8n_user
+8066; 0 0 SEQUENCE OWNED BY public execution_metadata_temp_id_seq n8n_user
+388; 1259 87205 TABLE public folder n8n_user
+8067; 0 0 ACL public TABLE folder n8n_user
+389; 1259 87228 TABLE public folder_tag n8n_user
+8068; 0 0 ACL public TABLE folder_tag n8n_user
+395; 1259 87347 TABLE public insights_by_period n8n_user
+8069; 0 0 COMMENT public COLUMN insights_by_period.type n8n_user
+8070; 0 0 COMMENT public COLUMN insights_by_period."periodUnit" n8n_user
+8071; 0 0 ACL public TABLE insights_by_period n8n_user
+394; 1259 87346 SEQUENCE public insights_by_period_id_seq n8n_user
+391; 1259 87310 TABLE public insights_metadata n8n_user
+8072; 0 0 ACL public TABLE insights_metadata n8n_user
+390; 1259 87309 SEQUENCE public insights_metadata_metaId_seq n8n_user
+393; 1259 87330 TABLE public insights_raw n8n_user
+8073; 0 0 COMMENT public COLUMN insights_raw.type n8n_user
+8074; 0 0 ACL public TABLE insights_raw n8n_user
+392; 1259 87329 SEQUENCE public insights_raw_id_seq n8n_user
+366; 1259 86335 TABLE public installed_nodes n8n_user
+8075; 0 0 ACL public TABLE installed_nodes n8n_user
+365; 1259 86324 TABLE public installed_packages n8n_user
+8076; 0 0 ACL public TABLE installed_packages n8n_user
+458; 1259 88980 TABLE public instance_ai_checkpoints n8n_user
+8077; 0 0 COMMENT public COLUMN instance_ai_checkpoints.key n8n_user
+8078; 0 0 COMMENT public COLUMN instance_ai_checkpoints."runId" n8n_user
+8079; 0 0 COMMENT public COLUMN instance_ai_checkpoints."threadId" n8n_user
+8080; 0 0 COMMENT public COLUMN instance_ai_checkpoints."resourceId" n8n_user
+8081; 0 0 COMMENT public COLUMN instance_ai_checkpoints.state n8n_user
+8082; 0 0 COMMENT public COLUMN instance_ai_checkpoints."expiredAt" n8n_user
+8083; 0 0 ACL public TABLE instance_ai_checkpoints n8n_user
+441; 1259 88452 TABLE public instance_ai_iteration_logs n8n_user
+8084; 0 0 ACL public TABLE instance_ai_iteration_logs n8n_user
+476; 1259 89641 TABLE public instance_ai_mcp_registry_connections n8n_user
+8085; 0 0 COMMENT public COLUMN instance_ai_mcp_registry_connections."toolFilter" n8n_user
+8086; 0 0 ACL public TABLE instance_ai_mcp_registry_connections n8n_user
+436; 1259 88338 TABLE public instance_ai_messages n8n_user
+8087; 0 0 ACL public TABLE instance_ai_messages n8n_user
+468; 1259 89408 TABLE public instance_ai_observation_cursors n8n_user
+8088; 0 0 COMMENT public COLUMN instance_ai_observation_cursors."observationScopeId" n8n_user
+8089; 0 0 ACL public TABLE instance_ai_observation_cursors n8n_user
+469; 1259 89425 TABLE public instance_ai_observation_locks n8n_user
+8090; 0 0 COMMENT public COLUMN instance_ai_observation_locks."observationScopeId" n8n_user
+8091; 0 0 COMMENT public COLUMN instance_ai_observation_locks."holderId" n8n_user
+8092; 0 0 ACL public TABLE instance_ai_observation_locks n8n_user
+438; 1259 88372 TABLE public instance_ai_observational_memory n8n_user
+8093; 0 0 ACL public TABLE instance_ai_observational_memory n8n_user
+467; 1259 89370 TABLE public instance_ai_observations n8n_user
+8094; 0 0 COMMENT public COLUMN instance_ai_observations.id n8n_user
+8095; 0 0 COMMENT public COLUMN instance_ai_observations."observationScopeId" n8n_user
+8096; 0 0 ACL public TABLE instance_ai_observations n8n_user
+470; 1259 89445 TABLE public instance_ai_pending_confirmations n8n_user
+8097; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations."requestId" n8n_user
+8098; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations."threadId" n8n_user
+8099; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations."userId" n8n_user
+8100; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations.kind n8n_user
+8101; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations."runId" n8n_user
+8102; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations."toolCallId" n8n_user
+8103; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations."messageGroupId" n8n_user
+8104; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations."checkpointKey" n8n_user
+8105; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations."checkpointTaskId" n8n_user
+8106; 0 0 COMMENT public COLUMN instance_ai_pending_confirmations."expiresAt" n8n_user
+8107; 0 0 ACL public TABLE instance_ai_pending_confirmations n8n_user
+437; 1259 88360 TABLE public instance_ai_resources n8n_user
+8108; 0 0 ACL public TABLE instance_ai_resources n8n_user
+440; 1259 88431 TABLE public instance_ai_run_snapshots n8n_user
+8109; 0 0 COMMENT public COLUMN instance_ai_run_snapshots."langsmithRunId" n8n_user
+8110; 0 0 COMMENT public COLUMN instance_ai_run_snapshots."langsmithTraceId" n8n_user
+8111; 0 0 COMMENT public COLUMN instance_ai_run_snapshots."traceId" n8n_user
+8112; 0 0 COMMENT public COLUMN instance_ai_run_snapshots."spanId" n8n_user
+8113; 0 0 ACL public TABLE instance_ai_run_snapshots n8n_user
+435; 1259 88322 TABLE public instance_ai_threads n8n_user
+8114; 0 0 COMMENT public COLUMN instance_ai_threads."projectId" n8n_user
+8115; 0 0 ACL public TABLE instance_ai_threads n8n_user
+439; 1259 88416 TABLE public instance_ai_workflow_snapshots n8n_user
+8116; 0 0 ACL public TABLE instance_ai_workflow_snapshots n8n_user
+434; 1259 88310 TABLE public instance_version_history n8n_user
+8117; 0 0 ACL public TABLE instance_version_history n8n_user
+433; 1259 88309 SEQUENCE public instance_version_history_id_seq n8n_user
+8118; 0 0 SEQUENCE OWNED BY public instance_version_history_id_seq n8n_user
+381; 1259 86978 TABLE public invalid_auth_token n8n_user
+8119; 0 0 ACL public TABLE invalid_auth_token n8n_user
+471; 1259 89480 TABLE public mcp_registry_server n8n_user
+8120; 0 0 COMMENT public COLUMN mcp_registry_server.status n8n_user
+8121; 0 0 COMMENT public COLUMN mcp_registry_server.data n8n_user
+8122; 0 0 ACL public TABLE mcp_registry_server n8n_user
+355; 1259 86057 TABLE public migrations n8n_user
+8123; 0 0 ACL public TABLE migrations n8n_user
+354; 1259 86056 SEQUENCE public migrations_id_seq n8n_user
+8124; 0 0 SEQUENCE OWNED BY public migrations_id_seq n8n_user
+408; 1259 87728 TABLE public oauth_access_tokens n8n_user
+8125; 0 0 ACL public TABLE oauth_access_tokens n8n_user
+407; 1259 87698 TABLE public oauth_authorization_codes n8n_user
+8126; 0 0 COMMENT public COLUMN oauth_authorization_codes."expiresAt" n8n_user
+8127; 0 0 COMMENT public COLUMN oauth_authorization_codes.resource n8n_user
+8128; 0 0 COMMENT public COLUMN oauth_authorization_codes.scope n8n_user
+8129; 0 0 ACL public TABLE oauth_authorization_codes n8n_user
+406; 1259 87681 TABLE public oauth_clients n8n_user
+8130; 0 0 COMMENT public COLUMN oauth_clients."tokenEndpointAuthMethod" n8n_user
+8131; 0 0 ACL public TABLE oauth_clients n8n_user
+409; 1259 87748 TABLE public oauth_refresh_tokens n8n_user
+8132; 0 0 COMMENT public COLUMN oauth_refresh_tokens."expiresAt" n8n_user
+8133; 0 0 COMMENT public COLUMN oauth_refresh_tokens.scope n8n_user
+8134; 0 0 ACL public TABLE oauth_refresh_tokens n8n_user
+411; 1259 87774 TABLE public oauth_user_consents n8n_user
+8135; 0 0 COMMENT public COLUMN oauth_user_consents."grantedAt" n8n_user
+8136; 0 0 ACL public TABLE oauth_user_consents n8n_user
+410; 1259 87773 SEQUENCE public oauth_user_consents_id_seq n8n_user
+387; 1259 87064 TABLE public processed_data n8n_user
+8137; 0 0 ACL public TABLE processed_data n8n_user
+375; 1259 86856 TABLE public project n8n_user
+8138; 0 0 COMMENT public COLUMN project."creatorId" n8n_user
+8139; 0 0 ACL public TABLE project n8n_user
+376; 1259 86868 TABLE public project_relation n8n_user
+8140; 0 0 ACL public TABLE project_relation n8n_user
+422; 1259 88066 TABLE public project_secrets_provider_access n8n_user
+8141; 0 0 ACL public TABLE project_secrets_provider_access n8n_user
+399; 1259 87420 TABLE public role n8n_user
+8142; 0 0 COMMENT public COLUMN role.slug n8n_user
+8143; 0 0 COMMENT public COLUMN role."displayName" n8n_user
+8144; 0 0 COMMENT public COLUMN role.description n8n_user
+8145; 0 0 COMMENT public COLUMN role."roleType" n8n_user
+8146; 0 0 COMMENT public COLUMN role."systemRole" n8n_user
+8147; 0 0 ACL public TABLE role n8n_user
+429; 1259 88247 TABLE public role_mapping_rule n8n_user
+8148; 0 0 COMMENT public COLUMN role_mapping_rule.type n8n_user
+8149; 0 0 ACL public TABLE role_mapping_rule n8n_user
+430; 1259 88271 TABLE public role_mapping_rule_project n8n_user
+8150; 0 0 ACL public TABLE role_mapping_rule_project n8n_user
+400; 1259 87430 TABLE public role_scope n8n_user
+8151; 0 0 ACL public TABLE role_scope n8n_user
+398; 1259 87412 TABLE public scope n8n_user
+8152; 0 0 COMMENT public COLUMN scope.slug n8n_user
+8153; 0 0 COMMENT public COLUMN scope."displayName" n8n_user
+8154; 0 0 COMMENT public COLUMN scope.description n8n_user
+8155; 0 0 ACL public TABLE scope n8n_user
+421; 1259 88048 TABLE public secrets_provider_connection n8n_user
+8156; 0 0 COMMENT public COLUMN secrets_provider_connection.type n8n_user
+8157; 0 0 ACL public TABLE secrets_provider_connection n8n_user
+420; 1259 88047 SEQUENCE public secrets_provider_connection_id_seq n8n_user
+364; 1259 86313 TABLE public settings n8n_user
+8158; 0 0 ACL public TABLE settings n8n_user
+377; 1259 86902 TABLE public shared_credentials n8n_user
+8159; 0 0 ACL public TABLE shared_credentials n8n_user
+378; 1259 86934 TABLE public shared_workflow n8n_user
+8160; 0 0 ACL public TABLE shared_workflow n8n_user
+361; 1259 86132 TABLE public tag_entity n8n_user
+8161; 0 0 ACL public TABLE tag_entity n8n_user
+397; 1259 87384 TABLE public test_case_execution n8n_user
+8162; 0 0 ACL public TABLE test_case_execution n8n_user
+396; 1259 87364 TABLE public test_run n8n_user
+8163; 0 0 ACL public TABLE test_run n8n_user
+442; 1259 88473 TABLE public token_exchange_jti n8n_user
+8164; 0 0 ACL public TABLE token_exchange_jti n8n_user
+444; 1259 88502 TABLE public trusted_key n8n_user
+8165; 0 0 ACL public TABLE trusted_key n8n_user
+443; 1259 88486 TABLE public trusted_key_source n8n_user
+8166; 0 0 ACL public TABLE trusted_key_source n8n_user
+363; 1259 86236 TABLE public user n8n_user
+8167; 0 0 ACL public TABLE "user" n8n_user
+386; 1259 87042 TABLE public user_api_keys n8n_user
+8168; 0 0 ACL public TABLE user_api_keys n8n_user
+446; 1259 88520 TABLE public user_favorites n8n_user
+8169; 0 0 ACL public TABLE user_favorites n8n_user
+445; 1259 88519 SEQUENCE public user_favorites_id_seq n8n_user
+372; 1259 86472 TABLE public variables n8n_user
+8170; 0 0 ACL public TABLE variables n8n_user
+360; 1259 86118 TABLE public webhook_entity n8n_user
+8171; 0 0 ACL public TABLE webhook_entity n8n_user
+428; 1259 88197 TABLE public workflow_builder_session n8n_user
+8172; 0 0 COMMENT public COLUMN workflow_builder_session."previousSummary" n8n_user
+8173; 0 0 ACL public TABLE workflow_builder_session n8n_user
+413; 1259 87798 TABLE public workflow_dependency n8n_user
+8174; 0 0 COMMENT public COLUMN workflow_dependency."workflowVersionId" n8n_user
+8175; 0 0 COMMENT public COLUMN workflow_dependency."dependencyType" n8n_user
+8176; 0 0 COMMENT public COLUMN workflow_dependency."dependencyKey" n8n_user
+8177; 0 0 COMMENT public COLUMN workflow_dependency."dependencyInfo" n8n_user
+8178; 0 0 COMMENT public COLUMN workflow_dependency."indexVersionId" n8n_user
+8179; 0 0 ACL public TABLE workflow_dependency n8n_user
+412; 1259 87797 SEQUENCE public workflow_dependency_id_seq n8n_user
+359; 1259 86103 TABLE public workflow_entity n8n_user
+8180; 0 0 ACL public TABLE workflow_entity n8n_user
+374; 1259 86591 TABLE public workflow_history n8n_user
+8181; 0 0 ACL public TABLE workflow_history n8n_user
+478; 1259 89677 TABLE public workflow_publication_outbox n8n_user
+8182; 0 0 COMMENT public COLUMN workflow_publication_outbox."workflowId" n8n_user
+8183; 0 0 COMMENT public COLUMN workflow_publication_outbox."publishedVersionId" n8n_user
+8184; 0 0 COMMENT public COLUMN workflow_publication_outbox."errorMessage" n8n_user
+8185; 0 0 ACL public TABLE workflow_publication_outbox n8n_user
+477; 1259 89676 SEQUENCE public workflow_publication_outbox_id_seq n8n_user
+416; 1259 87873 TABLE public workflow_publish_history n8n_user
+8186; 0 0 COMMENT public COLUMN workflow_publish_history.event n8n_user
+8187; 0 0 ACL public TABLE workflow_publish_history n8n_user
+415; 1259 87872 SEQUENCE public workflow_publish_history_id_seq n8n_user
+423; 1259 88087 TABLE public workflow_published_version n8n_user
+8188; 0 0 ACL public TABLE workflow_published_version n8n_user
+367; 1259 86360 TABLE public workflow_statistics n8n_user
+8189; 0 0 ACL public TABLE workflow_statistics n8n_user
+418; 1259 87989 SEQUENCE public workflow_statistics_id_seq n8n_user
+8190; 0 0 SEQUENCE OWNED BY public workflow_statistics_id_seq n8n_user
+362; 1259 86143 TABLE public workflows_tags n8n_user
+8191; 0 0 ACL public TABLE workflows_tags n8n_user
+5460; 2604 110830 DEFAULT chat messages id contract
+5783; 2604 112368 DEFAULT finance ap_allocations id contract
+5780; 2604 112312 DEFAULT finance ap_documents id contract
+5776; 2604 112274 DEFAULT finance ar_allocations id contract
+5773; 2604 112218 DEFAULT finance ar_documents id contract
+5787; 2604 112406 DEFAULT finance bank_accounts id contract
+5789; 2604 112442 DEFAULT finance bank_import_templates id contract
+5791; 2604 112465 DEFAULT finance bank_imports id contract
+5796; 2604 112540 DEFAULT finance bank_match_groups id contract
+5802; 2604 112574 DEFAULT finance bank_match_lines id contract
+5803; 2604 112611 DEFAULT finance bank_reconciliation_audit id contract
+5794; 2604 112498 DEFAULT finance bank_transactions id contract
+5732; 2604 111868 DEFAULT finance branches id contract
+5809; 2604 112659 DEFAULT finance budget_lines id contract
+5806; 2604 112634 DEFAULT finance budgets id contract
+5810; 2604 112686 DEFAULT finance closing_checklists id contract
+5768; 2604 112164 DEFAULT finance commercial_documents id contract
+5737; 2604 111908 DEFAULT finance fiscal_periods id contract
+5758; 2604 112095 DEFAULT finance journal_events id contract
+5754; 2604 112048 DEFAULT finance journal_lines id contract
+5746; 2604 111993 DEFAULT finance journals id contract
+5761; 2604 112122 DEFAULT finance vendors id contract
+5487; 2604 110831 DEFAULT folio access_requests id contract
+5490; 2604 110832 DEFAULT folio ai_assignments id contract
+5497; 2604 110833 DEFAULT folio ai_chat_sessions id contract
+5502; 2604 110834 DEFAULT folio ai_invocations id contract
+5504; 2604 110835 DEFAULT folio ai_models id contract
+5511; 2604 110836 DEFAULT folio ai_providers id contract
+5515; 2604 110837 DEFAULT folio ai_staff id contract
+5520; 2604 110838 DEFAULT folio approval_override_audit id contract
+5522; 2604 110839 DEFAULT folio approval_transitions id contract
+5524; 2604 110840 DEFAULT folio approver_nudges id contract
+5548; 2604 110841 DEFAULT folio customer_contacts id contract
+5527; 2604 110842 DEFAULT folio customers id contract
+5550; 2604 110843 DEFAULT folio domain_events id contract
+5553; 2604 110844 DEFAULT folio exec_snapshots id contract
+5557; 2604 110845 DEFAULT folio expense_items id contract
+5561; 2604 110846 DEFAULT folio expense_payments id contract
+5563; 2604 110847 DEFAULT folio expenses id contract
+5478; 2604 110848 DEFAULT folio journal_entries id contract
+5484; 2604 110849 DEFAULT folio ledger_lines id contract
+5576; 2604 110850 DEFAULT folio notification_digests id contract
+5578; 2604 110851 DEFAULT folio notifications id contract
+5584; 2604 110852 DEFAULT folio po_invoices id contract
+5588; 2604 110853 DEFAULT folio po_items id contract
+5595; 2604 110854 DEFAULT folio policy_audit id contract
+5599; 2604 110855 DEFAULT folio pr_items id contract
+5603; 2604 110856 DEFAULT folio purchase_orders id contract
+5611; 2604 110857 DEFAULT folio purchase_requisitions id contract
+5534; 2604 110858 DEFAULT folio sales_orders id contract
+5619; 2604 110859 DEFAULT folio sales_product_embeddings id contract
+5621; 2604 110860 DEFAULT folio slips id contract
+5625; 2604 110861 DEFAULT folio so_items id contract
+5635; 2604 110862 DEFAULT folio users id contract
+5647; 2604 110863 DEFAULT folio vendor_embeddings id contract
+5650; 2604 110864 DEFAULT folio waybill_attachments id contract
+5661; 2604 110865 DEFAULT folio waybill_stage_claims id contract
+5663; 2604 110866 DEFAULT folio waybill_watchers id contract
+5665; 2604 110867 DEFAULT hook hook_events id contract
+5827; 2604 112845 DEFAULT inventory bins id contract
+5814; 2604 112745 DEFAULT inventory categories id contract
+5840; 2604 113036 DEFAULT inventory costing_events id contract
+5859; 2604 113298 DEFAULT inventory landed_cost_allocations id contract
+5829; 2604 112866 DEFAULT inventory lots id contract
+5815; 2604 112764 DEFAULT inventory products id contract
+5855; 2604 113232 DEFAULT inventory purchase_receipt_lines id contract
+5852; 2604 113195 DEFAULT inventory purchase_receipts id contract
+5856; 2604 113264 DEFAULT inventory recost_jobs id contract
+5842; 2604 113069 DEFAULT inventory reservations id contract
+5864; 2604 113366 DEFAULT inventory sales_shipment_lines id contract
+5861; 2604 113333 DEFAULT inventory sales_shipments id contract
+5851; 2604 113162 DEFAULT inventory stock_count_lines id contract
+5848; 2604 113131 DEFAULT inventory stock_counts id contract
+5835; 2604 112937 DEFAULT inventory stock_movement_lines id contract
+5831; 2604 112893 DEFAULT inventory stock_movements id contract
+5824; 2604 112821 DEFAULT inventory warehouses id contract
+5682; 2604 110868 DEFAULT law job_queue id contract
+5689; 2604 110869 DEFAULT perm audit id contract
+5692; 2604 110870 DEFAULT perm decision_log id contract
+5704; 2604 110871 DEFAULT perm policy_decisions id contract
+5686; 2604 110872 DEFAULT perm user_permissions id contract
+5257; 2604 86454 DEFAULT public auth_provider_sync_history id n8n_user
+5275; 2604 86994 DEFAULT public execution_annotations id n8n_user
+5228; 2604 86089 DEFAULT public execution_entity id n8n_user
+5274; 2604 86963 DEFAULT public execution_metadata id n8n_user
+5349; 2604 88313 DEFAULT public instance_version_history id n8n_user
+5221; 2604 86060 DEFAULT public migrations id n8n_user
+5252; 2604 87990 DEFAULT public workflow_statistics id n8n_user
+7564; 0 109722 TABLE DATA ai model_ratings contract
+7565; 0 109734 TABLE DATA auth sessions contract
+7566; 0 109750 TABLE DATA chat messages contract
+7568; 0 109765 TABLE DATA chat sessions contract
+7569; 0 109783 TABLE DATA finance account_cf_class contract
+7692; 0 111962 TABLE DATA finance accounts contract
+7570; 0 109799 TABLE DATA finance ai_provider_health contract
+7571; 0 109808 TABLE DATA finance ai_user_section_defaults contract
+7710; 0 112365 TABLE DATA finance ap_allocations contract
+7708; 0 112309 TABLE DATA finance ap_documents contract
+7706; 0 112271 TABLE DATA finance ar_allocations contract
+7704; 0 112215 TABLE DATA finance ar_documents contract
+7712; 0 112403 TABLE DATA finance bank_accounts contract
+7714; 0 112439 TABLE DATA finance bank_import_templates contract
+7716; 0 112462 TABLE DATA finance bank_imports contract
+7720; 0 112537 TABLE DATA finance bank_match_groups contract
+7722; 0 112571 TABLE DATA finance bank_match_lines contract
+7724; 0 112608 TABLE DATA finance bank_reconciliation_audit contract
+7718; 0 112495 TABLE DATA finance bank_transactions contract
+7686; 0 111865 TABLE DATA finance branches contract
+7728; 0 112656 TABLE DATA finance budget_lines contract
+7726; 0 112631 TABLE DATA finance budgets contract
+7572; 0 109818 TABLE DATA finance cashflow_period contract
+7730; 0 112683 TABLE DATA finance closing_checklists contract
+7702; 0 112161 TABLE DATA finance commercial_documents contract
+7683; 0 111828 TABLE DATA finance company_config contract
+7684; 0 111850 TABLE DATA finance currencies contract
+7691; 0 111945 TABLE DATA finance document_sequences contract
+7689; 0 111905 TABLE DATA finance fiscal_periods contract
+7687; 0 111883 TABLE DATA finance fx_rates contract
+7698; 0 112092 TABLE DATA finance journal_events contract
+7696; 0 112045 TABLE DATA finance journal_lines contract
+7694; 0 111990 TABLE DATA finance journals contract
+7690; 0 111927 TABLE DATA finance tax_codes contract
+7700; 0 112119 TABLE DATA finance vendors contract
+7576; 0 109895 TABLE DATA folio access_requests contract
+7578; 0 109908 TABLE DATA folio ai_assignments contract
+7580; 0 109928 TABLE DATA folio ai_chat_sessions contract
+7582; 0 109945 TABLE DATA folio ai_invocations contract
+7584; 0 109955 TABLE DATA folio ai_models contract
+7586; 0 109972 TABLE DATA folio ai_providers contract
+7588; 0 109994 TABLE DATA folio ai_staff contract
+7682; 0 111801 TABLE DATA folio ai_user_section_preferences contract
+7590; 0 110011 TABLE DATA folio approval_override_audit contract
+7592; 0 110024 TABLE DATA folio approval_transitions contract
+7594; 0 110036 TABLE DATA folio approver_nudges contract
+7573; 0 109831 TABLE DATA folio chart_of_accounts contract
+7596; 0 110049 TABLE DATA folio customer_advisories contract
+7599; 0 110119 TABLE DATA folio customer_contacts contract
+7597; 0 110060 TABLE DATA folio customers contract
+7602; 0 110131 TABLE DATA folio domain_events contract
+7604; 0 110142 TABLE DATA folio exec_snapshots contract
+7606; 0 110157 TABLE DATA folio expense_items contract
+7608; 0 110169 TABLE DATA folio expense_payments contract
+7610; 0 110188 TABLE DATA folio expenses contract
+7613; 0 110207 TABLE DATA folio hr_leave contract
+7574; 0 109843 TABLE DATA folio journal_entries contract
+7615; 0 110221 TABLE DATA folio learned_mappings contract
+7575; 0 109861 TABLE DATA folio ledger_lines contract
+7617; 0 110233 TABLE DATA folio notification_digests contract
+7619; 0 110248 TABLE DATA folio notifications contract
+7621; 0 110271 TABLE DATA folio po_invoices contract
+7623; 0 110286 TABLE DATA folio po_items contract
+7625; 0 110296 TABLE DATA folio policy_audit contract
+7627; 0 110304 TABLE DATA folio policy_lint_results contract
+7628; 0 110314 TABLE DATA folio pr_items contract
+7630; 0 110325 TABLE DATA folio purchase_orders contract
+7632; 0 110341 TABLE DATA folio purchase_requisitions contract
+7598; 0 110080 TABLE DATA folio sales_orders contract
+7636; 0 110358 TABLE DATA folio sales_product_embeddings contract
+7638; 0 110369 TABLE DATA folio slips contract
+7640; 0 110385 TABLE DATA folio so_items contract
+7642; 0 110404 TABLE DATA folio users contract
+7644; 0 110435 TABLE DATA folio vendor_embeddings contract
+7646; 0 110445 TABLE DATA folio vision_chain contract
+7647; 0 110454 TABLE DATA folio waybill_attachments contract
+7649; 0 110479 TABLE DATA folio waybill_events contract
+7650; 0 110493 TABLE DATA folio waybill_reviews contract
+7652; 0 110530 TABLE DATA folio waybill_stage_claims contract
+7654; 0 110544 TABLE DATA folio waybill_watchers contract
+7651; 0 110504 TABLE DATA folio waybills contract
+7657; 0 110557 TABLE DATA hook hook_events contract
+7659; 0 110576 TABLE DATA hook hook_providers contract
+7740; 0 112842 TABLE DATA inventory bins contract
+7734; 0 112742 TABLE DATA inventory categories contract
+7749; 0 113033 TABLE DATA inventory costing_events contract
+7764; 0 113295 TABLE DATA inventory landed_cost_allocations contract
+7742; 0 112863 TABLE DATA inventory lots contract
+7736; 0 112761 TABLE DATA inventory products contract
+7760; 0 113229 TABLE DATA inventory purchase_receipt_lines contract
+7758; 0 113192 TABLE DATA inventory purchase_receipts contract
+7762; 0 113261 TABLE DATA inventory recost_jobs contract
+7752; 0 113101 TABLE DATA inventory reorder_settings contract
+7751; 0 113066 TABLE DATA inventory reservations contract
+7768; 0 113363 TABLE DATA inventory sales_shipment_lines contract
+7766; 0 113330 TABLE DATA inventory sales_shipments contract
+7747; 0 112997 TABLE DATA inventory stock_balances contract
+7756; 0 113159 TABLE DATA inventory stock_count_lines contract
+7754; 0 113128 TABLE DATA inventory stock_counts contract
+7746; 0 112934 TABLE DATA inventory stock_movement_lines contract
+7744; 0 112890 TABLE DATA inventory stock_movements contract
+7732; 0 112719 TABLE DATA inventory unit_conversions contract
+7731; 0 112707 TABLE DATA inventory units contract
+7738; 0 112818 TABLE DATA inventory warehouses contract
+7660; 0 110590 TABLE DATA law contract_chunks contract
+7661; 0 110602 TABLE DATA law contract_pages contract
+7662; 0 110616 TABLE DATA law contracts contract
+7663; 0 110634 TABLE DATA law job_queue contract
+7666; 0 110667 TABLE DATA perm audit contract
+7668; 0 110680 TABLE DATA perm decision_log contract
+7670; 0 110692 TABLE DATA perm department_permissions contract
+7671; 0 110705 TABLE DATA perm departments contract
+7672; 0 110719 TABLE DATA perm permissions contract
+7673; 0 110725 TABLE DATA perm policies contract
+7674; 0 110741 TABLE DATA perm policy_decisions contract
+7676; 0 110752 TABLE DATA perm role_permissions contract
+7677; 0 110766 TABLE DATA perm roles contract
+7678; 0 110786 TABLE DATA perm tiles contract
+7679; 0 110810 TABLE DATA perm user_departments contract
+7665; 0 110649 TABLE DATA perm user_permissions contract
+7681; 0 110820 TABLE DATA perm user_roles contract
+7537; 0 88685 TABLE DATA public agent_checkpoints n8n_user
+7542; 0 88814 TABLE DATA public agent_execution n8n_user
+7541; 0 88777 TABLE DATA public agent_execution_threads n8n_user
+7557; 0 89498 TABLE DATA public agent_files n8n_user
+7551; 0 89340 TABLE DATA public agent_history n8n_user
+7558; 0 89525 TABLE DATA public agent_task_definition n8n_user
+7560; 0 89569 TABLE DATA public agent_task_run_lock n8n_user
+7559; 0 89547 TABLE DATA public agent_task_snapshot n8n_user
+7536; 0 88658 TABLE DATA public agents n8n_user
+7547; 0 89212 TABLE DATA public agents_memory_entries n8n_user
+7550; 0 89316 TABLE DATA public agents_memory_entry_cursors n8n_user
+7548; 0 89250 TABLE DATA public agents_memory_entry_locks n8n_user
+7549; 0 89274 TABLE DATA public agents_memory_entry_sources n8n_user
+7540; 0 88731 TABLE DATA public agents_messages n8n_user
+7545; 0 89162 TABLE DATA public agents_observation_cursors n8n_user
+7546; 0 89186 TABLE DATA public agents_observation_locks n8n_user
+7544; 0 89117 TABLE DATA public agents_observations n8n_user
+7538; 0 88705 TABLE DATA public agents_resources n8n_user
+7539; 0 88717 TABLE DATA public agents_threads n8n_user
+7533; 0 88559 TABLE DATA public ai_builder_temporary_workflow n8n_user
+7469; 0 87011 TABLE DATA public annotation_tag_entity n8n_user
+7454; 0 86434 TABLE DATA public auth_identity n8n_user
+7456; 0 86451 TABLE DATA public auth_provider_sync_history n8n_user
+7499; 0 87854 TABLE DATA public binary_data n8n_user
+7512; 0 88177 TABLE DATA public chat_hub_agent_tools n8n_user
+7490; 0 87651 TABLE DATA public chat_hub_agents n8n_user
+7489; 0 87596 TABLE DATA public chat_hub_messages n8n_user
+7511; 0 88160 TABLE DATA public chat_hub_session_tools n8n_user
+7488; 0 87569 TABLE DATA public chat_hub_sessions n8n_user
+7510; 0 88135 TABLE DATA public chat_hub_tools n8n_user
+7517; 0 88290 TABLE DATA public credential_dependency n8n_user
+7441; 0 86069 TABLE DATA public credentials_entity n8n_user
+7486; 0 87502 TABLE DATA public data_table n8n_user
+7487; 0 87521 TABLE DATA public data_table_column n8n_user
+7532; 0 88538 TABLE DATA public deployment_key n8n_user
+7509; 0 88108 TABLE DATA public dynamic_credential_entry n8n_user
+7502; 0 87906 TABLE DATA public dynamic_credential_resolver n8n_user
+7504; 0 88014 TABLE DATA public dynamic_credential_user_entry n8n_user
+7535; 0 88620 TABLE DATA public evaluation_collection n8n_user
+7534; 0 88585 TABLE DATA public evaluation_config n8n_user
+7453; 0 86398 TABLE DATA public event_destinations n8n_user
+7470; 0 87023 TABLE DATA public execution_annotation_tags n8n_user
+7468; 0 86991 TABLE DATA public execution_annotations n8n_user
+7458; 0 86573 TABLE DATA public execution_data n8n_user
+7443; 0 86086 TABLE DATA public execution_entity n8n_user
+7465; 0 86960 TABLE DATA public execution_metadata n8n_user
+7473; 0 87205 TABLE DATA public folder n8n_user
+7474; 0 87228 TABLE DATA public folder_tag n8n_user
+7480; 0 87347 TABLE DATA public insights_by_period n8n_user
+7476; 0 87310 TABLE DATA public insights_metadata n8n_user
+7478; 0 87330 TABLE DATA public insights_raw n8n_user
+7451; 0 86335 TABLE DATA public installed_nodes n8n_user
+7450; 0 86324 TABLE DATA public installed_packages n8n_user
+7543; 0 88980 TABLE DATA public instance_ai_checkpoints n8n_user
+7526; 0 88452 TABLE DATA public instance_ai_iteration_logs n8n_user
+7561; 0 89641 TABLE DATA public instance_ai_mcp_registry_connections n8n_user
+7521; 0 88338 TABLE DATA public instance_ai_messages n8n_user
+7553; 0 89408 TABLE DATA public instance_ai_observation_cursors n8n_user
+7554; 0 89425 TABLE DATA public instance_ai_observation_locks n8n_user
+7523; 0 88372 TABLE DATA public instance_ai_observational_memory n8n_user
+7552; 0 89370 TABLE DATA public instance_ai_observations n8n_user
+7555; 0 89445 TABLE DATA public instance_ai_pending_confirmations n8n_user
+7522; 0 88360 TABLE DATA public instance_ai_resources n8n_user
+7525; 0 88431 TABLE DATA public instance_ai_run_snapshots n8n_user
+7520; 0 88322 TABLE DATA public instance_ai_threads n8n_user
+7524; 0 88416 TABLE DATA public instance_ai_workflow_snapshots n8n_user
+7519; 0 88310 TABLE DATA public instance_version_history n8n_user
+7466; 0 86978 TABLE DATA public invalid_auth_token n8n_user
+7556; 0 89480 TABLE DATA public mcp_registry_server n8n_user
+7440; 0 86057 TABLE DATA public migrations n8n_user
+7493; 0 87728 TABLE DATA public oauth_access_tokens n8n_user
+7492; 0 87698 TABLE DATA public oauth_authorization_codes n8n_user
+7491; 0 87681 TABLE DATA public oauth_clients n8n_user
+7494; 0 87748 TABLE DATA public oauth_refresh_tokens n8n_user
+7496; 0 87774 TABLE DATA public oauth_user_consents n8n_user
+7472; 0 87064 TABLE DATA public processed_data n8n_user
+7460; 0 86856 TABLE DATA public project n8n_user
+7461; 0 86868 TABLE DATA public project_relation n8n_user
+7507; 0 88066 TABLE DATA public project_secrets_provider_access n8n_user
+7484; 0 87420 TABLE DATA public role n8n_user
+7514; 0 88247 TABLE DATA public role_mapping_rule n8n_user
+7515; 0 88271 TABLE DATA public role_mapping_rule_project n8n_user
+7485; 0 87430 TABLE DATA public role_scope n8n_user
+7483; 0 87412 TABLE DATA public scope n8n_user
+7506; 0 88048 TABLE DATA public secrets_provider_connection n8n_user
+7449; 0 86313 TABLE DATA public settings n8n_user
+7462; 0 86902 TABLE DATA public shared_credentials n8n_user
+7463; 0 86934 TABLE DATA public shared_workflow n8n_user
+7446; 0 86132 TABLE DATA public tag_entity n8n_user
+7482; 0 87384 TABLE DATA public test_case_execution n8n_user
+7481; 0 87364 TABLE DATA public test_run n8n_user
+7527; 0 88473 TABLE DATA public token_exchange_jti n8n_user
+7529; 0 88502 TABLE DATA public trusted_key n8n_user
+7528; 0 88486 TABLE DATA public trusted_key_source n8n_user
+7448; 0 86236 TABLE DATA public user n8n_user
+7471; 0 87042 TABLE DATA public user_api_keys n8n_user
+7531; 0 88520 TABLE DATA public user_favorites n8n_user
+7457; 0 86472 TABLE DATA public variables n8n_user
+7445; 0 86118 TABLE DATA public webhook_entity n8n_user
+7513; 0 88197 TABLE DATA public workflow_builder_session n8n_user
+7498; 0 87798 TABLE DATA public workflow_dependency n8n_user
+7444; 0 86103 TABLE DATA public workflow_entity n8n_user
+7459; 0 86591 TABLE DATA public workflow_history n8n_user
+7563; 0 89677 TABLE DATA public workflow_publication_outbox n8n_user
+7501; 0 87873 TABLE DATA public workflow_publish_history n8n_user
+7508; 0 88087 TABLE DATA public workflow_published_version n8n_user
+7452; 0 86360 TABLE DATA public workflow_statistics n8n_user
+7447; 0 86143 TABLE DATA public workflows_tags n8n_user
+8192; 0 0 SEQUENCE SET chat messages_id_seq contract
+8193; 0 0 SEQUENCE SET finance ap_allocations_id_seq contract
+8194; 0 0 SEQUENCE SET finance ap_documents_id_seq contract
+8195; 0 0 SEQUENCE SET finance ar_allocations_id_seq contract
+8196; 0 0 SEQUENCE SET finance ar_documents_id_seq contract
+8197; 0 0 SEQUENCE SET finance bank_accounts_id_seq contract
+8198; 0 0 SEQUENCE SET finance bank_import_templates_id_seq contract
+8199; 0 0 SEQUENCE SET finance bank_imports_id_seq contract
+8200; 0 0 SEQUENCE SET finance bank_match_groups_id_seq contract
+8201; 0 0 SEQUENCE SET finance bank_match_lines_id_seq contract
+8202; 0 0 SEQUENCE SET finance bank_reconciliation_audit_id_seq contract
+8203; 0 0 SEQUENCE SET finance bank_transactions_id_seq contract
+8204; 0 0 SEQUENCE SET finance branches_id_seq contract
+8205; 0 0 SEQUENCE SET finance budget_lines_id_seq contract
+8206; 0 0 SEQUENCE SET finance budgets_id_seq contract
+8207; 0 0 SEQUENCE SET finance closing_checklists_id_seq contract
+8208; 0 0 SEQUENCE SET finance commercial_documents_id_seq contract
+8209; 0 0 SEQUENCE SET finance fiscal_periods_id_seq contract
+8210; 0 0 SEQUENCE SET finance journal_events_id_seq contract
+8211; 0 0 SEQUENCE SET finance journal_lines_id_seq contract
+8212; 0 0 SEQUENCE SET finance journals_id_seq contract
+8213; 0 0 SEQUENCE SET finance vendors_id_seq contract
+8214; 0 0 SEQUENCE SET folio access_requests_id_seq contract
+8215; 0 0 SEQUENCE SET folio ai_assignments_id_seq contract
+8216; 0 0 SEQUENCE SET folio ai_chat_sessions_id_seq contract
+8217; 0 0 SEQUENCE SET folio ai_invocations_id_seq contract
+8218; 0 0 SEQUENCE SET folio ai_models_id_seq contract
+8219; 0 0 SEQUENCE SET folio ai_providers_id_seq contract
+8220; 0 0 SEQUENCE SET folio ai_staff_id_seq contract
+8221; 0 0 SEQUENCE SET folio approval_override_audit_id_seq contract
+8222; 0 0 SEQUENCE SET folio approval_transitions_id_seq contract
+8223; 0 0 SEQUENCE SET folio approver_nudges_id_seq contract
+8224; 0 0 SEQUENCE SET folio customer_contacts_id_seq contract
+8225; 0 0 SEQUENCE SET folio customers_id_seq contract
+8226; 0 0 SEQUENCE SET folio domain_events_id_seq contract
+8227; 0 0 SEQUENCE SET folio exec_snapshots_id_seq contract
+8228; 0 0 SEQUENCE SET folio expense_items_id_seq contract
+8229; 0 0 SEQUENCE SET folio expense_payments_id_seq contract
+8230; 0 0 SEQUENCE SET folio expenses_id_seq contract
+8231; 0 0 SEQUENCE SET folio hook_events_id_seq contract
+8232; 0 0 SEQUENCE SET folio journal_entries_id_seq contract
+8233; 0 0 SEQUENCE SET folio ledger_lines_id_seq contract
+8234; 0 0 SEQUENCE SET folio notification_digests_id_seq contract
+8235; 0 0 SEQUENCE SET folio notifications_id_seq contract
+8236; 0 0 SEQUENCE SET folio po_invoices_id_seq contract
+8237; 0 0 SEQUENCE SET folio po_items_id_seq contract
+8238; 0 0 SEQUENCE SET folio policy_audit_id_seq contract
+8239; 0 0 SEQUENCE SET folio pr_items_id_seq contract
+8240; 0 0 SEQUENCE SET folio purchase_orders_id_seq contract
+8241; 0 0 SEQUENCE SET folio purchase_requisitions_id_seq contract
+8242; 0 0 SEQUENCE SET folio sales_orders_fy_2026_seq contract
+8243; 0 0 SEQUENCE SET folio sales_orders_id_seq contract
+8244; 0 0 SEQUENCE SET folio sales_product_embeddings_id_seq contract
+8245; 0 0 SEQUENCE SET folio slips_id_seq contract
+8246; 0 0 SEQUENCE SET folio so_items_id_seq contract
+8247; 0 0 SEQUENCE SET folio users_id_seq contract
+8248; 0 0 SEQUENCE SET folio vendor_embeddings_id_seq contract
+8249; 0 0 SEQUENCE SET folio waybill_attachments_id_seq contract
+8250; 0 0 SEQUENCE SET folio waybill_stage_claims_id_seq contract
+8251; 0 0 SEQUENCE SET folio waybill_watchers_id_seq contract
+8252; 0 0 SEQUENCE SET folio waybills_fy_2026_seq contract
+8253; 0 0 SEQUENCE SET hook hook_events_id_seq contract
+8254; 0 0 SEQUENCE SET inventory bins_id_seq contract
+8255; 0 0 SEQUENCE SET inventory categories_id_seq contract
+8256; 0 0 SEQUENCE SET inventory costing_events_id_seq contract
+8257; 0 0 SEQUENCE SET inventory landed_cost_allocations_id_seq contract
+8258; 0 0 SEQUENCE SET inventory lots_id_seq contract
+8259; 0 0 SEQUENCE SET inventory products_id_seq contract
+8260; 0 0 SEQUENCE SET inventory purchase_receipt_lines_id_seq contract
+8261; 0 0 SEQUENCE SET inventory purchase_receipts_id_seq contract
+8262; 0 0 SEQUENCE SET inventory recost_jobs_id_seq contract
+8263; 0 0 SEQUENCE SET inventory reservations_id_seq contract
+8264; 0 0 SEQUENCE SET inventory sales_shipment_lines_id_seq contract
+8265; 0 0 SEQUENCE SET inventory sales_shipments_id_seq contract
+8266; 0 0 SEQUENCE SET inventory stock_count_lines_id_seq contract
+8267; 0 0 SEQUENCE SET inventory stock_counts_id_seq contract
+8268; 0 0 SEQUENCE SET inventory stock_movement_lines_id_seq contract
+8269; 0 0 SEQUENCE SET inventory stock_movements_id_seq contract
+8270; 0 0 SEQUENCE SET inventory warehouses_id_seq contract
+8271; 0 0 SEQUENCE SET law job_queue_id_seq contract
+8272; 0 0 SEQUENCE SET perm audit_id_seq contract
+8273; 0 0 SEQUENCE SET perm decision_log_id_seq contract
+8274; 0 0 SEQUENCE SET perm policy_decisions_id_seq contract
+8275; 0 0 SEQUENCE SET perm user_permissions_id_seq contract
+8276; 0 0 SEQUENCE SET public auth_provider_sync_history_id_seq n8n_user
+8277; 0 0 SEQUENCE SET public credential_dependency_id_seq n8n_user
+8278; 0 0 SEQUENCE SET public execution_annotations_id_seq n8n_user
+8279; 0 0 SEQUENCE SET public execution_entity_id_seq n8n_user
+8280; 0 0 SEQUENCE SET public execution_metadata_temp_id_seq n8n_user
+8281; 0 0 SEQUENCE SET public insights_by_period_id_seq n8n_user
+8282; 0 0 SEQUENCE SET public insights_metadata_metaId_seq n8n_user
+8283; 0 0 SEQUENCE SET public insights_raw_id_seq n8n_user
+8284; 0 0 SEQUENCE SET public instance_version_history_id_seq n8n_user
+8285; 0 0 SEQUENCE SET public migrations_id_seq n8n_user
+8286; 0 0 SEQUENCE SET public oauth_user_consents_id_seq n8n_user
+8287; 0 0 SEQUENCE SET public secrets_provider_connection_id_seq n8n_user
+8288; 0 0 SEQUENCE SET public user_favorites_id_seq n8n_user
+8289; 0 0 SEQUENCE SET public workflow_dependency_id_seq n8n_user
+8290; 0 0 SEQUENCE SET public workflow_publication_outbox_id_seq n8n_user
+8291; 0 0 SEQUENCE SET public workflow_publish_history_id_seq n8n_user
+8292; 0 0 SEQUENCE SET public workflow_statistics_id_seq n8n_user
+6375; 2606 110874 CONSTRAINT ai model_ratings model_ratings_pkey contract
+6379; 2606 110876 CONSTRAINT auth sessions sessions_pkey contract
+6382; 2606 110878 CONSTRAINT chat messages messages_pkey contract
+6387; 2606 110880 CONSTRAINT chat sessions sessions_pkey contract
+6390; 2606 110882 CONSTRAINT finance account_cf_class account_cf_class_pkey contract
+6724; 2606 111983 CONSTRAINT finance accounts accounts_pkey contract
+6392; 2606 110884 CONSTRAINT finance ai_provider_health ai_provider_health_pkey contract
+6394; 2606 110886 CONSTRAINT finance ai_user_section_defaults ai_user_section_defaults_pkey contract
+6764; 2606 112386 CONSTRAINT finance ap_allocations ap_allocations_pkey contract
+6760; 2606 112341 CONSTRAINT finance ap_documents ap_documents_pkey contract
+6762; 2606 112343 CONSTRAINT finance ap_documents ap_documents_vendor_id_document_no_key contract
+6758; 2606 112292 CONSTRAINT finance ar_allocations ar_allocations_pkey contract
+6752; 2606 112247 CONSTRAINT finance ar_documents ar_documents_document_id_key contract
+6754; 2606 112249 CONSTRAINT finance ar_documents ar_documents_document_no_key contract
+6756; 2606 112245 CONSTRAINT finance ar_documents ar_documents_pkey contract
+6766; 2606 112422 CONSTRAINT finance bank_accounts bank_accounts_code_key contract
+6768; 2606 112420 CONSTRAINT finance bank_accounts bank_accounts_pkey contract
+6770; 2606 112455 CONSTRAINT finance bank_import_templates bank_import_templates_bank_account_id_name_key contract
+6772; 2606 112453 CONSTRAINT finance bank_import_templates bank_import_templates_pkey contract
+6774; 2606 112483 CONSTRAINT finance bank_imports bank_imports_file_hash_key contract
+6776; 2606 112481 CONSTRAINT finance bank_imports bank_imports_pkey contract
+6784; 2606 112559 CONSTRAINT finance bank_match_groups bank_match_groups_pkey contract
+6786; 2606 112581 CONSTRAINT finance bank_match_lines bank_match_lines_pkey contract
+6788; 2606 112624 CONSTRAINT finance bank_reconciliation_audit bank_reconciliation_audit_pkey contract
+6778; 2606 112518 CONSTRAINT finance bank_transactions bank_transactions_bank_account_id_row_fingerprint_key contract
+6780; 2606 112520 CONSTRAINT finance bank_transactions bank_transactions_import_id_row_no_key contract
+6782; 2606 112516 CONSTRAINT finance bank_transactions bank_transactions_pkey contract
+6708; 2606 111882 CONSTRAINT finance branches branches_code_key contract
+6710; 2606 111880 CONSTRAINT finance branches branches_pkey contract
+6794; 2606 112671 CONSTRAINT finance budget_lines budget_lines_budget_id_period_no_account_code_department_id_key contract
+6796; 2606 112669 CONSTRAINT finance budget_lines budget_lines_pkey contract
+6790; 2606 112649 CONSTRAINT finance budgets budgets_name_fiscal_year_branch_id_key contract
+6792; 2606 112647 CONSTRAINT finance budgets budgets_pkey contract
+6397; 2606 110888 CONSTRAINT finance cashflow_period cashflow_period_pkey contract
+6798; 2606 112701 CONSTRAINT finance closing_checklists closing_checklists_period_id_task_key_key contract
+6800; 2606 112699 CONSTRAINT finance closing_checklists closing_checklists_pkey contract
+6748; 2606 112193 CONSTRAINT finance commercial_documents commercial_documents_document_no_key contract
+6750; 2606 112191 CONSTRAINT finance commercial_documents commercial_documents_pkey contract
+6704; 2606 111849 CONSTRAINT finance company_config company_config_pkey contract
+6706; 2606 111863 CONSTRAINT finance currencies currencies_pkey contract
+6722; 2606 111956 CONSTRAINT finance document_sequences document_sequences_pkey contract
+6714; 2606 111926 CONSTRAINT finance fiscal_periods fiscal_periods_daterange_excl contract
+6716; 2606 111924 CONSTRAINT finance fiscal_periods fiscal_periods_fiscal_year_period_no_key contract
+6718; 2606 111922 CONSTRAINT finance fiscal_periods fiscal_periods_pkey contract
+6712; 2606 111898 CONSTRAINT finance fx_rates fx_rates_pkey contract
+6742; 2606 112108 CONSTRAINT finance journal_events journal_events_pkey contract
+6738; 2606 112070 CONSTRAINT finance journal_lines journal_lines_journal_id_line_no_key contract
+6740; 2606 112068 CONSTRAINT finance journal_lines journal_lines_pkey contract
+6728; 2606 112024 CONSTRAINT finance journals journals_journal_no_key contract
+6730; 2606 112022 CONSTRAINT finance journals journals_pkey contract
+6732; 2606 112028 CONSTRAINT finance journals journals_reversal_of_id_key contract
+6734; 2606 112026 CONSTRAINT finance journals journals_source_event_key_key contract
+6720; 2606 111944 CONSTRAINT finance tax_codes tax_codes_pkey contract
+6744; 2606 112144 CONSTRAINT finance vendors vendors_code_key contract
+6746; 2606 112142 CONSTRAINT finance vendors vendors_pkey contract
+6419; 2606 110890 CONSTRAINT folio access_requests access_requests_pkey contract
+6423; 2606 110892 CONSTRAINT folio ai_assignments ai_assignments_pkey contract
+6425; 2606 110894 CONSTRAINT folio ai_assignments ai_assignments_unique contract
+6428; 2606 110896 CONSTRAINT folio ai_chat_sessions ai_chat_sessions_pkey contract
+6430; 2606 110898 CONSTRAINT folio ai_chat_sessions ai_chat_sessions_user_id_scope_key contract
+6434; 2606 110900 CONSTRAINT folio ai_invocations ai_invocations_pkey contract
+6439; 2606 110902 CONSTRAINT folio ai_models ai_models_pkey contract
+6441; 2606 110904 CONSTRAINT folio ai_models ai_models_provider_id_name_key contract
+6444; 2606 110906 CONSTRAINT folio ai_providers ai_providers_name_key contract
+6446; 2606 110908 CONSTRAINT folio ai_providers ai_providers_pkey contract
+6448; 2606 110910 CONSTRAINT folio ai_staff ai_staff_pkey contract
+6701; 2606 111815 CONSTRAINT folio ai_user_section_preferences ai_user_section_preferences_pkey contract
+6450; 2606 110912 CONSTRAINT folio approval_override_audit approval_override_audit_pkey contract
+6455; 2606 110914 CONSTRAINT folio approval_transitions approval_transitions_pkey contract
+6460; 2606 110916 CONSTRAINT folio approver_nudges approver_nudges_approver_user_id_waybill_id_stage_key contract
+6462; 2606 110918 CONSTRAINT folio approver_nudges approver_nudges_pkey contract
+6399; 2606 110920 CONSTRAINT folio chart_of_accounts chart_of_accounts_pkey contract
+6465; 2606 110922 CONSTRAINT folio customer_advisories customer_advisories_pkey contract
+6484; 2606 110924 CONSTRAINT folio customer_contacts customer_contacts_pkey contract
+6469; 2606 110926 CONSTRAINT folio customers customers_code_key contract
+6472; 2606 110928 CONSTRAINT folio customers customers_pkey contract
+6486; 2606 110930 CONSTRAINT folio domain_events domain_events_pkey contract
+6492; 2606 110932 CONSTRAINT folio exec_snapshots exec_snapshots_pkey contract
+6494; 2606 110934 CONSTRAINT folio exec_snapshots exec_snapshots_snapshot_date_key contract
+6496; 2606 110936 CONSTRAINT folio expense_items expense_items_pkey contract
+6498; 2606 110938 CONSTRAINT folio expense_payments expense_payments_expense_id_key contract
+6500; 2606 110940 CONSTRAINT folio expense_payments expense_payments_pkey contract
+6502; 2606 110942 CONSTRAINT folio expense_payments expense_payments_slip_id_key contract
+6504; 2606 110944 CONSTRAINT folio expense_payments expense_payments_waybill_id_key contract
+6506; 2606 110946 CONSTRAINT folio expenses expenses_pkey contract
+6513; 2606 110948 CONSTRAINT folio hr_leave hr_leave_pkey contract
+6412; 2606 110950 CONSTRAINT folio journal_entries journal_entries_pkey contract
+6518; 2606 110952 CONSTRAINT folio learned_mappings learned_mappings_pkey contract
+6416; 2606 110954 CONSTRAINT folio ledger_lines ledger_lines_pkey contract
+6521; 2606 110956 CONSTRAINT folio notification_digests notification_digests_pkey contract
+6523; 2606 110958 CONSTRAINT folio notification_digests notification_digests_user_id_period_start_period_end_key contract
+6528; 2606 110962 CONSTRAINT folio notifications notifications_event_user_key contract
+6530; 2606 110960 CONSTRAINT folio notifications notifications_pkey contract
+6534; 2606 110964 CONSTRAINT folio po_invoices po_invoices_pkey contract
+6537; 2606 110966 CONSTRAINT folio po_items po_items_pkey contract
+6539; 2606 110968 CONSTRAINT folio policy_audit policy_audit_pkey contract
+6542; 2606 110970 CONSTRAINT folio policy_lint_results policy_lint_results_pkey contract
+6544; 2606 110972 CONSTRAINT folio pr_items pr_items_pkey contract
+6548; 2606 110974 CONSTRAINT folio purchase_orders purchase_orders_pkey contract
+6550; 2606 110976 CONSTRAINT folio purchase_orders purchase_orders_po_number_key contract
+6556; 2606 110978 CONSTRAINT folio purchase_requisitions purchase_requisitions_pkey contract
+6477; 2606 110980 CONSTRAINT folio sales_orders sales_orders_pkey contract
+6480; 2606 110982 CONSTRAINT folio sales_orders sales_orders_so_number_key contract
+6560; 2606 110984 CONSTRAINT folio sales_product_embeddings sales_product_embeddings_pkey contract
+6568; 2606 110986 CONSTRAINT folio slips slips_pkey contract
+6570; 2606 110988 CONSTRAINT folio so_items so_items_pkey contract
+6576; 2606 110990 CONSTRAINT folio users users_employee_code_key contract
+6578; 2606 110992 CONSTRAINT folio users users_line_user_id_key contract
+6580; 2606 110994 CONSTRAINT folio users users_pkey contract
+6585; 2606 110996 CONSTRAINT folio vendor_embeddings vendor_embeddings_pkey contract
+6587; 2606 110998 CONSTRAINT folio vision_chain vision_chain_pkey contract
+6592; 2606 111000 CONSTRAINT folio waybill_attachments waybill_attachments_pkey contract
+6598; 2606 111002 CONSTRAINT folio waybill_events waybill_events_pkey contract
+6601; 2606 111004 CONSTRAINT folio waybill_reviews waybill_reviews_pkey contract
+6615; 2606 111006 CONSTRAINT folio waybill_stage_claims waybill_stage_claims_pkey contract
+6619; 2606 111008 CONSTRAINT folio waybill_watchers waybill_watchers_pkey contract
+6621; 2606 111010 CONSTRAINT folio waybill_watchers waybill_watchers_waybill_id_stage_key_user_id_key contract
+6609; 2606 111012 CONSTRAINT folio waybills waybills_origin_origin_id_key contract
+6611; 2606 111014 CONSTRAINT folio waybills waybills_pkey contract
+6623; 2606 111016 CONSTRAINT hook hook_events hook_events_pkey contract
+6625; 2606 111018 CONSTRAINT hook hook_events hook_events_provider_id_external_id_key contract
+6630; 2606 111020 CONSTRAINT hook hook_providers hook_providers_pkey contract
+6818; 2606 112854 CONSTRAINT inventory bins bins_pkey contract
+6820; 2606 112856 CONSTRAINT inventory bins bins_warehouse_id_code_key contract
+6806; 2606 112754 CONSTRAINT inventory categories categories_code_key contract
+6808; 2606 112752 CONSTRAINT inventory categories categories_pkey contract
+6838; 2606 113049 CONSTRAINT inventory costing_events costing_events_pkey contract
+6862; 2606 113313 CONSTRAINT inventory landed_cost_allocations landed_cost_allocations_ap_document_id_receipt_line_id_key contract
+6864; 2606 113311 CONSTRAINT inventory landed_cost_allocations landed_cost_allocations_pkey contract
+6822; 2606 112876 CONSTRAINT inventory lots lots_pkey contract
+6824; 2606 112878 CONSTRAINT inventory lots lots_product_id_lot_no_key contract
+6810; 2606 112789 CONSTRAINT inventory products products_pkey contract
+6812; 2606 112791 CONSTRAINT inventory products products_sku_key contract
+6856; 2606 113242 CONSTRAINT inventory purchase_receipt_lines purchase_receipt_lines_pkey contract
+6858; 2606 113244 CONSTRAINT inventory purchase_receipt_lines purchase_receipt_lines_receipt_id_po_line_id_lot_id_key contract
+6852; 2606 113210 CONSTRAINT inventory purchase_receipts purchase_receipts_pkey contract
+6854; 2606 113212 CONSTRAINT inventory purchase_receipts purchase_receipts_receipt_no_key contract
+6860; 2606 113278 CONSTRAINT inventory recost_jobs recost_jobs_pkey contract
+6842; 2606 113116 CONSTRAINT inventory reorder_settings reorder_settings_pkey contract
+6840; 2606 113085 CONSTRAINT inventory reservations reservations_pkey contract
+6871; 2606 113374 CONSTRAINT inventory sales_shipment_lines sales_shipment_lines_pkey contract
+6873; 2606 113376 CONSTRAINT inventory sales_shipment_lines sales_shipment_lines_shipment_id_sales_order_line_id_lot_id_key contract
+6867; 2606 113348 CONSTRAINT inventory sales_shipments sales_shipments_pkey contract
+6869; 2606 113350 CONSTRAINT inventory sales_shipments sales_shipments_shipment_no_key contract
+6836; 2606 113011 CONSTRAINT inventory stock_balances stock_balances_product_id_warehouse_id_bin_id_lot_id_key contract
+6848; 2606 113170 CONSTRAINT inventory stock_count_lines stock_count_lines_count_id_product_id_bin_id_lot_id_key contract
+6850; 2606 113168 CONSTRAINT inventory stock_count_lines stock_count_lines_pkey contract
+6844; 2606 113147 CONSTRAINT inventory stock_counts stock_counts_count_no_key contract
+6846; 2606 113145 CONSTRAINT inventory stock_counts stock_counts_pkey contract
+6832; 2606 112956 CONSTRAINT inventory stock_movement_lines stock_movement_lines_movement_id_line_no_key contract
+6834; 2606 112954 CONSTRAINT inventory stock_movement_lines stock_movement_lines_pkey contract
+6826; 2606 112915 CONSTRAINT inventory stock_movements stock_movements_movement_no_key contract
+6828; 2606 112913 CONSTRAINT inventory stock_movements stock_movements_pkey contract
+6830; 2606 112917 CONSTRAINT inventory stock_movements stock_movements_source_event_key_key contract
+6804; 2606 112730 CONSTRAINT inventory unit_conversions unit_conversions_pkey contract
+6802; 2606 112718 CONSTRAINT inventory units units_pkey contract
+6814; 2606 112835 CONSTRAINT inventory warehouses warehouses_code_key contract
+6816; 2606 112833 CONSTRAINT inventory warehouses warehouses_pkey contract
+6632; 2606 111022 CONSTRAINT law contract_chunks contract_chunks_contract_id_chunk_index_key contract
+6634; 2606 111024 CONSTRAINT law contract_chunks contract_chunks_pkey contract
+6638; 2606 111026 CONSTRAINT law contract_pages contract_pages_contract_id_page_index_key contract
+6640; 2606 111028 CONSTRAINT law contract_pages contract_pages_pkey contract
+6643; 2606 111030 CONSTRAINT law contracts contracts_pkey contract
+6648; 2606 111032 CONSTRAINT law job_queue job_queue_pkey contract
+6659; 2606 111034 CONSTRAINT perm audit audit_pkey contract
+6661; 2606 111036 CONSTRAINT perm decision_log decision_log_pkey contract
+6667; 2606 111038 CONSTRAINT perm department_permissions department_permissions_pkey contract
+6670; 2606 111040 CONSTRAINT perm departments departments_display_name_key contract
+6672; 2606 111042 CONSTRAINT perm departments departments_pkey contract
+6655; 2606 111044 CONSTRAINT perm user_permissions perm_user_permissions_one_alive contract
+6675; 2606 111047 CONSTRAINT perm permissions permissions_pkey contract
+6677; 2606 111049 CONSTRAINT perm policies policies_name_key contract
+6679; 2606 111051 CONSTRAINT perm policies policies_pkey contract
+6681; 2606 111053 CONSTRAINT perm policy_decisions policy_decisions_pkey contract
+6683; 2606 111055 CONSTRAINT perm role_permissions role_permissions_pkey contract
+6686; 2606 111057 CONSTRAINT perm roles roles_display_name_key contract
+6688; 2606 111059 CONSTRAINT perm roles roles_id_kind_key contract
+6690; 2606 111061 CONSTRAINT perm roles roles_pkey contract
+6693; 2606 111063 CONSTRAINT perm tiles tiles_pkey contract
+6696; 2606 111065 CONSTRAINT perm user_departments user_departments_pkey contract
+6657; 2606 111067 CONSTRAINT perm user_permissions user_permissions_pkey contract
+6699; 2606 111069 CONSTRAINT perm user_roles user_roles_pkey contract
+6127; 2606 87377 CONSTRAINT public test_run PK_011c050f566e9db509a0fadb9b9 n8n_user
+6190; 2606 88076 CONSTRAINT public project_secrets_provider_access PK_0402b7fcec5415246656f102f83 n8n_user
+6054; 2606 86334 CONSTRAINT public installed_packages PK_08cc9197c39b028c1e9beca225940576fd1a5804 n8n_user
+6243; 2606 88444 CONSTRAINT public instance_ai_run_snapshots PK_0a5fc9690a84950ebf1416fb146 n8n_user
+6357; 2606 89497 CONSTRAINT public mcp_registry_server PK_12fd89a1fb8489513b0a91f5d31 n8n_user
+6230; 2606 88352 CONSTRAINT public instance_ai_messages PK_156c6f287225e9befe0181bb02b n8n_user
+6363; 2606 89540 CONSTRAINT public agent_task_definition PK_1756c11c637903e97629a7a784a n8n_user
+6090; 2606 86971 CONSTRAINT public execution_metadata PK_17a0b6284f8d626aae88e1c16e4 n8n_user
+6215; 2606 88277 CONSTRAINT public role_mapping_rule_project PK_198c5b5aea509d139274efcaf9a n8n_user
+6080; 2606 86881 CONSTRAINT public project_relation PK_1caaa312a5d7184a003be0f0cb6 n8n_user
+6149; 2606 87580 CONSTRAINT public chat_hub_sessions PK_1eafef1273c70e4464fec703412 n8n_user
+6365; 2606 89563 CONSTRAINT public agent_task_snapshot PK_2142a8bcda2360c3c5e34f82640 n8n_user
+6246; 2606 88466 CONSTRAINT public instance_ai_iteration_logs PK_21c2b214b44bc6c34a6d3551c90 n8n_user
+6299; 2606 89627 CONSTRAINT public agent_execution_threads PK_22373dbf6ba6929d8ac50093309 n8n_user
+6355; 2606 89459 CONSTRAINT public instance_ai_pending_confirmations PK_25c38179c8d45095b168adfff80 n8n_user
+6334; 2606 89291 CONSTRAINT public agents_memory_entry_sources PK_278f05e98e74baaaa93f52b4bab n8n_user
+6113; 2606 87234 CONSTRAINT public folder_tag PK_27e4e00852f6b06a925a4d83a3e n8n_user
+6226; 2606 88336 CONSTRAINT public instance_ai_threads PK_35575100e45cdedeb89ae0643e9 n8n_user
+6135; 2606 87429 CONSTRAINT public role PK_35c9b140caaf6da09cfabb0d675 n8n_user
+6188; 2606 88064 CONSTRAINT public secrets_provider_connection PK_4350ae85e76f9ba7df1370acb5d n8n_user
+6232; 2606 88371 CONSTRAINT public instance_ai_resources PK_45b5b0b6f715dae4292b86603d8 n8n_user
+6290; 2606 89594 CONSTRAINT public agents_threads PK_4a3feb0a13ffe315c009cce64e5 n8n_user
+6076; 2606 86867 CONSTRAINT public project PK_4d68b1358bb5b766d3e78f32f57 n8n_user
+6345; 2606 89389 CONSTRAINT public instance_ai_observations PK_4d9b514cdf0f0b577650caf2ac2 n8n_user
+6285; 2606 88698 CONSTRAINT public agent_checkpoints PK_50a27cbafa6806c9b162304b5fd n8n_user
+6196; 2606 88122 CONSTRAINT public dynamic_credential_entry PK_5135ffcabecad4727ff6b9b803d n8n_user
+6172; 2606 87813 CONSTRAINT public workflow_dependency PK_52325e34cd7a2f0f67b0f3cad65 n8n_user
+6307; 2606 88993 CONSTRAINT public instance_ai_checkpoints PK_5315a45f0846d1f9d128c18a2ed n8n_user
+6092; 2606 86986 CONSTRAINT public invalid_auth_token PK_5779069b7235b256d91f7af1a15 n8n_user
+6272; 2606 88605 CONSTRAINT public evaluation_config PK_59c14dccf8989df94070c2dcfda n8n_user
+6347; 2606 89419 CONSTRAINT public instance_ai_observation_cursors PK_5b6319b2e9a37c1064a72428f9a n8n_user
+6087; 2606 86947 CONSTRAINT public shared_workflow PK_5ba87620386b847201c9531c58f n8n_user
+6192; 2606 88097 CONSTRAINT public workflow_published_version PK_5c76fb7ee939fe2530374d3f75a n8n_user
+6111; 2606 87216 CONSTRAINT public folder PK_6278a41a706740c94c02e288df8 n8n_user
+6340; 2606 89353 CONSTRAINT public agent_history PK_65ffcfe7a8e112fb826311fb092 n8n_user
+6144; 2606 87534 CONSTRAINT public data_table_column PK_673cb121ee4a8a5e27850c72c51 n8n_user
+6360; 2606 89514 CONSTRAINT public agent_files PK_692920e59217af7d124cd95106f n8n_user
+6199; 2606 88153 CONSTRAINT public chat_hub_tools PK_696d26426c704fba79b2c195ef5 n8n_user
+6098; 2606 87021 CONSTRAINT public annotation_tag_entity PK_69dfa041592c30bbc0d4b84aa00 n8n_user
+6256; 2606 88528 CONSTRAINT public user_favorites PK_6c472a19a7423cfbbf6b7c75939 n8n_user
+6236; 2606 88408 CONSTRAINT public instance_ai_observational_memory PK_7192dd00cddba039bf1d3e6a098 n8n_user
+6162; 2606 87762 CONSTRAINT public oauth_refresh_tokens PK_74abaed0b30711b6532598b0392 n8n_user
+6185; 2606 88028 CONSTRAINT public dynamic_credential_user_entry PK_74f548e633abc66dc27c8f0ca77 n8n_user
+6152; 2606 87615 CONSTRAINT public chat_hub_messages PK_7704a5add6baed43eef835f0bfb n8n_user
+6095; 2606 87004 CONSTRAINT public execution_annotations PK_7afcf93ffa20c4252869a7c6a23 n8n_user
+6319; 2606 89200 CONSTRAINT public agents_observation_locks PK_7e2e315162ac3d80587e15ac2c3 n8n_user
+6220; 2606 88300 CONSTRAINT public credential_dependency PK_80212729ed0ffa0709417ab28f4 n8n_user
+6294; 2606 88746 CONSTRAINT public agents_messages PK_81020dc608dfb0af1ede386d907 n8n_user
+6269; 2606 88569 CONSTRAINT public ai_builder_temporary_workflow PK_85a87a1ba0f61999fe11dc56325 n8n_user
+6164; 2606 87784 CONSTRAINT public oauth_user_consents PK_85b9ada746802c8993103470f05 n8n_user
+6222; 2606 88321 CONSTRAINT public instance_version_history PK_874f58cb616935bf49d9dbd67e9 n8n_user
+6201; 2606 88166 CONSTRAINT public chat_hub_session_tools PK_87aea76ff4c274c4a5ac838ebe3 n8n_user
+6019; 2606 86067 CONSTRAINT public migrations PK_8c82d7f526340ab734260ea46be n8n_user
+6056; 2606 86346 CONSTRAINT public installed_nodes PK_8ebd28194e4f792f96b5933423fc439df97d9689 n8n_user
+6084; 2606 86915 CONSTRAINT public shared_credentials PK_8ef3a59796a228913f251779cff n8n_user
+6130; 2606 87397 CONSTRAINT public test_case_execution PK_90c121f77a78a6580e94b794bce n8n_user
+6239; 2606 88429 CONSTRAINT public instance_ai_workflow_snapshots PK_93f2696eb321dfe1d7defe7073f n8n_user
+6266; 2606 88552 CONSTRAINT public deployment_key PK_94bb7aeb5def5a0284a5fe9f9a0 n8n_user
+6106; 2606 87056 CONSTRAINT public user_api_keys PK_978fa5caa3468f463dac9d92e69 n8n_user
+6102; 2606 87029 CONSTRAINT public execution_annotation_tags PK_979ec03d31294cca484be65d11f n8n_user
+6250; 2606 88501 CONSTRAINT public trusted_key_source PK_99e8908ce2c2cdccce487db7fc6 n8n_user
+6313; 2606 89137 CONSTRAINT public agents_observations PK_9ad319654d12c2649f7caf27135 n8n_user
+6282; 2606 88677 CONSTRAINT public agents PK_9c653f28ae19c5884d5baf6a1d9 n8n_user
+6328; 2606 89262 CONSTRAINT public agents_memory_entry_locks PK_a8e0f570d04a174292bea104ae6 n8n_user
+6037; 2606 86128 CONSTRAINT public webhook_entity PK_b21ace2e13596ccd87dc9bf4ea6 n8n_user
+6337; 2606 89328 CONSTRAINT public agents_memory_entry_cursors PK_b31a1d5c009a27f4cc5ef8f102a n8n_user
+6373; 2606 89692 CONSTRAINT public workflow_publication_outbox PK_b3e2eeee36a4bd044d56468d311 n8n_user
+6122; 2606 87357 CONSTRAINT public insights_by_period PK_b606942249b90cc39b0265f0575 n8n_user
+6074; 2606 86606 CONSTRAINT public workflow_history PK_b6572dd6173e4cd06fe79937b58 n8n_user
+6181; 2606 87920 CONSTRAINT public dynamic_credential_resolver PK_b76cfb088dcdaf5275e9980bb64 n8n_user
+6302; 2606 88833 CONSTRAINT public agent_execution PK_ba438acc8532addc12d1ef17049 n8n_user
+6325; 2606 89230 CONSTRAINT public agents_memory_entries PK_bfbc45dc88f66fae4e4b4a15fec n8n_user
+6132; 2606 87419 CONSTRAINT public scope PK_bfc45df0481abd7f355d6187da1 n8n_user
+6156; 2606 87697 CONSTRAINT public oauth_clients PK_c4759172d3431bae6f04e678e0d n8n_user
+6178; 2606 87884 CONSTRAINT public workflow_publish_history PK_c788f7caf88e91e365c97d6d04a n8n_user
+6108; 2606 87077 CONSTRAINT public processed_data PK_ca04b9d8dc72de268fe07a65773 n8n_user
+6203; 2606 88183 CONSTRAINT public chat_hub_agent_tools PK_cc8806fdea48297a7d497035d72 n8n_user
+6210; 2606 88262 CONSTRAINT public role_mapping_rule PK_d772c8ec1a89b52d31c882bc560 n8n_user
+6248; 2606 88480 CONSTRAINT public token_exchange_jti PK_d8e8a6f737d530fdd2dd716e89c n8n_user
+6052; 2606 86323 CONSTRAINT public settings PK_dc0fe14e6d9943f268e7b119f69ab8bd n8n_user
+6252; 2606 88513 CONSTRAINT public trusted_key PK_dc7d93798f3dbb6959f974c97e1 n8n_user
+6160; 2606 87737 CONSTRAINT public oauth_access_tokens PK_dcd71f96a5d5f4bf79e67d322bf n8n_user
+6140; 2606 87513 CONSTRAINT public data_table PK_e226d0001b9e6097cbfe70617cb n8n_user
+6370; 2606 89655 CONSTRAINT public instance_ai_mcp_registry_connections PK_e34e4d15d78eabbe8217e33ef03 n8n_user
+6205; 2606 88212 CONSTRAINT public workflow_builder_session PK_e69ef0d385986e273423b0e8695 n8n_user
+6278; 2606 88634 CONSTRAINT public evaluation_collection PK_e720b6efc1e45b878ebb0b2ca30 n8n_user
+6047; 2606 86249 CONSTRAINT public user PK_ea8f538c94b6e352418254ed6474a81f n8n_user
+6316; 2606 89174 CONSTRAINT public agents_observation_cursors PK_eb777ac57ab872d38f8ebd19317 n8n_user
+6119; 2606 87340 CONSTRAINT public insights_raw PK_ec15125755151e3a7e00e00014f n8n_user
+6154; 2606 87667 CONSTRAINT public chat_hub_agents PK_f39a3b36bbdf0e2979ddb21cf78 n8n_user
+6116; 2606 87317 CONSTRAINT public insights_metadata PK_f448a94c35218b6208ce20cf5a1 n8n_user
+6367; 2606 89581 CONSTRAINT public agent_task_run_lock PK_f593adaf7230e964d3c25deda64 n8n_user
+6287; 2606 88716 CONSTRAINT public agents_resources PK_fa6b20b2d31a9991529dbf8ef7d n8n_user
+6158; 2606 87717 CONSTRAINT public oauth_authorization_codes PK_fb91ab932cfbd694061501cc20f n8n_user
+6175; 2606 87870 CONSTRAINT public binary_data PK_fc3691585b39408bb0551122af6 n8n_user
+6349; 2606 89438 CONSTRAINT public instance_ai_observation_locks PK_fc491dd378b9448655c3c683f85 n8n_user
+6138; 2606 87436 CONSTRAINT public role_scope PK_role_scope n8n_user
+6166; 2606 87786 CONSTRAINT public oauth_user_consents UQ_083721d99ce8db4033e2958ebb4 n8n_user
+6274; 2606 88607 CONSTRAINT public evaluation_config UQ_3c3c99a712e971835c52292e44c n8n_user
+6146; 2606 87536 CONSTRAINT public data_table_column UQ_8082ec4890f892f0bc77473a123 n8n_user
+6142; 2606 87515 CONSTRAINT public data_table UQ_b23096ef747281ac944d28e8b0d n8n_user
+6212; 2606 88264 CONSTRAINT public role_mapping_rule UQ_b33ac896ad3099fc8de36fdc1c4 n8n_user
+6258; 2606 88530 CONSTRAINT public user_favorites UQ_cf6ae658ead9ffc124723413c65 n8n_user
+6049; 2606 86251 CONSTRAINT public user UQ_e12875dfb3b1d92d7d7c5377e2 n8n_user
+6207; 2606 88214 CONSTRAINT public workflow_builder_session UQ_ec2aa73632932d485a1d5192ce1 n8n_user
+6063; 2606 88195 CONSTRAINT public auth_identity auth_identity_pkey n8n_user
+6065; 2606 86470 CONSTRAINT public auth_provider_sync_history auth_provider_sync_history_pkey n8n_user
+6021; 2606 86568 CONSTRAINT public credentials_entity credentials_entity_pkey n8n_user
+6061; 2606 86410 CONSTRAINT public event_destinations event_destinations_pkey n8n_user
+6071; 2606 86589 CONSTRAINT public execution_data execution_data_pkey n8n_user
+6030; 2606 86100 CONSTRAINT public execution_entity pk_e3e63bbf986767844bbe1166d4e n8n_user
+6045; 2606 86511 CONSTRAINT public workflows_tags pk_workflows_tags n8n_user
+6042; 2606 86555 CONSTRAINT public tag_entity tag_entity_pkey n8n_user
+6068; 2606 86572 CONSTRAINT public variables variables_pkey n8n_user
+6035; 2606 86553 CONSTRAINT public workflow_entity workflow_entity_pkey n8n_user
+6059; 2606 87993 CONSTRAINT public workflow_statistics workflow_statistics_pkey n8n_user
+6376; 1259 111070 INDEX auth auth_sessions_active_idx contract
+6377; 1259 111071 INDEX auth auth_sessions_user_id_idx contract
+6380; 1259 111072 INDEX chat chat_messages_session_idx contract
+6384; 1259 111073 INDEX chat chat_sessions_scope_idx contract
+6385; 1259 111074 INDEX chat chat_sessions_user_idx contract
+6383; 1259 111075 INDEX chat messages_reasoning_idx contract
+6388; 1259 111076 INDEX finance account_cf_class_activity_idx contract
+6735; 1259 112116 INDEX finance finance_journal_lines_account_idx contract
+6736; 1259 112117 INDEX finance finance_journal_lines_dimensions_idx contract
+6725; 1259 112114 INDEX finance finance_journals_posting_idx contract
+6726; 1259 112115 INDEX finance finance_journals_source_idx contract
+6395; 1259 111077 INDEX finance idx_ai_user_section_defaults_section contract
+6417; 1259 111078 INDEX folio access_requests_pending_uniq contract
+6420; 1259 111079 INDEX folio access_requests_status_idx contract
+6421; 1259 111080 INDEX folio access_requests_target_idx contract
+6482; 1259 111081 INDEX folio customer_contacts_customer_idx contract
+6467; 1259 111082 INDEX folio customers_active_idx contract
+6470; 1259 111083 INDEX folio customers_name_idx contract
+6490; 1259 111084 INDEX folio exec_snapshots_date_idx contract
+6431; 1259 111085 INDEX folio folio_ai_chat_sessions_scope_idx contract
+6432; 1259 111086 INDEX folio folio_ai_chat_sessions_user_idx contract
+6463; 1259 111087 INDEX folio folio_approver_nudges_approver_idx contract
+6466; 1259 111088 INDEX folio folio_customer_advisories_severity_idx contract
+6473; 1259 111089 INDEX folio folio_customers_embedding_idx contract
+6507; 1259 113471 INDEX folio folio_expense_vendor_invoice_unique contract
+6516; 1259 111090 INDEX folio folio_learned_mappings_vendor_norm_idx contract
+6519; 1259 111091 INDEX folio folio_notification_digests_user_idx contract
+6531; 1259 111092 INDEX folio folio_po_invoices_status_idx contract
+6532; 1259 111093 INDEX folio folio_po_invoices_vendor_idx contract
+6540; 1259 111094 INDEX folio folio_policy_lint_results_generated_at_idx contract
+6557; 1259 111095 INDEX folio folio_sales_product_embeddings_so_item_idx contract
+6558; 1259 111096 INDEX folio folio_sales_product_embeddings_vec_idx contract
+6581; 1259 111097 INDEX folio folio_vendor_embeddings_date_idx contract
+6582; 1259 111098 INDEX folio folio_vendor_embeddings_submitter_idx contract
+6583; 1259 111099 INDEX folio folio_vendor_embeddings_vec_idx contract
+6602; 1259 111100 INDEX folio folio_waybills_flagged_reason_idx contract
+6426; 1259 111101 INDEX folio idx_ai_assignments_section contract
+6435; 1259 111102 INDEX folio idx_ai_invocations_created contract
+6436; 1259 111103 INDEX folio idx_ai_invocations_section contract
+6437; 1259 111104 INDEX folio idx_ai_invocations_staff contract
+6442; 1259 111105 INDEX folio idx_ai_models_provider contract
+6702; 1259 111826 INDEX folio idx_ai_user_section_preferences_section contract
+6451; 1259 111106 INDEX folio idx_aov_actor contract
+6452; 1259 111107 INDEX folio idx_aov_kind_stage contract
+6453; 1259 111108 INDEX folio idx_aov_target contract
+6456; 1259 111109 INDEX folio idx_atx_actor contract
+6457; 1259 111110 INDEX folio idx_atx_stage contract
+6458; 1259 111111 INDEX folio idx_atx_target contract
+6487; 1259 111112 INDEX folio idx_domain_events_actor contract
+6488; 1259 111113 INDEX folio idx_domain_events_created_at contract
+6489; 1259 111114 INDEX folio idx_domain_events_type contract
+6508; 1259 111115 INDEX folio idx_expenses_jv contract
+6509; 1259 111116 INDEX folio idx_expenses_po contract
+6510; 1259 111117 INDEX folio idx_expenses_pr contract
+6511; 1259 111118 INDEX folio idx_expenses_rejected contract
+6514; 1259 111119 INDEX folio idx_hr_leave_dates contract
+6515; 1259 111120 INDEX folio idx_hr_leave_employee contract
+6400; 1259 111121 INDEX folio idx_journal_entries_active contract
+6401; 1259 111122 INDEX folio idx_journal_entries_expense_id contract
+6402; 1259 111123 INDEX folio idx_journal_entries_one_draft_per_expense contract
+6403; 1259 111124 INDEX folio idx_journal_entries_one_draft_per_po contract
+6404; 1259 111125 INDEX folio idx_journal_entries_one_draft_per_pr contract
+6405; 1259 111126 INDEX folio idx_journal_entries_one_draft_per_so contract
+6406; 1259 111127 INDEX folio idx_journal_entries_po contract
+6407; 1259 111128 INDEX folio idx_journal_entries_po_step contract
+6408; 1259 111129 INDEX folio idx_journal_entries_pr contract
+6409; 1259 111130 INDEX folio idx_journal_entries_pr_step contract
+6410; 1259 111131 INDEX folio idx_journal_entries_so_id contract
+6413; 1259 111132 INDEX folio idx_ledger_lines_account_code contract
+6414; 1259 111133 INDEX folio idx_ledger_lines_journal_entry contract
+6524; 1259 111135 INDEX folio idx_notif_user_feed contract
+6525; 1259 111134 INDEX folio idx_notif_user_unread contract
+6526; 1259 111136 INDEX folio idx_notif_waybill_stage contract
+6535; 1259 111137 INDEX folio idx_po_items_po contract
+6545; 1259 111138 INDEX folio idx_po_pr contract
+6546; 1259 111139 INDEX folio idx_po_status contract
+6551; 1259 111140 INDEX folio idx_pr_dept_group contract
+6552; 1259 111141 INDEX folio idx_pr_pr_number contract
+6553; 1259 111142 INDEX folio idx_pr_status contract
+6554; 1259 111143 INDEX folio idx_prs_rejected contract
+6561; 1259 111144 INDEX folio idx_slips_expense contract
+6562; 1259 111145 INDEX folio idx_slips_kind_expense contract
+6563; 1259 111146 INDEX folio idx_slips_po contract
+6564; 1259 111147 INDEX folio idx_slips_pr contract
+6565; 1259 111148 INDEX folio idx_slips_status contract
+6566; 1259 111149 INDEX folio idx_slips_uploader_status contract
+6572; 1259 111150 INDEX folio idx_users_active contract
+6573; 1259 111151 INDEX folio idx_users_dept_label contract
+6574; 1259 111152 INDEX folio idx_users_hired_at contract
+6616; 1259 111153 INDEX folio idx_watchers_user_unread contract
+6617; 1259 111154 INDEX folio idx_watchers_waybill contract
+6588; 1259 111155 INDEX folio idx_waybill_attachments_wb_created contract
+6589; 1259 111156 INDEX folio idx_waybill_attachments_wb_kind contract
+6590; 1259 111157 INDEX folio idx_waybill_attachments_wb_stage contract
+6603; 1259 111158 INDEX folio idx_waybills_fy contract
+6604; 1259 111159 INDEX folio idx_waybills_origin contract
+6605; 1259 111160 INDEX folio idx_waybills_owner contract
+6606; 1259 111161 INDEX folio idx_waybills_stage contract
+6607; 1259 111162 INDEX folio idx_waybills_submitter contract
+6593; 1259 111163 INDEX folio idx_wbx_actor contract
+6594; 1259 111164 INDEX folio idx_wbx_kind contract
+6595; 1259 111165 INDEX folio idx_wbx_previous contract
+6596; 1259 111166 INDEX folio idx_wbx_waybill contract
+6474; 1259 111167 INDEX folio sales_orders_customer_idx contract
+6475; 1259 111168 INDEX folio sales_orders_due_idx contract
+6478; 1259 111169 INDEX folio sales_orders_rep_idx contract
+6481; 1259 111170 INDEX folio sales_orders_status_idx contract
+6571; 1259 111171 INDEX folio so_items_so_idx contract
+6599; 1259 111172 INDEX folio waybill_reviews_generated_at_idx contract
+6612; 1259 111173 INDEX folio waybill_stage_claims_actor_idx contract
+6613; 1259 111174 INDEX folio waybill_stage_claims_one_open contract
+6626; 1259 111175 INDEX hook hook_events_provider_idx contract
+6627; 1259 111176 INDEX hook hook_events_received_idx contract
+6628; 1259 111177 INDEX hook hook_events_status_idx contract
+6865; 1259 113361 INDEX inventory inventory_sales_shipments_movement_unique contract
+6635; 1259 111178 INDEX law idx_law_chunks_contract contract
+6636; 1259 111179 INDEX law idx_law_chunks_embedding contract
+6644; 1259 111180 INDEX law idx_law_contracts_doc_no contract
+6645; 1259 111181 INDEX law idx_law_contracts_line_user contract
+6646; 1259 111182 INDEX law idx_law_contracts_status contract
+6641; 1259 111183 INDEX law idx_law_pages_contract contract
+6649; 1259 111184 INDEX law law_job_queue_contract_idx contract
+6650; 1259 111185 INDEX law law_job_queue_status_idx contract
+6662; 1259 111186 INDEX perm perm_decision_log_action_idx contract
+6663; 1259 111187 INDEX perm perm_decision_log_actor_idx contract
+6664; 1259 111188 INDEX perm perm_decision_log_decision_idx contract
+6665; 1259 111189 INDEX perm perm_decision_log_resource_idx contract
+6668; 1259 111190 INDEX perm perm_department_permissions_perm_idx contract
+6651; 1259 111191 INDEX perm perm_one_dept_per_user_idx contract
+6673; 1259 111192 INDEX perm perm_perm_domain_idx contract
+6684; 1259 111193 INDEX perm perm_roles_department_idx contract
+6691; 1259 111194 INDEX perm perm_tiles_group_idx contract
+6652; 1259 111195 INDEX perm perm_up_active_idx contract
+6653; 1259 111196 INDEX perm perm_up_perm_idx contract
+6694; 1259 111197 INDEX perm perm_user_departments_dept_idx contract
+6697; 1259 111198 INDEX perm perm_user_roles_role_idx contract
+6244; 1259 88472 INDEX public IDX_02751202c9a2ad75f2d8e14f5e n8n_user
+6295; 1259 88812 INDEX public IDX_0468a9dc35597314e641d4722a n8n_user
+6335; 1259 89339 INDEX public IDX_069e791e428391a5569e7a96b2 n8n_user
+6176; 1259 87900 INDEX public IDX_070b5de842ece9ccdda0d9738b n8n_user
+6308; 1259 89158 INDEX public IDX_07cb1e4a302629c5fa5d74d2bb n8n_user
+6350; 1259 89477 INDEX public IDX_0babdf6e3b897a86fe4678355e n8n_user
+6341; 1259 89405 INDEX public IDX_0d5db648188d338df7fb2a8064 n8n_user
+6296; 1259 88813 INDEX public IDX_0e2f8bf92a7a9c88b89670f701 n8n_user
+6320; 1259 89249 INDEX public IDX_0edf1226b77ddc525eae493807 n8n_user
+6309; 1259 89161 INDEX public IDX_127ee1078ffa952bb37b511efa n8n_user
+6321; 1259 89248 INDEX public IDX_1443a75e59adbfb796071d6639 n8n_user
+6109; 1259 87227 INDEX public IDX_14f68deffaf858465715995508 n8n_user
+6368; 1259 89671 INDEX public IDX_16db3adb7b19df1ee55ff06b27 n8n_user
+6253; 1259 88537 INDEX public IDX_1d11050a381548c42c32cc25c4 n8n_user
+6114; 1259 87983 INDEX public IDX_1d8ab99d5861c9388d2dc1cf73 n8n_user
+6254; 1259 88536 INDEX public IDX_1dd5c393ad0517be3c31a7af83 n8n_user
+6072; 1259 86612 INDEX public IDX_1e31657f5fe46816c34be7c1b4 n8n_user
+6227; 1259 88358 INDEX public IDX_1eeb64cb9d66a927988de759e6 n8n_user
+6103; 1259 87063 INDEX public IDX_1ef35bac35d20bdae979d917a3 n8n_user
+6303; 1259 89000 INDEX public IDX_2b23f3f24a70bebb990203b011 n8n_user
+6213; 1259 88288 INDEX public IDX_35a78869286c65d9330d02b88f n8n_user
+6267; 1259 88580 INDEX public IDX_39b07732e819fb561d74c38763 n8n_user
+6329; 1259 89315 INDEX public IDX_451d387a182fa8dd8002dfc3a7 n8n_user
+6358; 1259 89520 INDEX public IDX_45dafc48fe2ce95eac30fc8ffd n8n_user
+6197; 1259 88159 INDEX public IDX_4c72ebdb265d1775bf61147af0 n8n_user
+6310; 1259 89159 INDEX public IDX_4cfd8a70ebb0a5b0cf047dca3c n8n_user
+6311; 1259 89160 INDEX public IDX_501e2d1701a10e24fb69ab5fc5 n8n_user
+6288; 1259 88730 INDEX public IDX_54fa1b94f34a409beafae567a4 n8n_user
+6173; 1259 87871 INDEX public IDX_56900edc3cfd16612e2ef2c6a8 n8n_user
+6283; 1259 88704 INDEX public IDX_5e31c210f896d539964bf99fe3 n8n_user
+6216; 1259 88306 INDEX public IDX_5ec8e8c8d3539f3696cf73b43b n8n_user
+6077; 1259 86893 INDEX public IDX_5f0643f6717905a05164090dde n8n_user
+6120; 1259 87363 INDEX public IDX_60b6a84299eeb3f671dfec7693 n8n_user
+6078; 1259 86892 INDEX public IDX_61448d56d61802b5dfde5cdb00 n8n_user
+6193; 1259 88133 INDEX public IDX_62476b94b56d9dc7ed9ed75d3d n8n_user
+6300; 1259 89634 INDEX public IDX_63d3c3a68b9cebf05f967f0b1c n8n_user
+6104; 1259 87062 INDEX public IDX_63d7bbae72c767cf162d459fcc n8n_user
+6317; 1259 89211 INDEX public IDX_6b55089892e447c2f82e5ec60e n8n_user
+6182; 1259 88045 INDEX public IDX_6edec973a6450990977bb854c3 n8n_user
+6304; 1259 88999 INDEX public IDX_768189b506cc26c4fe878b87cb n8n_user
+6228; 1259 88359 INDEX public IDX_76e212c6867fbaa06bf0decd6f n8n_user
+6314; 1259 89185 INDEX public IDX_87aa187d27ea67eafd16490515 n8n_user
+6338; 1259 89364 INDEX public IDX_87cd5a8da20304b089ea2f83fe n8n_user
+6128; 1259 87408 INDEX public IDX_8e4b4774db42f1e6dda3452b2a n8n_user
+6217; 1259 88307 INDEX public IDX_91ee85fa9619dd6776725e117b n8n_user
+6233; 1259 88414 INDEX public IDX_92f13cb6bc694227e069447f7b n8n_user
+6326; 1259 89273 INDEX public IDX_9594c0983cfee1c8ff49b05848 n8n_user
+6093; 1259 87010 INDEX public IDX_97f863fa83c4786f1956508496 n8n_user
+6179; 1259 87921 INDEX public IDX_9c9ee9df586e60bb723234e499 n8n_user
+6133; 1259 87680 INDEX public IDX_UniqueRoleDisplayName n8n_user
+6322; 1259 89247 INDEX public IDX_a03e04e94bea8439dd166d4b52 n8n_user
+6279; 1259 88683 INDEX public IDX_a30d560207c4071d98aa03c179 n8n_user
+6330; 1259 89312 INDEX public IDX_a353ac251315ef0af6ad3c9f0a n8n_user
+6099; 1259 87040 INDEX public IDX_a3697779b366e131b2bbdae297 n8n_user
+6183; 1259 88044 INDEX public IDX_a36dc616fabc3f736bb82410a2 n8n_user
+6237; 1259 88430 INDEX public IDX_a371ee6b8e0ebb5635f8baa46d n8n_user
+6275; 1259 88650 INDEX public IDX_a48ce930c3bc7604894b8f0eaa n8n_user
+6167; 1259 87819 INDEX public IDX_a4ff2d9b9628ea988fa9e7d0bf n8n_user
+6234; 1259 88415 INDEX public IDX_a680ac96aae02dc887bbaac512 n8n_user
+6342; 1259 89407 INDEX public IDX_a80e0ee839a2f10ba4b86e1999 n8n_user
+6096; 1259 87022 INDEX public IDX_ae51b54c4bb430cf92f48b623f n8n_user
+6323; 1259 89246 INDEX public IDX_aff2807b31eccbafe59d0474f0 n8n_user
+6297; 1259 89592 INDEX public IDX_agent_execution_threads_taskVersionId n8n_user
+6291; 1259 88753 INDEX public IDX_agents_messages_threadId_createdAt n8n_user
+6280; 1259 88684 INDEX public IDX_agents_projectId n8n_user
+6351; 1259 89475 INDEX public IDX_ba67ee8dc311830a2eea89b6e9 n8n_user
+6208; 1259 88270 INDEX public IDX_bb66e404c35996b0d694617750 n8n_user
+6305; 1259 89001 INDEX public IDX_be9d0eca0b19fb93d4eb74b327 n8n_user
+6100; 1259 87041 INDEX public IDX_c1519757391996eb06064f0e7c n8n_user
+6331; 1259 89313 INDEX public IDX_cb7c15d22fd068a0806aa57fc0 n8n_user
+6088; 1259 86977 INDEX public IDX_cec8eea3bf49551482ccb4933e n8n_user
+6150; 1259 87982 INDEX public IDX_chat_hub_messages_sessionId n8n_user
+6147; 1259 87981 INDEX public IDX_chat_hub_sessions_owner_lastmsg_id n8n_user
+6218; 1259 88308 INDEX public IDX_credential_dependency_credentialId_dependencyType_dependenc n8n_user
+6240; 1259 88451 INDEX public IDX_d3a2bc880e7a8626802e5474ad n8n_user
+6194; 1259 88134 INDEX public IDX_d61a12235d268a49af6a3c09c1 n8n_user
+6276; 1259 88651 INDEX public IDX_d634a0c93fd7de68a87eab951b n8n_user
+6123; 1259 87383 INDEX public IDX_d6870d3b6e4c185d33926f423c n8n_user
+6352; 1259 89478 INDEX public IDX_d7a4aba7440449865e2b924377 n8n_user
+6241; 1259 88450 INDEX public IDX_d926c16c2ad9728cb9a81790c0 n8n_user
+6343; 1259 89406 INDEX public IDX_daef2195a4a846eb70eed15e03 n8n_user
+6259; 1259 88553 INDEX public IDX_deployment_key_data_encryption_active n8n_user
+6260; 1259 88554 INDEX public IDX_deployment_key_instance_id_active n8n_user
+6261; 1259 88558 INDEX public IDX_deployment_key_jwe_private_key_active n8n_user
+6262; 1259 88557 INDEX public IDX_deployment_key_signing_binary_data_active n8n_user
+6263; 1259 88556 INDEX public IDX_deployment_key_signing_hmac_active n8n_user
+6264; 1259 88555 INDEX public IDX_deployment_key_signing_jwt_active n8n_user
+6353; 1259 89476 INDEX public IDX_df5fd25c8bbfd2b042602600d8 n8n_user
+6168; 1259 87821 INDEX public IDX_e48a201071ab85d9d09119d640 n8n_user
+6169; 1259 87820 INDEX public IDX_e7fe1cfda990c14a445937d0b9 n8n_user
+6024; 1259 88584 INDEX public IDX_execution_entity_deduplicationKey n8n_user
+6025; 1259 86613 INDEX public IDX_execution_entity_deletedAt n8n_user
+6223; 1259 88337 INDEX public IDX_f36dea4d38fe92e0e8f44d5a56 n8n_user
+6361; 1259 89546 INDEX public IDX_f45d0535a2ed59b6c2dd6da98a n8n_user
+6332; 1259 89314 INDEX public IDX_f9573af4ed653f13b0ba1f7b12 n8n_user
+6292; 1259 88752 INDEX public IDX_fc7bf858660bfafd19181e8e35 n8n_user
+6270; 1259 88613 INDEX public IDX_fd7542bb123074760285dc1bbf n8n_user
+6117; 1259 88954 INDEX public IDX_insights_raw_timestamp_id n8n_user
+6224; 1259 89700 INDEX public IDX_instance_ai_threads_projectId n8n_user
+6136; 1259 87447 INDEX public IDX_role_scope_scopeSlug n8n_user
+6186; 1259 88065 INDEX public IDX_secrets_provider_connection_providerKey n8n_user
+6085; 1259 89524 INDEX public IDX_shared_workflow_projectId n8n_user
+6124; 1259 88657 INDEX public IDX_test_run_collectionId n8n_user
+6125; 1259 88619 INDEX public IDX_test_run_evaluationConfigId n8n_user
+6170; 1259 88046 INDEX public IDX_workflow_dependency_publishedVersionId n8n_user
+6031; 1259 86590 INDEX public IDX_workflow_entity_name n8n_user
+6032; 1259 89479 INDEX public IDX_workflow_entity_sourceWorkflowId n8n_user
+6371; 1259 89693 INDEX public IDX_workflow_publication_outbox_active_workflow_status n8n_user
+6057; 1259 87998 INDEX public IDX_workflow_statistics_workflow_name n8n_user
+6022; 1259 86218 INDEX public idx_07fde106c0b471d8cc80a64fc8 n8n_user
+6038; 1259 86130 INDEX public idx_16f4436789e804e3e1c9eeb240 n8n_user
+6039; 1259 86142 INDEX public idx_812eb05f7451ca757fb98444ce n8n_user
+6026; 1259 86989 INDEX public idx_execution_entity_stopped_at_status_deleted_at n8n_user
+6027; 1259 86988 INDEX public idx_execution_entity_wait_till_status_deleted_at n8n_user
+6028; 1259 86987 INDEX public idx_execution_entity_workflow_id_started_at n8n_user
+6043; 1259 86512 INDEX public idx_workflows_tags_workflow_id n8n_user
+6023; 1259 86557 INDEX public pk_credentials_entity_id n8n_user
+6040; 1259 86507 INDEX public pk_tag_entity_id n8n_user
+6033; 1259 86505 INDEX public pk_workflow_entity_id n8n_user
+6081; 1259 87546 INDEX public project_relation_role_idx n8n_user
+6082; 1259 87547 INDEX public project_relation_role_project_idx n8n_user
+6050; 1259 87548 INDEX public user_role_idx n8n_user
+6066; 1259 87557 INDEX public variables_global_key_unique n8n_user
+6069; 1259 87556 INDEX public variables_project_key_unique n8n_user
+7434; 2618 113640 RULE finance v_period_summary _RETURN contract
+7270; 2620 113620 TRIGGER finance commercial_documents finance_commercial_document_immutable contract
+7267; 2620 113617 TRIGGER finance journals finance_journal_immutable contract
+7269; 2620 113618 TRIGGER finance journal_lines finance_journal_lines_immutable contract
+7268; 2620 113619 TRIGGER finance journals finance_journal_status_audit contract
+7264; 2620 111199 TRIGGER folio slips slips_exactly_one_parent_trg contract
+8293; 0 0 COMMENT folio TRIGGER slips_exactly_one_parent_trg ON slips contract
+7271; 2620 113621 TRIGGER inventory stock_movements inventory_stock_movement_immutable contract
+7272; 2620 113622 TRIGGER inventory stock_movement_lines inventory_stock_movement_lines_immutable contract
+7265; 2620 111201 TRIGGER law contracts trg_law_contracts_touch contract
+7266; 2620 111202 TRIGGER perm tiles perm_tiles_touch contract
+7263; 2620 87827 TRIGGER public workflow_entity workflow_version_increment n8n_user
+7021; 2606 111203 FK CONSTRAINT auth sessions sessions_impersonator_user_id_fkey contract
+7022; 2606 111208 FK CONSTRAINT auth sessions sessions_user_id_fkey contract
+7023; 2606 111213 FK CONSTRAINT chat messages messages_session_id_fkey contract
+7024; 2606 111218 FK CONSTRAINT chat sessions sessions_user_id_fkey contract
+7025; 2606 111223 FK CONSTRAINT finance account_cf_class account_cf_class_account_code_fkey contract
+7026; 2606 111228 FK CONSTRAINT finance account_cf_class account_cf_class_updated_by_fkey contract
+7027; 2606 111233 FK CONSTRAINT finance ai_provider_health ai_provider_health_provider_id_fkey contract
+7028; 2606 111238 FK CONSTRAINT finance ai_user_section_defaults ai_user_section_defaults_model_id_fkey contract
+7029; 2606 111243 FK CONSTRAINT finance ai_user_section_defaults ai_user_section_defaults_user_id_fkey contract
+7181; 2606 112387 FK CONSTRAINT finance ap_allocations ap_allocations_ap_document_id_fkey contract
+7182; 2606 112397 FK CONSTRAINT finance ap_allocations ap_allocations_journal_id_fkey contract
+7183; 2606 112392 FK CONSTRAINT finance ap_allocations ap_allocations_payment_document_id_fkey contract
+7176; 2606 112349 FK CONSTRAINT finance ap_documents ap_documents_branch_id_fkey contract
+7177; 2606 112354 FK CONSTRAINT finance ap_documents ap_documents_currency_code_fkey contract
+7178; 2606 112359 FK CONSTRAINT finance ap_documents ap_documents_journal_id_fkey contract
+7179; 2606 112344 FK CONSTRAINT finance ap_documents ap_documents_vendor_id_fkey contract
+7173; 2606 112293 FK CONSTRAINT finance ar_allocations ar_allocations_ar_document_id_fkey contract
+7174; 2606 112303 FK CONSTRAINT finance ar_allocations ar_allocations_journal_id_fkey contract
+7175; 2606 112298 FK CONSTRAINT finance ar_allocations ar_allocations_receipt_document_id_fkey contract
+7168; 2606 112255 FK CONSTRAINT finance ar_documents ar_documents_branch_id_fkey contract
+7169; 2606 112260 FK CONSTRAINT finance ar_documents ar_documents_currency_code_fkey contract
+7170; 2606 112250 FK CONSTRAINT finance ar_documents ar_documents_document_id_fkey contract
+7171; 2606 112265 FK CONSTRAINT finance ar_documents ar_documents_journal_id_fkey contract
+7184; 2606 112423 FK CONSTRAINT finance bank_accounts bank_accounts_branch_id_fkey contract
+7185; 2606 112428 FK CONSTRAINT finance bank_accounts bank_accounts_currency_code_fkey contract
+7186; 2606 112433 FK CONSTRAINT finance bank_accounts bank_accounts_gl_account_code_fkey contract
+7187; 2606 112456 FK CONSTRAINT finance bank_import_templates bank_import_templates_bank_account_id_fkey contract
+7188; 2606 112484 FK CONSTRAINT finance bank_imports bank_imports_bank_account_id_fkey contract
+7189; 2606 112489 FK CONSTRAINT finance bank_imports bank_imports_template_id_fkey contract
+7193; 2606 112560 FK CONSTRAINT finance bank_match_groups bank_match_groups_bank_account_id_fkey contract
+7194; 2606 112565 FK CONSTRAINT finance bank_match_groups bank_match_groups_journal_id_fkey contract
+7195; 2606 112597 FK CONSTRAINT finance bank_match_lines bank_match_lines_ap_document_id_fkey contract
+7196; 2606 112592 FK CONSTRAINT finance bank_match_lines bank_match_lines_ar_document_id_fkey contract
+7197; 2606 112587 FK CONSTRAINT finance bank_match_lines bank_match_lines_bank_transaction_id_fkey contract
+7198; 2606 112582 FK CONSTRAINT finance bank_match_lines bank_match_lines_group_id_fkey contract
+7199; 2606 112602 FK CONSTRAINT finance bank_match_lines bank_match_lines_journal_id_fkey contract
+7200; 2606 112625 FK CONSTRAINT finance bank_reconciliation_audit bank_reconciliation_audit_match_group_id_fkey contract
+7190; 2606 112526 FK CONSTRAINT finance bank_transactions bank_transactions_bank_account_id_fkey contract
+7191; 2606 112531 FK CONSTRAINT finance bank_transactions bank_transactions_currency_code_fkey contract
+7192; 2606 112521 FK CONSTRAINT finance bank_transactions bank_transactions_import_id_fkey contract
+7202; 2606 112677 FK CONSTRAINT finance budget_lines budget_lines_account_code_fkey contract
+7203; 2606 112672 FK CONSTRAINT finance budget_lines budget_lines_budget_id_fkey contract
+7201; 2606 112650 FK CONSTRAINT finance budgets budgets_branch_id_fkey contract
+7030; 2606 111248 FK CONSTRAINT finance cashflow_period cashflow_period_closed_by_fkey contract
+7031; 2606 111253 FK CONSTRAINT finance cashflow_period cashflow_period_opened_by_fkey contract
+7032; 2606 111258 FK CONSTRAINT finance cashflow_period cashflow_period_opening_balance_journal_id_fkey contract
+7204; 2606 112702 FK CONSTRAINT finance closing_checklists closing_checklists_period_id_fkey contract
+7163; 2606 112194 FK CONSTRAINT finance commercial_documents commercial_documents_branch_id_fkey contract
+7164; 2606 112204 FK CONSTRAINT finance commercial_documents commercial_documents_currency_code_fkey contract
+7165; 2606 112209 FK CONSTRAINT finance commercial_documents commercial_documents_journal_id_fkey contract
+7166; 2606 112199 FK CONSTRAINT finance commercial_documents commercial_documents_vendor_id_fkey contract
+7143; 2606 111957 FK CONSTRAINT finance document_sequences document_sequences_branch_id_fkey contract
+7180; 2606 113612 FK CONSTRAINT finance ap_documents finance_ap_documents_employee_fkey contract
+7172; 2606 113607 FK CONSTRAINT finance ar_documents finance_ar_documents_customer_fkey contract
+7167; 2606 113602 FK CONSTRAINT finance commercial_documents finance_commercial_documents_customer_fkey contract
+7148; 2606 113572 FK CONSTRAINT finance journal_lines finance_journal_lines_customer_fkey contract
+7149; 2606 113567 FK CONSTRAINT finance journal_lines finance_journal_lines_department_fkey contract
+7150; 2606 113582 FK CONSTRAINT finance journal_lines finance_journal_lines_employee_fkey contract
+7151; 2606 113587 FK CONSTRAINT finance journal_lines finance_journal_lines_product_fkey contract
+7152; 2606 113577 FK CONSTRAINT finance journal_lines finance_journal_lines_vendor_fkey contract
+7153; 2606 113592 FK CONSTRAINT finance journal_lines finance_journal_lines_warehouse_fkey contract
+7154; 2606 113597 FK CONSTRAINT finance journal_lines finance_journal_lines_waybill_fkey contract
+7144; 2606 113562 FK CONSTRAINT finance journals finance_journals_waybill_fkey contract
+7141; 2606 111899 FK CONSTRAINT finance fx_rates fx_rates_currency_code_fkey contract
+7159; 2606 112109 FK CONSTRAINT finance journal_events journal_events_journal_id_fkey contract
+7155; 2606 112076 FK CONSTRAINT finance journal_lines journal_lines_account_code_fkey contract
+7156; 2606 112086 FK CONSTRAINT finance journal_lines journal_lines_branch_id_fkey contract
+7157; 2606 112081 FK CONSTRAINT finance journal_lines journal_lines_currency_code_fkey contract
+7158; 2606 112071 FK CONSTRAINT finance journal_lines journal_lines_journal_id_fkey contract
+7145; 2606 112034 FK CONSTRAINT finance journals journals_branch_id_fkey contract
+7146; 2606 112029 FK CONSTRAINT finance journals journals_currency_code_fkey contract
+7147; 2606 112039 FK CONSTRAINT finance journals journals_reversal_of_id_fkey contract
+7142; 2606 113557 FK CONSTRAINT finance tax_codes tax_codes_account_code_fkey contract
+7160; 2606 112145 FK CONSTRAINT finance vendors vendors_currency_code_fkey contract
+7161; 2606 112150 FK CONSTRAINT finance vendors vendors_payable_account_code_fkey contract
+7162; 2606 112155 FK CONSTRAINT finance vendors vendors_wht_tax_code_fkey contract
+7042; 2606 111263 FK CONSTRAINT folio access_requests access_requests_actor_id_fkey contract
+7043; 2606 111268 FK CONSTRAINT folio access_requests access_requests_resolved_by_user_id_fkey contract
+7044; 2606 111273 FK CONSTRAINT folio access_requests access_requests_target_user_id_fkey contract
+7045; 2606 111278 FK CONSTRAINT folio ai_assignments ai_assignments_model_id_fkey contract
+7046; 2606 111283 FK CONSTRAINT folio ai_assignments ai_assignments_provider_id_fkey contract
+7047; 2606 111288 FK CONSTRAINT folio ai_assignments ai_assignments_staff_id_fkey contract
+7048; 2606 111293 FK CONSTRAINT folio ai_chat_sessions ai_chat_sessions_user_id_fkey contract
+7049; 2606 111298 FK CONSTRAINT folio ai_invocations ai_invocations_actor_id_fkey contract
+7050; 2606 111303 FK CONSTRAINT folio ai_invocations ai_invocations_model_id_fkey contract
+7051; 2606 111308 FK CONSTRAINT folio ai_invocations ai_invocations_provider_id_fkey contract
+7052; 2606 111313 FK CONSTRAINT folio ai_invocations ai_invocations_staff_id_fkey contract
+7053; 2606 111318 FK CONSTRAINT folio ai_models ai_models_provider_id_fkey contract
+7054; 2606 111323 FK CONSTRAINT folio ai_staff ai_staff_default_model_id_fkey contract
+7055; 2606 111328 FK CONSTRAINT folio ai_staff ai_staff_default_provider_id_fkey contract
+7139; 2606 111821 FK CONSTRAINT folio ai_user_section_preferences ai_user_section_preferences_model_id_fkey contract
+7140; 2606 111816 FK CONSTRAINT folio ai_user_section_preferences ai_user_section_preferences_user_id_fkey contract
+7056; 2606 111333 FK CONSTRAINT folio approval_override_audit approval_override_audit_actor_id_fkey contract
+7057; 2606 111338 FK CONSTRAINT folio approval_transitions approval_transitions_actor_id_fkey contract
+7058; 2606 111343 FK CONSTRAINT folio approver_nudges approver_nudges_approver_user_id_fkey contract
+7059; 2606 111348 FK CONSTRAINT folio customer_advisories customer_advisories_customer_id_fkey contract
+7065; 2606 111353 FK CONSTRAINT folio customer_contacts customer_contacts_customer_id_fkey contract
+7066; 2606 111358 FK CONSTRAINT folio domain_events domain_events_actor_id_fkey contract
+7067; 2606 111363 FK CONSTRAINT folio expense_items expense_items_expense_id_fkey contract
+7068; 2606 111368 FK CONSTRAINT folio expense_items expense_items_mapped_account_code_fkey contract
+7069; 2606 111373 FK CONSTRAINT folio expense_payments expense_payments_confirmed_by_fkey contract
+7070; 2606 111378 FK CONSTRAINT folio expense_payments expense_payments_expense_id_fkey contract
+7071; 2606 111383 FK CONSTRAINT folio expense_payments expense_payments_slip_id_fkey contract
+7072; 2606 111388 FK CONSTRAINT folio expense_payments expense_payments_waybill_id_fkey contract
+7073; 2606 111393 FK CONSTRAINT folio expenses expenses_disbursed_by_fkey contract
+7074; 2606 111398 FK CONSTRAINT folio expenses expenses_gl_confirmed_by_fkey contract
+7075; 2606 111403 FK CONSTRAINT folio expenses expenses_journal_entry_id_fkey contract
+7076; 2606 111408 FK CONSTRAINT folio expenses expenses_po_id_fkey contract
+7077; 2606 111413 FK CONSTRAINT folio expenses expenses_pr_id_fkey contract
+7078; 2606 111418 FK CONSTRAINT folio expenses expenses_rejection_actor_id_fkey contract
+7079; 2606 111423 FK CONSTRAINT folio expenses expenses_submitter_id_fkey contract
+7106; 2606 111428 FK CONSTRAINT folio slips fk_slips_po contract
+7107; 2606 111433 FK CONSTRAINT folio slips fk_slips_pr contract
+7080; 2606 111438 FK CONSTRAINT folio hr_leave hr_leave_employee_id_fkey contract
+7081; 2606 111443 FK CONSTRAINT folio hr_leave hr_leave_waybill_id_fkey contract
+7033; 2606 111448 FK CONSTRAINT folio journal_entries journal_entries_approved_by_fkey contract
+7034; 2606 111453 FK CONSTRAINT folio journal_entries journal_entries_expense_id_fkey contract
+7035; 2606 111458 FK CONSTRAINT folio journal_entries journal_entries_finalized_by_fkey contract
+7036; 2606 111463 FK CONSTRAINT folio journal_entries journal_entries_po_id_fkey contract
+7037; 2606 111468 FK CONSTRAINT folio journal_entries journal_entries_pr_id_fkey contract
+7038; 2606 111473 FK CONSTRAINT folio journal_entries journal_entries_prepared_by_fkey contract
+7039; 2606 111478 FK CONSTRAINT folio journal_entries journal_entries_so_id_fkey contract
+7082; 2606 111483 FK CONSTRAINT folio learned_mappings learned_mappings_account_code_fkey contract
+7040; 2606 111488 FK CONSTRAINT folio ledger_lines ledger_lines_account_code_fkey contract
+7041; 2606 111493 FK CONSTRAINT folio ledger_lines ledger_lines_journal_entry_id_fkey contract
+7083; 2606 111498 FK CONSTRAINT folio notification_digests notification_digests_user_id_fkey contract
+7084; 2606 111513 FK CONSTRAINT folio notifications notifications_event_id_fkey contract
+7085; 2606 111518 FK CONSTRAINT folio notifications notifications_resolved_by_fkey contract
+7086; 2606 111503 FK CONSTRAINT folio notifications notifications_user_id_fkey contract
+7087; 2606 111508 FK CONSTRAINT folio notifications notifications_waybill_id_fkey contract
+7088; 2606 111523 FK CONSTRAINT folio po_invoices po_invoices_draft_po_id_fkey contract
+7089; 2606 111528 FK CONSTRAINT folio po_invoices po_invoices_draft_pr_id_fkey contract
+7090; 2606 111533 FK CONSTRAINT folio po_invoices po_invoices_uploaded_by_fkey contract
+7091; 2606 111538 FK CONSTRAINT folio po_invoices po_invoices_vendor_id_fkey contract
+7092; 2606 111543 FK CONSTRAINT folio po_items po_items_mapped_account_code_fkey contract
+7093; 2606 111548 FK CONSTRAINT folio po_items po_items_po_id_fkey contract
+7094; 2606 111553 FK CONSTRAINT folio policy_audit policy_audit_actor_id_fkey contract
+7095; 2606 111558 FK CONSTRAINT folio policy_lint_results policy_lint_results_policy_id_fkey contract
+7096; 2606 111563 FK CONSTRAINT folio pr_items pr_items_mapped_account_code_fkey contract
+7097; 2606 111568 FK CONSTRAINT folio pr_items pr_items_pr_id_fkey contract
+7098; 2606 111573 FK CONSTRAINT folio purchase_orders purchase_orders_issued_by_fkey contract
+7099; 2606 111578 FK CONSTRAINT folio purchase_orders purchase_orders_pr_id_fkey contract
+7100; 2606 111583 FK CONSTRAINT folio purchase_orders purchase_orders_rejection_actor_id_fkey contract
+7101; 2606 111588 FK CONSTRAINT folio purchase_orders purchase_orders_settled_by_fkey contract
+7102; 2606 111593 FK CONSTRAINT folio purchase_orders purchase_orders_settled_slip_id_fkey contract
+7103; 2606 111598 FK CONSTRAINT folio purchase_requisitions purchase_requisitions_rejection_actor_id_fkey contract
+7104; 2606 111603 FK CONSTRAINT folio purchase_requisitions purchase_requisitions_requester_id_fkey contract
+7060; 2606 111608 FK CONSTRAINT folio sales_orders sales_orders_customer_id_fkey contract
+7061; 2606 111613 FK CONSTRAINT folio sales_orders sales_orders_invoice_issuer_id_fkey contract
+7062; 2606 111618 FK CONSTRAINT folio sales_orders sales_orders_paid_by_id_fkey contract
+7063; 2606 111623 FK CONSTRAINT folio sales_orders sales_orders_rejection_actor_id_fkey contract
+7064; 2606 111628 FK CONSTRAINT folio sales_orders sales_orders_sales_rep_id_fkey contract
+7105; 2606 111633 FK CONSTRAINT folio sales_product_embeddings sales_product_embeddings_so_item_id_fkey contract
+7108; 2606 111638 FK CONSTRAINT folio slips slips_discarded_by_fkey contract
+7109; 2606 111643 FK CONSTRAINT folio slips slips_expense_id_fkey contract
+7110; 2606 111648 FK CONSTRAINT folio slips slips_uploaded_by_fkey contract
+7111; 2606 111653 FK CONSTRAINT folio so_items so_items_mapped_revenue_account_code_fkey contract
+7112; 2606 111658 FK CONSTRAINT folio so_items so_items_sales_order_id_fkey contract
+7113; 2606 111663 FK CONSTRAINT folio vendor_embeddings vendor_embeddings_expense_id_fkey contract
+7114; 2606 111668 FK CONSTRAINT folio vendor_embeddings vendor_embeddings_submitter_id_fkey contract
+7115; 2606 111673 FK CONSTRAINT folio waybill_attachments waybill_attachments_waybill_id_fkey contract
+7116; 2606 111678 FK CONSTRAINT folio waybill_events waybill_events_previous_event_id_fkey contract
+7117; 2606 111683 FK CONSTRAINT folio waybill_events waybill_events_waybill_id_fkey contract
+7118; 2606 111688 FK CONSTRAINT folio waybill_stage_claims waybill_stage_claims_claimed_by_fkey contract
+7119; 2606 111693 FK CONSTRAINT folio waybill_stage_claims waybill_stage_claims_released_by_fkey contract
+7120; 2606 111698 FK CONSTRAINT folio waybill_stage_claims waybill_stage_claims_waybill_id_fkey contract
+7121; 2606 111703 FK CONSTRAINT folio waybill_watchers waybill_watchers_user_id_fkey contract
+7122; 2606 111708 FK CONSTRAINT folio waybill_watchers waybill_watchers_waybill_id_fkey contract
+7123; 2606 111713 FK CONSTRAINT hook hook_events hook_events_provider_id_fkey contract
+7214; 2606 112857 FK CONSTRAINT inventory bins bins_warehouse_id_fkey contract
+7207; 2606 112755 FK CONSTRAINT inventory categories categories_parent_id_fkey contract
+7232; 2606 113050 FK CONSTRAINT inventory costing_events costing_events_movement_line_id_fkey contract
+7233; 2606 113055 FK CONSTRAINT inventory costing_events costing_events_product_id_fkey contract
+7234; 2606 113060 FK CONSTRAINT inventory costing_events costing_events_warehouse_id_fkey contract
+7255; 2606 113314 FK CONSTRAINT inventory landed_cost_allocations landed_cost_allocations_ap_document_id_fkey contract
+7256; 2606 113324 FK CONSTRAINT inventory landed_cost_allocations landed_cost_allocations_journal_id_fkey contract
+7257; 2606 113319 FK CONSTRAINT inventory landed_cost_allocations landed_cost_allocations_receipt_line_id_fkey contract
+7215; 2606 112879 FK CONSTRAINT inventory lots lots_product_id_fkey contract
+7216; 2606 112884 FK CONSTRAINT inventory lots lots_vendor_id_fkey contract
+7208; 2606 112797 FK CONSTRAINT inventory products products_base_unit_fkey contract
+7209; 2606 112792 FK CONSTRAINT inventory products products_category_id_fkey contract
+7210; 2606 112812 FK CONSTRAINT inventory products products_cogs_account_code_fkey contract
+7211; 2606 112802 FK CONSTRAINT inventory products products_inventory_account_code_fkey contract
+7212; 2606 112807 FK CONSTRAINT inventory products products_revenue_account_code_fkey contract
+7249; 2606 113255 FK CONSTRAINT inventory purchase_receipt_lines purchase_receipt_lines_lot_id_fkey contract
+7250; 2606 113250 FK CONSTRAINT inventory purchase_receipt_lines purchase_receipt_lines_product_id_fkey contract
+7251; 2606 113245 FK CONSTRAINT inventory purchase_receipt_lines purchase_receipt_lines_receipt_id_fkey contract
+7246; 2606 113223 FK CONSTRAINT inventory purchase_receipts purchase_receipts_movement_id_fkey contract
+7247; 2606 113213 FK CONSTRAINT inventory purchase_receipts purchase_receipts_vendor_id_fkey contract
+7248; 2606 113218 FK CONSTRAINT inventory purchase_receipts purchase_receipts_warehouse_id_fkey contract
+7252; 2606 113289 FK CONSTRAINT inventory recost_jobs recost_jobs_adjustment_journal_id_fkey contract
+7253; 2606 113279 FK CONSTRAINT inventory recost_jobs recost_jobs_product_id_fkey contract
+7254; 2606 113284 FK CONSTRAINT inventory recost_jobs recost_jobs_warehouse_id_fkey contract
+7238; 2606 113117 FK CONSTRAINT inventory reorder_settings reorder_settings_product_id_fkey contract
+7239; 2606 113122 FK CONSTRAINT inventory reorder_settings reorder_settings_warehouse_id_fkey contract
+7235; 2606 113096 FK CONSTRAINT inventory reservations reservations_lot_id_fkey contract
+7236; 2606 113086 FK CONSTRAINT inventory reservations reservations_product_id_fkey contract
+7237; 2606 113091 FK CONSTRAINT inventory reservations reservations_warehouse_id_fkey contract
+7260; 2606 113387 FK CONSTRAINT inventory sales_shipment_lines sales_shipment_lines_lot_id_fkey contract
+7261; 2606 113382 FK CONSTRAINT inventory sales_shipment_lines sales_shipment_lines_product_id_fkey contract
+7262; 2606 113377 FK CONSTRAINT inventory sales_shipment_lines sales_shipment_lines_shipment_id_fkey contract
+7258; 2606 113356 FK CONSTRAINT inventory sales_shipments sales_shipments_movement_id_fkey contract
+7259; 2606 113351 FK CONSTRAINT inventory sales_shipments sales_shipments_warehouse_id_fkey contract
+7228; 2606 113022 FK CONSTRAINT inventory stock_balances stock_balances_bin_id_fkey contract
+7229; 2606 113027 FK CONSTRAINT inventory stock_balances stock_balances_lot_id_fkey contract
+7230; 2606 113012 FK CONSTRAINT inventory stock_balances stock_balances_product_id_fkey contract
+7231; 2606 113017 FK CONSTRAINT inventory stock_balances stock_balances_warehouse_id_fkey contract
+7242; 2606 113181 FK CONSTRAINT inventory stock_count_lines stock_count_lines_bin_id_fkey contract
+7243; 2606 113171 FK CONSTRAINT inventory stock_count_lines stock_count_lines_count_id_fkey contract
+7244; 2606 113186 FK CONSTRAINT inventory stock_count_lines stock_count_lines_lot_id_fkey contract
+7245; 2606 113176 FK CONSTRAINT inventory stock_count_lines stock_count_lines_product_id_fkey contract
+7240; 2606 113153 FK CONSTRAINT inventory stock_counts stock_counts_movement_id_fkey contract
+7241; 2606 113148 FK CONSTRAINT inventory stock_counts stock_counts_warehouse_id_fkey contract
+7220; 2606 112977 FK CONSTRAINT inventory stock_movement_lines stock_movement_lines_from_bin_id_fkey contract
+7221; 2606 112972 FK CONSTRAINT inventory stock_movement_lines stock_movement_lines_from_warehouse_id_fkey contract
+7222; 2606 112992 FK CONSTRAINT inventory stock_movement_lines stock_movement_lines_lot_id_fkey contract
+7223; 2606 112957 FK CONSTRAINT inventory stock_movement_lines stock_movement_lines_movement_id_fkey contract
+7224; 2606 112962 FK CONSTRAINT inventory stock_movement_lines stock_movement_lines_product_id_fkey contract
+7225; 2606 112987 FK CONSTRAINT inventory stock_movement_lines stock_movement_lines_to_bin_id_fkey contract
+7226; 2606 112982 FK CONSTRAINT inventory stock_movement_lines stock_movement_lines_to_warehouse_id_fkey contract
+7227; 2606 112967 FK CONSTRAINT inventory stock_movement_lines stock_movement_lines_unit_code_fkey contract
+7217; 2606 112918 FK CONSTRAINT inventory stock_movements stock_movements_branch_id_fkey contract
+7218; 2606 112923 FK CONSTRAINT inventory stock_movements stock_movements_journal_id_fkey contract
+7219; 2606 112928 FK CONSTRAINT inventory stock_movements stock_movements_reversal_of_id_fkey contract
+7205; 2606 112731 FK CONSTRAINT inventory unit_conversions unit_conversions_from_unit_fkey contract
+7206; 2606 112736 FK CONSTRAINT inventory unit_conversions unit_conversions_to_unit_fkey contract
+7213; 2606 112836 FK CONSTRAINT inventory warehouses warehouses_branch_id_fkey contract
+7124; 2606 111718 FK CONSTRAINT law contract_chunks contract_chunks_contract_id_fkey contract
+7125; 2606 111723 FK CONSTRAINT law contract_pages contract_pages_contract_id_fkey contract
+7128; 2606 111728 FK CONSTRAINT perm department_permissions department_permissions_department_id_fkey contract
+7129; 2606 111733 FK CONSTRAINT perm department_permissions department_permissions_permission_id_fkey contract
+7130; 2606 111738 FK CONSTRAINT perm departments departments_head_user_id_fkey contract
+7131; 2606 111743 FK CONSTRAINT perm role_permissions role_permissions_permission_id_fkey contract
+7132; 2606 111748 FK CONSTRAINT perm role_permissions role_permissions_role_id_role_kind_fkey contract
+7133; 2606 111753 FK CONSTRAINT perm roles roles_department_id_fkey contract
+7134; 2606 111758 FK CONSTRAINT perm user_departments user_departments_assigned_by_fkey contract
+7135; 2606 111763 FK CONSTRAINT perm user_departments user_departments_department_id_fkey contract
+7136; 2606 111768 FK CONSTRAINT perm user_departments user_departments_user_id_fkey contract
+7126; 2606 111773 FK CONSTRAINT perm user_permissions user_permissions_permission_id_fkey contract
+7127; 2606 111778 FK CONSTRAINT perm user_permissions user_permissions_user_id_fkey contract
+7137; 2606 111783 FK CONSTRAINT perm user_roles user_roles_role_id_role_kind_fkey contract
+7138; 2606 111788 FK CONSTRAINT perm user_roles user_roles_user_id_fkey contract
+6957; 2606 88220 FK CONSTRAINT public workflow_builder_session FK_00290cdeee4d4d7db84709be936 n8n_user
+6980; 2606 88802 FK CONSTRAINT public agent_execution_threads FK_0468a9dc35597314e641d4722aa n8n_user
+7002; 2606 89621 FK CONSTRAINT public agents_memory_entry_cursors FK_069e791e428391a5569e7a96b20 n8n_user
+6900; 2606 87078 FK CONSTRAINT public processed_data FK_06a69a7032c97a763c2c7599464 n8n_user
+6876; 2606 87847 FK CONSTRAINT public workflow_entity FK_08d6c67b7f722b0039d9d5ed620 n8n_user
+6991; 2606 89201 FK CONSTRAINT public agents_observation_locks FK_093e44ae20f2518e97d83a95433 n8n_user
+6979; 2606 89596 FK CONSTRAINT public agents_messages FK_0a8057a61afabd2999608ffd0d9 n8n_user
+7011; 2606 89470 FK CONSTRAINT public instance_ai_pending_confirmations FK_0babdf6e3b897a86fe4678355eb n8n_user
+6996; 2606 89263 FK CONSTRAINT public agents_memory_entry_locks FK_0ccf6d9ea6f44fa1c264fc2f795 n8n_user
+6981; 2606 88807 FK CONSTRAINT public agent_execution_threads FK_0e2f8bf92a7a9c88b89670f701c n8n_user
+6993; 2606 89241 FK CONSTRAINT public agents_memory_entries FK_0edf1226b77ddc525eae4938079 n8n_user
+7010; 2606 89439 FK CONSTRAINT public instance_ai_observation_locks FK_103e2e5f454860b28ea05a82c74 n8n_user
+6985; 2606 89153 FK CONSTRAINT public agents_observations FK_127ee1078ffa952bb37b511efad n8n_user
+6994; 2606 89236 FK CONSTRAINT public agents_memory_entries FK_1443a75e59adbfb796071d66393 n8n_user
+6946; 2606 88077 FK CONSTRAINT public project_secrets_provider_access FK_18e5c27d2524b1638b292904e48 n8n_user
+7016; 2606 89564 FK CONSTRAINT public agent_task_snapshot FK_1acedce6690392ef1611cca8b88 n8n_user
+7018; 2606 89661 FK CONSTRAINT public instance_ai_mcp_registry_connections FK_1d25707354d2012da256eb2ec0a n8n_user
+6905; 2606 87984 FK CONSTRAINT public insights_metadata FK_1d8ab99d5861c9388d2dc1cf733 n8n_user
+6969; 2606 88531 FK CONSTRAINT public user_favorites FK_1dd5c393ad0517be3c31a7af836 n8n_user
+6886; 2606 86607 FK CONSTRAINT public workflow_history FK_1e31657f5fe46816c34be7c1b4b n8n_user
+7019; 2606 89656 FK CONSTRAINT public instance_ai_mcp_registry_connections FK_1e826120e7e53ebc4681f026de8 n8n_user
+6964; 2606 88353 FK CONSTRAINT public instance_ai_messages FK_1eeb64cb9d66a927988de759e6e n8n_user
+6922; 2606 87641 FK CONSTRAINT public chat_hub_messages FK_1f4998c8a7dec9e00a9ab15550e n8n_user
+6937; 2606 87792 FK CONSTRAINT public oauth_user_consents FK_21e6c3c2d78a097478fae6aaefa n8n_user
+6906; 2606 87323 FK CONSTRAINT public insights_metadata FK_2375a1eda085adb16b24615b69c n8n_user
+6923; 2606 87636 FK CONSTRAINT public chat_hub_messages FK_25c9736e7f769f3a005eef4b372 n8n_user
+6995; 2606 89231 FK CONSTRAINT public agents_memory_entries FK_28e981fb675e9b44ce02f0ec1dd n8n_user
+6984; 2606 88994 FK CONSTRAINT public instance_ai_checkpoints FK_2b23f3f24a70bebb990203b011e n8n_user
+6955; 2606 88184 FK CONSTRAINT public chat_hub_agent_tools FK_2b53d796b3dbae91b1a9553c048 n8n_user
+6966; 2606 88445 FK CONSTRAINT public instance_ai_run_snapshots FK_2f63fa21d09d7918f347ddbdf70 n8n_user
+6895; 2606 86972 FK CONSTRAINT public execution_metadata FK_31d0b4c93fb85ced26f6005cda3 n8n_user
+6965; 2606 88409 FK CONSTRAINT public instance_ai_observational_memory FK_34018c303885cd37093458e6409 n8n_user
+6960; 2606 88283 FK CONSTRAINT public role_mapping_rule_project FK_35a78869286c65d9330d02b88f5 n8n_user
+6970; 2606 88575 FK CONSTRAINT public ai_builder_temporary_workflow FK_39b07732e819fb561d74c38763f n8n_user
+6891; 2606 86916 FK CONSTRAINT public shared_credentials FK_416f66fc846c7c442970c094ccf n8n_user
+6884; 2606 87551 FK CONSTRAINT public variables FK_42f6c766f9f9d2edcc15bdd6e9b n8n_user
+6956; 2606 88189 FK CONSTRAINT public chat_hub_agent_tools FK_43e70f04c53344f82483d0570f6 n8n_user
+6929; 2606 87668 FK CONSTRAINT public chat_hub_agents FK_441ba2caba11e077ce3fbfa2cd8 n8n_user
+6998; 2606 89616 FK CONSTRAINT public agents_memory_entry_sources FK_451d387a182fa8dd8002dfc3a77 n8n_user
+6999; 2606 89297 FK CONSTRAINT public agents_memory_entry_sources FK_4706f6223313959b7437a2b48df n8n_user
+6986; 2606 89601 FK CONSTRAINT public agents_observations FK_4cfd8a70ebb0a5b0cf047dca3cf n8n_user
+6987; 2606 89148 FK CONSTRAINT public agents_observations FK_501e2d1701a10e24fb69ab5fc5f n8n_user
+7009; 2606 89420 FK CONSTRAINT public instance_ai_observation_cursors FK_5b6319b2e9a37c1064a72428f9a n8n_user
+6948; 2606 88234 FK CONSTRAINT public workflow_published_version FK_5c76fb7ee939fe2530374d3f75a n8n_user
+6978; 2606 88699 FK CONSTRAINT public agent_checkpoints FK_5e31c210f896d539964bf99fe32 n8n_user
+6962; 2606 88301 FK CONSTRAINT public credential_dependency FK_5ec8e8c8d3539f3696cf73b43bf n8n_user
+6888; 2606 86887 FK CONSTRAINT public project_relation FK_5f0643f6717905a05164090dde7 n8n_user
+6889; 2606 86882 FK CONSTRAINT public project_relation FK_61448d56d61802b5dfde5cdb002 n8n_user
+6908; 2606 87358 FK CONSTRAINT public insights_by_period FK_6414cfed98daabbfdd61a1cfbc0 n8n_user
+6931; 2606 87718 FK CONSTRAINT public oauth_authorization_codes FK_64d965bd072ea24fb6da55468cd n8n_user
+6989; 2606 89175 FK CONSTRAINT public agents_observation_cursors FK_64e92819f4b413661ed6e2c3c3d n8n_user
+6953; 2606 88172 FK CONSTRAINT public chat_hub_session_tools FK_6596a328affd8d4967ffb303eee n8n_user
+6924; 2606 87646 FK CONSTRAINT public chat_hub_messages FK_6afb260449dd7a9b85355d4e0c9 n8n_user
+6992; 2606 89611 FK CONSTRAINT public agents_observation_locks FK_6b55089892e447c2f82e5ec60ed n8n_user
+6907; 2606 87341 FK CONSTRAINT public insights_raw FK_6e2e33741adef2a7c5d66befa4e n8n_user
+6940; 2606 87895 FK CONSTRAINT public workflow_publish_history FK_6eab5bd9eedabe9c54bd879fc40 n8n_user
+6943; 2606 88034 FK CONSTRAINT public dynamic_credential_user_entry FK_6edec973a6450990977bb854c38 n8n_user
+6933; 2606 87743 FK CONSTRAINT public oauth_access_tokens FK_7234a36d8e49a1fa85095328845 n8n_user
+6882; 2606 86347 FK CONSTRAINT public installed_nodes FK_73f857fc5dce682cef8a99c11dbddbc969618951 n8n_user
+7003; 2606 89329 FK CONSTRAINT public agents_memory_entry_cursors FK_746780fd115e5e4352457a3c617 n8n_user
+6934; 2606 87738 FK CONSTRAINT public oauth_access_tokens FK_78b26968132b7e5e45b75876481 n8n_user
+6958; 2606 88215 FK CONSTRAINT public workflow_builder_session FK_7983c618db48f47bf5a4cc1e1e4 n8n_user
+6918; 2606 87586 FK CONSTRAINT public chat_hub_sessions FK_7bc13b4c7e6afbfaf9be326c189 n8n_user
+6901; 2606 87222 FK CONSTRAINT public folder FK_804ea52f6729e3940498bd54d78 n8n_user
+6892; 2606 86921 FK CONSTRAINT public shared_credentials FK_812c2852270da1247756e77f5a4 n8n_user
+6971; 2606 88570 FK CONSTRAINT public ai_builder_temporary_workflow FK_85a87a1ba0f61999fe11dc56325 n8n_user
+7004; 2606 89359 FK CONSTRAINT public agent_history FK_8771675f44c58fb40e0feb9ee35 n8n_user
+6990; 2606 89606 FK CONSTRAINT public agents_observation_cursors FK_87aa187d27ea67eafd164905154 n8n_user
+7005; 2606 89354 FK CONSTRAINT public agent_history FK_87cd5a8da20304b089ea2f83fec n8n_user
+7020; 2606 89666 FK CONSTRAINT public instance_ai_mcp_registry_connections FK_8b42c08a531d76410980c639a5b n8n_user
+6967; 2606 88467 FK CONSTRAINT public instance_ai_iteration_logs FK_8bfcc6c51fd3d69b1eae8aebd49 n8n_user
+6968; 2606 88514 FK CONSTRAINT public trusted_key FK_8c2938d746943dd8f608d23c891 n8n_user
+6912; 2606 87398 FK CONSTRAINT public test_case_execution FK_8e4b4774db42f1e6dda3452b2af n8n_user
+6917; 2606 87537 FK CONSTRAINT public data_table_column FK_930b6e8faaf88294cef23484160 n8n_user
+6976; 2606 89365 FK CONSTRAINT public agents FK_940597dfe9753375309ce6aeea0 n8n_user
+6944; 2606 88029 FK CONSTRAINT public dynamic_credential_user_entry FK_945ba70b342a066d1306b12ccd2 n8n_user
+6903; 2606 87235 FK CONSTRAINT public folder_tag FK_94a60854e06f2897b2e0d39edba n8n_user
+6997; 2606 89268 FK CONSTRAINT public agents_memory_entry_locks FK_9594c0983cfee1c8ff49b05848b n8n_user
+6896; 2606 87005 FK CONSTRAINT public execution_annotations FK_97f863fa83c4786f19565084960 n8n_user
+6930; 2606 87673 FK CONSTRAINT public chat_hub_agents FK_9c61ad497dcbae499c96a6a78ba n8n_user
+6919; 2606 87591 FK CONSTRAINT public chat_hub_sessions FK_9f9293d9f552496c40e0d1a8f80 n8n_user
+6977; 2606 88678 FK CONSTRAINT public agents FK_a30d560207c4071d98aa03c179c n8n_user
+6897; 2606 87035 FK CONSTRAINT public execution_annotation_tags FK_a3697779b366e131b2bbdae2976 n8n_user
+6945; 2606 88039 FK CONSTRAINT public dynamic_credential_user_entry FK_a36dc616fabc3f736bb82410a22 n8n_user
+6893; 2606 86953 FK CONSTRAINT public shared_workflow FK_a45ea5f27bcfdc21af9b4188560 n8n_user
+6973; 2606 88635 FK CONSTRAINT public evaluation_collection FK_a48ce930c3bc7604894b8f0eaad n8n_user
+6939; 2606 87814 FK CONSTRAINT public workflow_dependency FK_a4ff2d9b9628ea988fa9e7d0bf8 n8n_user
+6938; 2606 87787 FK CONSTRAINT public oauth_user_consents FK_a651acea2f6c97f8c4514935486 n8n_user
+6935; 2606 87768 FK CONSTRAINT public oauth_refresh_tokens FK_a699f3ed9fd0c1b19bc2608ac53 n8n_user
+6950; 2606 88123 FK CONSTRAINT public dynamic_credential_entry FK_a6d1dd080958304a47a02952aab n8n_user
+7006; 2606 89400 FK CONSTRAINT public instance_ai_observations FK_a80e0ee839a2f10ba4b86e19998 n8n_user
+6902; 2606 87217 FK CONSTRAINT public folder FK_a8260b0b36939c6247f385b8221 n8n_user
+6932; 2606 87723 FK CONSTRAINT public oauth_authorization_codes FK_aa8d3560484944c19bdf79ffa16 n8n_user
+7014; 2606 89515 FK CONSTRAINT public agent_files FK_aca4514cb500494b64356c2e164 n8n_user
+6925; 2606 87626 FK CONSTRAINT public chat_hub_messages FK_acf8926098f063cdbbad8497fd1 n8n_user
+6983; 2606 89636 FK CONSTRAINT public agent_execution FK_add2432fb6034cc18b6af299dce n8n_user
+6936; 2606 87763 FK CONSTRAINT public oauth_refresh_tokens FK_b388696ce4d8be7ffbe8d3e4b69 n8n_user
+6941; 2606 88481 FK CONSTRAINT public workflow_publish_history FK_b4cfbc7556d07f36ca177f5e473 n8n_user
+7017; 2606 89582 FK CONSTRAINT public agent_task_run_lock FK_b57a2862ae869aab24e54cefd48 n8n_user
+6952; 2606 88154 FK CONSTRAINT public chat_hub_tools FK_b8030b47af9213f1fd15450fb7f n8n_user
+7012; 2606 89460 FK CONSTRAINT public instance_ai_pending_confirmations FK_ba67ee8dc311830a2eea89b6e96 n8n_user
+6959; 2606 88265 FK CONSTRAINT public role_mapping_rule FK_bb66e404c35996b0d6946177501 n8n_user
+6947; 2606 88082 FK CONSTRAINT public project_secrets_provider_access FK_bd264b81209355b543878deedb1 n8n_user
+6942; 2606 87885 FK CONSTRAINT public workflow_publish_history FK_c01316f8c2d7101ec4fa9809267 n8n_user
+6898; 2606 87030 FK CONSTRAINT public execution_annotation_tags FK_c1519757391996eb06064f0e7c8 n8n_user
+6916; 2606 87516 FK CONSTRAINT public data_table FK_c2a794257dee48af7c9abf681de n8n_user
+7000; 2606 89292 FK CONSTRAINT public agents_memory_entry_sources FK_c38e8a57a36b880e39a52ada2e8 n8n_user
+6890; 2606 87455 FK CONSTRAINT public project_relation FK_c6b99592dc96b0d836d7a21db91 n8n_user
+7001; 2606 89302 FK CONSTRAINT public agents_memory_entry_sources FK_cb7c15d22fd068a0806aa57fc03 n8n_user
+6926; 2606 87975 FK CONSTRAINT public chat_hub_messages FK_chat_hub_messages_agentId n8n_user
+6920; 2606 87970 FK CONSTRAINT public chat_hub_sessions FK_chat_hub_sessions_agentId n8n_user
+6988; 2606 89138 FK CONSTRAINT public agents_observations FK_d206432be97b7ed88d187479b1b n8n_user
+7007; 2606 89390 FK CONSTRAINT public instance_ai_observations FK_d54fc84a6c8ac91b5e0db0378a4 n8n_user
+6951; 2606 88128 FK CONSTRAINT public dynamic_credential_entry FK_d61a12235d268a49af6a3c09c13 n8n_user
+6974; 2606 88640 FK CONSTRAINT public evaluation_collection FK_d634a0c93fd7de68a87eab951b2 n8n_user
+6909; 2606 87378 FK CONSTRAINT public test_run FK_d6870d3b6e4c185d33926f423c8 n8n_user
+6894; 2606 86948 FK CONSTRAINT public shared_workflow FK_daa206a04983d47d0a9c34649ce n8n_user
+7008; 2606 89395 FK CONSTRAINT public instance_ai_observations FK_daef2195a4a846eb70eed15e039 n8n_user
+6904; 2606 87240 FK CONSTRAINT public folder_tag FK_dc88164176283de80af47621746 n8n_user
+6961; 2606 88278 FK CONSTRAINT public role_mapping_rule_project FK_dd7ce4dfa09e95b36a626bd9de3 n8n_user
+6949; 2606 88239 FK CONSTRAINT public workflow_published_version FK_df3428a541b802d6a63ac56e330 n8n_user
+7013; 2606 89465 FK CONSTRAINT public instance_ai_pending_confirmations FK_df5fd25c8bbfd2b042602600d8e n8n_user
+6899; 2606 87057 FK CONSTRAINT public user_api_keys FK_e131705cbbc8fb589889b02d457 n8n_user
+6927; 2606 87616 FK CONSTRAINT public chat_hub_messages FK_e22538eb50a71a17954cd7e076c n8n_user
+6913; 2606 87403 FK CONSTRAINT public test_case_execution FK_e48965fac35d0f5b9e7f51d8c44 n8n_user
+6928; 2606 87621 FK CONSTRAINT public chat_hub_messages FK_e5d1fa722c5a8d38ac204746662 n8n_user
+6954; 2606 88167 FK CONSTRAINT public chat_hub_session_tools FK_e649bf1295f4ed8d4299ed290f9 n8n_user
+6921; 2606 87581 FK CONSTRAINT public chat_hub_sessions FK_e9ecf8ede7d989fcd18790fe36a n8n_user
+6881; 2606 87450 FK CONSTRAINT public user FK_eaea92ee7bfb9c1b6cd01505d56 n8n_user
+6982; 2606 89587 FK CONSTRAINT public agent_execution_threads FK_f00b52d74fe11838e1fe086deea n8n_user
+6975; 2606 88645 FK CONSTRAINT public evaluation_collection FK_f4561f38b5a22a4f090d5cd3eae n8n_user
+7015; 2606 89541 FK CONSTRAINT public agent_task_definition FK_f45d0535a2ed59b6c2dd6da98a0 n8n_user
+6972; 2606 88608 FK CONSTRAINT public evaluation_config FK_fd7542bb123074760285dc1bbf3 n8n_user
+6963; 2606 89695 FK CONSTRAINT public instance_ai_threads FK_instance_ai_threads_projectId n8n_user
+6914; 2606 87437 FK CONSTRAINT public role_scope FK_role n8n_user
+6915; 2606 87442 FK CONSTRAINT public role_scope FK_scope n8n_user
+6910; 2606 88652 FK CONSTRAINT public test_run FK_test_run_collection_id n8n_user
+6911; 2606 88614 FK CONSTRAINT public test_run FK_test_run_evaluation_config_id n8n_user
+6883; 2606 86445 FK CONSTRAINT public auth_identity auth_identity_userId_fkey n8n_user
+6874; 2606 87953 FK CONSTRAINT public credentials_entity credentials_entity_resolverId_foreign n8n_user
+6885; 2606 86581 FK CONSTRAINT public execution_data execution_data_fk n8n_user
+6875; 2606 86547 FK CONSTRAINT public execution_entity fk_execution_entity_workflow_id n8n_user
+6878; 2606 86541 FK CONSTRAINT public webhook_entity fk_webhook_entity_workflow_id n8n_user
+6877; 2606 87304 FK CONSTRAINT public workflow_entity fk_workflow_parent_folder n8n_user
+6879; 2606 86518 FK CONSTRAINT public workflows_tags fk_workflows_tags_tag_id n8n_user
+6880; 2606 86513 FK CONSTRAINT public workflows_tags fk_workflows_tags_workflow_id n8n_user
+6887; 2606 87901 FK CONSTRAINT public project projects_creatorId_foreign n8n_user
+7437; 3256 111793 POLICY chat messages chat_messages_self contract
+7438; 3256 111794 POLICY chat sessions chat_sessions_self contract
+7435; 0 109750 ROW SECURITY chat messages contract
+7436; 0 109765 ROW SECURITY chat sessions contract
+3554; 826 92023 DEFAULT ACL public DEFAULT PRIVILEGES FOR TABLES contract
