@@ -1,56 +1,111 @@
 # Contents Project Workspace
 
-ยินดีต้อนรับสู่พื้นที่ทำงาน (Workspace) ของโครงการ **Contents Project** ซึ่งเป็นการรวมระบบ Proof of Concept (PoC) สองระบบหลักที่ทำงานร่วมกันบนโครงสร้างพื้นฐานภายในตัวเครื่อง (Local Infrastructure) เดียวกัน
+A multi-project workspace that hosts the **AI Financial System (folio)** plus a set of host-native services and companion apps, all running on a single macOS host.
+
+> Authoritative operator & agent guide: [`AGENTS.md`](./AGENTS.md). This README is a high-level overview.
 
 ---
 
-## 📂 โครงสร้างระบบใน Workspace
+## Workspace Layout
 
-พื้นที่ทำงานนี้แบ่งออกเป็น 3 ส่วนหลักๆ ดังนี้:
+| Path | Stack | Purpose |
+| --- | --- | --- |
+| [`folio/`](./folio) | Next.js 16 · Postgres · n8n · MinIO | **AI Financial System** — admin dashboard, HR, Law, Finance, RBAC, Waybill (expense/PR/PO) workflow, slip OCR pipeline |
+| [`infra/`](./infra) | launchd · Docker | Shared host-native services: n8n, MinIO, Postgres 18, launchd plists |
+| [`ai-realtime-translate/`](./ai-realtime-translate) | Rust · Dioxus · Python | Desktop realtime translator (macOS) |
+| [`smarthome-line-agent/`](./smarthome-line-agent) | Bash | Smarthome LINE OA agent |
+| `finance-line-agent/` | _(scaffold)_ | Finance LINE agent (planned) |
 
-### 1. [Law-digitalize-PoC](file:///Users/fluke/Desktop/Work/Contents/Law-digitalize-PoC) (ระบบสืบค้นและจัดการเอกสารทางกฎหมาย)
-ระบบค้นหาเอกสารสัญญาทางกฎหมายด้วยความสามารถของ AI (RAG - Retrieval-Augmented Generation) 
-* **ฟีเจอร์**: อัปโหลดเอกสาร PDF กฎหมาย, ทำระบบดึงข้อความอัตโนมัติ (OCR via Native macOS Vision API), ค้นหาข้อมูลด้วยเวกเตอร์ค้นหา (Semantic Search) และมี Dashboard (Next.js) ให้ฝ่ายบริหารสืบค้นข้อมูล
-* **โครงสร้างภายใน**: Next.js (Admin UI & Executive Presentation Deck), PostgreSQL (Vector extension), MinIO (Object Storage) และ n8n Workflows
-
-### 2. [hr-line-agent](file:///Users/fluke/Desktop/Work/Contents/hr-line-agent) (ระบบบอทบริการฝ่ายบุคคล - HR LINE Bot & Dashboard)
-ระบบช่วยพนักงานขอลาหยุดงาน เช็คสิทธิ์วันหยุดตนเอง และขอดูขอบข่ายงาน (Job Description) ผ่านแชทบอท LINE OA
-* **ฟีเจอร์**: บันทึกคำขอลาหยุดเข้าฐานข้อมูล, ตรวจเช็คยอดวันลาด้วย Flex Message (แถบ Progress Bar คาดสีสวยงาม), ทำรายการแบบทีละขั้นตอน (State Machine / Slot Filling) รองรับข้อความธรรมชาติของพนักงาน และมี Next.js Dashboard หลังบ้านเพื่อให้ HR อนุมัติ/ปฏิเสธแบบเรียลไทม์
-* **โครงสร้างภายใน**: Next.js Web Admin Portal, PostgreSQL (`hr_db`), n8n Workflows (พร้อมการดึงค่า Header Auth จาก Environment ตัวแปรระบบโดยตรงเพื่อไม่ให้ชนกับระบบอื่น)
-
-### 3. [infra](file:///Users/fluke/Desktop/Work/Contents/infra) (โครงสร้างพื้นฐานและการจัดการระบบ)
-รวบรวมไฟล์การตั้งค่าและ Daemon สคริปต์ที่รันระบบสนับสนุนทั้งหมดในเครื่อง macOS Host-native:
-* **บริการภายใน**: 
-  - **n8n** (พอร์ต `5678`): ระบบรัน Flow Orchestration อัตโนมัติ
-  - **MinIO** (พอร์ต `9000` / Console `9001`): ระบบเก็บไฟล์สำหรับเอกสารสัญญากฎหมาย
-  - **PostgreSQL 18** (พอร์ต `5432`): ฐานข้อมูลหลักของทั้งสองโปรเจกต์ (`lawpoc_n8n`, `hr_db`)
-  - **OCR Native Service** (พอร์ต `8765`): บริการดึงข้อความจากภาพ/PDF — ย้ายมาเป็นของ Folio (ดู `folio/ocr/`) ใช้ Node.js + Swift N-API Vision + sharp + poppler CLI (pdftoppm/tesseract/pdftotext) + Ollama qwen3-vl เป็น pipeline ต่อหน้าแบบ per-page waterfall
-* ** launchd plists**: การตั้งค่าไฟล์ Daemon ในตัว macOS เพื่อช่วยสตาร์ทและกู้คืนบริการให้อัตโนมัติ (`com.lawpoc.*`)
+The three legacy projects (`hr-line-agent/`, `Law-digitalize-PoC/`, host-native `infra/` stack) have been absorbed into `folio/` and no longer exist as top-level folders.
 
 ---
 
-## 🛠️ การเปิดรันบริการทั้งหมดในเครื่อง (Startup Runbook)
+## folio — AI Financial System
 
-บริการหลังบ้านทั้งหมดทำงานผ่าน `launchd` ของ macOS ซึ่งจะถูกสตาร์ทอัตโนมัติอยู่แล้วเมื่อเปิดเครื่อง หากต้องการควบคุมด้วยตนเอง:
+A single Next.js process on port **3004** backed by one Postgres database (`folio_db`) with schemas: `finance`, `perm`, `hook`, `hr`, `law`, `n8n`, `folio`, `public`.
 
-```bash
-# 1. ตรวจสอบสถานะการทำงานของบริการทั้งหมด
-launchctl list | grep lawpoc
+**Architecture**
 
-# 2. ตัวอย่างการสตาร์ท/รีสตาร์ทบริการ n8n
-# (หรือสั่ง kill pid ของบริการแล้ว launchd จะทำการ respawn ให้อัตโนมัติเนื่องจากมี KeepAlive=true)
-kill $(pgrep -f start-n8n.js)
+```
+Browser → app (Next.js :3004) ─┬→ @folio-lib/perm/*      ──→ Postgres
+                               ├→ @folio-lib/ai/*        ──┬→ Postgres
+                               │                          ├→ Ollama
+                               │                          └→ MinIO (folio-storage)
+                               └→ @folio-lib/slips/*     (storage + OCR pipeline)
 ```
 
-### รายละเอียดพอร์ตการเชื่อมต่อโลคอล:
-* **Next.js HR Admin**: http://localhost:3000
-* **n8n Editor (HTTPS)**: https://n8n.jesadakorn.com (พอร์ตภายใน `5678`)
-* **MinIO Console**: http://localhost:9001
-* **PostgreSQL**: `localhost:5432`
+- `folio/lib/` — server-only library (perm/RBAC, AI router, HR, Law, slips/OCR, shared DB/config/session). Imported via the `@folio-lib/*` tsconfig alias.
+- `folio/app/` — Next.js 16 admin UI + server actions + thin route handlers under `src/app/api/*`.
+- **Bundler:** Turbopack only.
+- **Session:** Single `SESSION_SECRET` (HMAC-SHA256); `folio_session` cookie or `x-folio-session` header.
+- **LINE channels:** two distinct OAs — folio/Law bot (`line_law`) and HR bot (`line_hr`); n8n orchestrates, folio's `/api/hook/line*` are thin HMAC-verified event sinks.
+
+### Waybill system
+
+All expense, PR and PO flows share a single **Waybill** object (`WB-YYYY-NNNNNN`), one audit log (`waybill_events`, linked-list + HMAC-signed), one detail page (`/waybill/[id]`), one inbox (`/my-waybills`), and one `<WaybillRail>` component. CEO escalation auto-triggers above **200,000 THB**. UI is bilingual (EN/TH) via `localStorage.worderp.lang`.
+
+### Run
+
+```bash
+cd folio/app && bun install && bun run dev
+```
+
+### Verify
+
+```bash
+cd folio/app
+bun run lint && bunx tsc --noEmit
+```
 
 ---
 
-## 📝 รายละเอียดโปรเจกต์เชิงลึก
-กรุณาเปิดอ่านไฟล์ README ของแต่ละโปรเจกต์ย่อยสำหรับคู่มือและวิธีการตั้งค่าโดยละเอียด:
-* **คู่มือระบบ HR**: [hr-line-agent/README.md](file:///Users/fluke/Desktop/Work/Contents/hr-line-agent/README.md)
-* **คู่มือระบบสืบค้นกฎหมาย**: [Law-digitalize-PoC/README.md](file:///Users/fluke/Desktop/Work/Contents/Law-digitalize-PoC/README.md)
+## Shared Infrastructure (`infra/`)
+
+Host-native services managed by macOS `launchd` (`com.lawpoc.*`):
+
+| Service | Port | Notes |
+| --- | --- | --- |
+| n8n | 5678 | Flow orchestration — https://n8n.jesadakorn.com |
+| MinIO | 9000 / 9001 | Object storage for `folio-storage` bucket |
+| PostgreSQL 18 | 5432 | Databases: `folio_db`, `hr_db`, `lawpoc_n8n` |
+
+### Control
+
+```bash
+# inspect services
+launchctl list | grep lawpoc
+
+# restart a service (KeepAlive=true respawns automatically)
+launchctl kickstart -k gui/$(id -u)/<label>
+```
+
+- Config (never commit): `infra/.env`, `infra/n8n-data/.n8n/config` (mode 600)
+- Logs: `infra/logs/{n8n,minio}.log`
+- Backups: `infra/backups/migration-YYYYMMDD/`
+
+---
+
+## Conventions
+
+- **Package manager:** `bun` for all Node/Next.js work — never `npm install`/`npm ci`. Commit `bun.lock`.
+- **Verification:** static checks only (`bun run lint`, `bunx tsc --noEmit`, `cargo check`, `ruff`). Never run `build`/`start`/`cargo build`/`cargo run` to verify.
+- **Post-task:** after any Next.js change, start `bun run dev` in the background (folio on `:3004`, log `/tmp/folio.dev.log`).
+- **Naming:** shortest reasonable names; no hardcoded/mock data; edit existing files over creating new ones.
+
+---
+
+## Local URLs
+
+| Service | URL |
+| --- | --- |
+| folio admin | http://localhost:3004 |
+| n8n editor | https://n8n.jesadakorn.com |
+| MinIO console | http://localhost:9001 |
+| PostgreSQL | `localhost:5432` |
+
+---
+
+## Further Reading
+
+- [`AGENTS.md`](./AGENTS.md) — full operator and agent guide (source of truth).
+- [`folio/docs/`](./folio/docs) — folio-specific docs (bundler, migrations, etc.).
